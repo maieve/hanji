@@ -8,7 +8,8 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.1.1",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   }
 }
