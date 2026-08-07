@@ -1,0 +1,3 @@
+import {StyleSheet,View} from 'react-native'; import type {ToolSpec} from '../types'; import {HanjiCanvas} from './HanjiCanvas'; import {PdfBackground} from './PdfBackground';
+type Props={pdfUri?:string;pageIndex:number;drawingData:string;tool:ToolSpec;onDrawingChange:(v:string)=>void;onPageCount?:(n:number)=>void;onStrokeAdded?:(createdAt:number)=>void};
+export function DocumentCanvas(p:Props){return <View style={StyleSheet.absoluteFill}><PdfBackground uri={p.pdfUri}/><HanjiCanvas drawingData={p.drawingData} tool={p.tool} onDrawingChange={v=>{p.onDrawingChange(v);p.onStrokeAdded?.(Date.now()/1000)}}/></View>}

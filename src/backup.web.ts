@@ -1,0 +1,2 @@
+import type {Notebook} from './types';
+export async function exportLibrary(items:Notebook[]){const body=JSON.stringify({format:'hanji-backup',version:1,createdAt:new Date().toISOString(),notebooks:items},null,2);const url=URL.createObjectURL(new Blob([body],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`hanji-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return url}

@@ -1,0 +1,55 @@
+name: iOS Native Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx expo prebuild --platform ios --clean --no-install
+      - name: Install pods
+        working-directory: ios
+        run: pod install --repo-update
+      - name: Compile unsigned device app
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace Hanji.xcworkspace \
+            -scheme Hanji \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee xcodebuild.log
+      - name: Package unsigned IPA
+        working-directory: ios
+        run: |
+          APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          rm -rf Payload Hanji-unsigned.ipa
+          mkdir Payload
+          ditto "$APP_PATH" "Payload/Hanji.app"
+          zip -qry Hanji-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hanji-unsigned-ipa
+          path: ios/Hanji-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-log
+          path: ios/xcodebuild.log

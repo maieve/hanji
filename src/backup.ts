@@ -1,0 +1,2 @@
+import {File,Paths} from 'expo-file-system'; import * as Sharing from 'expo-sharing'; import type {Notebook} from './types';
+export async function exportLibrary(items:Notebook[]){const file=new File(Paths.cache,`hanji-backup-${new Date().toISOString().slice(0,10)}.json`);if(file.exists)file.delete();file.create();file.write(JSON.stringify({format:'hanji-backup',version:1,createdAt:new Date().toISOString(),notebooks:items},null,2));await Sharing.shareAsync(file.uri,{mimeType:'application/json',dialogTitle:'Hanji 백업 내보내기'});return file.uri}

@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Hanji",
+    "slug": "hanji",
+    "version": "0.1.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "requireFullScreen": false,
+      "bundleIdentifier": "dev.hanji.notes",
+      "deploymentTarget": "17.0"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-sharing",
+      "expo-audio",
+      "expo-sqlite",
+      "expo-asset"
+    ]
+  }
+}
