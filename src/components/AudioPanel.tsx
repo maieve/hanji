@@ -1,16 +1,18 @@
 import {Ionicons} from '@expo/vector-icons';
 import {RecordingPresets,requestRecordingPermissionsAsync,useAudioPlayer,useAudioPlayerStatus,useAudioRecorder,useAudioRecorderState} from 'expo-audio';
+import {useEffect} from 'react';
 import {Alert,Pressable,StyleSheet,Text,View} from 'react-native';
 import {C} from '../theme'; import type {AudioSession} from '../types';
 export type AudioSaved=Omit<AudioSession,'strokes'>;
-type Props={sessions:AudioSession[];onRecordingStart:(startedAt:number)=>void;onSaved:(v:AudioSaved)=>void};
+type Props={sessions:AudioSession[];seekRequest?:{seconds:number;nonce:number};onRecordingStart:(startedAt:number)=>void;onSaved:(v:AudioSaved)=>void};
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds)%60).padStart(2,'0')}`;
-export function AudioPanel({sessions,onRecordingStart,onSaved}:Props){
+export function AudioPanel({sessions,seekRequest,onRecordingStart,onSaved}:Props){
   const recorder=useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recording=useAudioRecorderState(recorder,250);
   const latest=sessions.at(-1);
   const player=useAudioPlayer(latest?.uri??null,{updateInterval:250});
   const playback=useAudioPlayerStatus(player);
+  useEffect(()=>{if(!seekRequest||!latest)return;void player.seekTo(seekRequest.seconds).then(()=>player.play())},[seekRequest?.nonce,latest?.uri]);
   const toggleRecord=async()=>{
     if(recording.isRecording){
       await recorder.stop();
