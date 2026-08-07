@@ -25,6 +25,7 @@
     "expo-sqlite": "~57.0.1",
     "expo-status-bar": "~57.0.0",
     "hanji-canvas": "file:modules/hanji-canvas",
+    "jszip": "^3.10.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
