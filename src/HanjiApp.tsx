@@ -1767,6 +1767,7 @@ export function HanjiApp() {
                 "dot",
                 "cornell",
                 "planner",
+                "flashcard",
                 "dark",
               ] as const
             ).map((t) => (
@@ -1809,6 +1810,7 @@ export function HanjiApp() {
                         dot: "D",
                         cornell: "C",
                         planner: "W",
+                        flashcard: "Q/A",
                         dark: "N",
                       } as const
                     )[t]

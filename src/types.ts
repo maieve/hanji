@@ -1,7 +1,7 @@
 export type ToolKind='pen'|'fountainPen'|'monoline'|'pencil'|'crayon'|'watercolor'|'marker'|'eraser'|'lasso'|'shape';
 export type ShapeKind='line'|'arrow'|'ellipse'|'rectangle'|'triangle';
 export type PageRotation=0|90|180|270;
-export type PageTemplate='plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'dark';
+export type PageTemplate='plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'flashcard'|'dark';
 export type TemplateSpacing='narrow'|'medium'|'wide';
 export type CanvasExtent={columns:number;rows:number};
 export type ToolSpec={kind:ToolKind;color:string;width:number;opacity?:number;eraserMode?:'vector'|'bitmap'|'fixedWidthBitmap';eraserAutoReturn?:boolean;rulerActive?:boolean;lassoMode?:'freeform'|'rectangle';lassoInk?:boolean;lassoText?:boolean;lassoImages?:boolean;shapeKind?:ShapeKind;shapeLineStyle?:'solid'|'dashed';shapeFillStyle?:'none'|'translucent'|'solid';shapeHoldRequired?:boolean;scratchEnabled?:boolean;circleToLasso?:boolean;markerStraightLine?:boolean};

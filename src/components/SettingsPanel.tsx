@@ -23,6 +23,7 @@ const templates: { value: PageTemplate; label: string }[] = [
   { value: "dot", label: "점" },
   { value: "cornell", label: "코넬" },
   { value: "planner", label: "플래너" },
+  { value: "flashcard", label: "Q/A 카드" },
   { value: "dark", label: "다크" },
 ];
 
@@ -181,6 +182,9 @@ export function SettingsPanel({
               >
                 <View style={[s.paper, item.value === "dark" && s.dark]}>
                   {item.value === "line" && <View style={s.line} />}
+                  {item.value === "flashcard" && (
+                    <View style={s.flashcardLine}/>
+                  )}
                   <Text
                     style={[
                       s.templateCode,
@@ -486,6 +490,7 @@ const s = StyleSheet.create({
     overflow: "hidden",
   },
   dark: { backgroundColor: "#202522" },
+  flashcardLine:{position:'absolute',left:5,right:5,top:'50%',height:1,backgroundColor:'#8CB6A6'},
   line: {
     position: "absolute",
     left: 0,

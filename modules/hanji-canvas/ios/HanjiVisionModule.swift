@@ -204,5 +204,13 @@ private func drawHanjiTemplate(_ template: String, spacing: String, columns: Int
     for column in 1..<7 { let x = margin + CGFloat(column) * cell; context.move(to: CGPoint(x: x, y: top)); context.addLine(to: CGPoint(x: x, y: bottom)) }
     for row in 1..<9 { let y = top + CGFloat(row) * (bottom - top) / 9; context.move(to: CGPoint(x: margin, y: y)); context.addLine(to: CGPoint(x: bounds.width - margin, y: y)) }
   }
+  if template == "flashcard" {
+    context.setStrokeColor(UIColor(hanjiHex: "#8CB6A6").cgColor); context.setLineWidth(2)
+    context.move(to: CGPoint(x: bounds.minX + 24, y: bounds.midY)); context.addLine(to: CGPoint(x: bounds.maxX - 24, y: bounds.midY)); context.strokePath()
+    let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 10, weight: .bold), .foregroundColor: UIColor(hanjiHex: "#5C8B79"), .kern: 1.5]
+    "QUESTION".draw(at: CGPoint(x: bounds.minX + 28, y: bounds.minY + 22), withAttributes: attributes)
+    "ANSWER".draw(at: CGPoint(x: bounds.minX + 28, y: bounds.midY + 14), withAttributes: attributes)
+    return
+  }
   context.strokePath()
 }

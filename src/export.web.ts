@@ -2,6 +2,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import type { Notebook, Page } from "./types";
 import { templateSpacingPoints } from "./templateSpacing";
+import {FLASHCARD_SPLIT_RATIO} from './flashcardTemplate';
 type Stroke = {
   d: string;
   color: string;
@@ -47,7 +48,7 @@ export async function exportNotebookPdf(note: Notebook) {
       return `<section class="page" style="width:${portrait?heightMm:widthMm}mm;height:${portrait?widthMm:heightMm}mm"><div class="page-content ${page.template}" style="--spacing:${spacing}px;width:${widthMm}mm;height:${heightMm}mm;transform:translate(-50%,-50%) rotate(${rotation}deg)">${custom}${paint}<svg viewBox="0 0 ${900*columns} ${636*rows}">${paths}</svg>${elements}</div></section>`;
     })
     .join("");
-  const html = `<!doctype html><html><head><style>@page{size:auto;margin:0}body{margin:0}.page{position:relative;page-break-after:always;background:#fff;overflow:hidden}.landscape{width:297mm;height:210mm}.portrait{width:210mm;height:297mm}.page-content{position:absolute;left:50%;top:50%;width:297mm;height:210mm;transform-origin:center}.template-bg,.page-paint{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.line{background-image:repeating-linear-gradient(#fff 0,#fff calc(var(--spacing) - 1px),#dde2dd var(--spacing))}.grid{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:var(--spacing) var(--spacing)}.dot{background-image:radial-gradient(#bdc4bd 1px,transparent 1px);background-size:var(--spacing) var(--spacing)}.cornell{background-image:linear-gradient(90deg,transparent 24.8%,#bfd0c8 25%,transparent 25.2%),linear-gradient(0deg,transparent 17.8%,#bfd0c8 18%,transparent 18.2%),repeating-linear-gradient(#fff 0,#fff calc(var(--spacing) - 1px),#dde2dd var(--spacing))}.planner{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:100% 11.11%,14.285% 100%}.dark{background-color:#202522;background-image:repeating-linear-gradient(transparent 0,transparent calc(var(--spacing) - 1px),#465149 var(--spacing))}svg{position:relative;width:100%;height:100%}</style></head><body>${pages}</body></html>`;
+  const html = `<!doctype html><html><head><style>@page{size:auto;margin:0}body{margin:0}.page{position:relative;page-break-after:always;background:#fff;overflow:hidden}.landscape{width:297mm;height:210mm}.portrait{width:210mm;height:297mm}.page-content{position:absolute;left:50%;top:50%;width:297mm;height:210mm;transform-origin:center}.template-bg,.page-paint{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.line{background-image:repeating-linear-gradient(#fff 0,#fff calc(var(--spacing) - 1px),#dde2dd var(--spacing))}.grid{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:var(--spacing) var(--spacing)}.dot{background-image:radial-gradient(#bdc4bd 1px,transparent 1px);background-size:var(--spacing) var(--spacing)}.cornell{background-image:linear-gradient(90deg,transparent 24.8%,#bfd0c8 25%,transparent 25.2%),linear-gradient(0deg,transparent 17.8%,#bfd0c8 18%,transparent 18.2%),repeating-linear-gradient(#fff 0,#fff calc(var(--spacing) - 1px),#dde2dd var(--spacing))}.planner{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:100% 11.11%,14.285% 100%}.flashcard{background:linear-gradient(to bottom,transparent calc(50% - 1px),#8cb6a6 calc(50% - 1px),#8cb6a6 calc(50% + 1px),transparent calc(50% + 1px))}.flashcard:before,.flashcard:after{position:absolute;left:28px;z-index:1;font:800 10px sans-serif;letter-spacing:1.5px;color:#5c8b79}.flashcard:before{content:'QUESTION';top:22px}.flashcard:after{content:'ANSWER';top:calc(50% + 14px)}.dark{background-color:#202522;background-image:repeating-linear-gradient(transparent 0,transparent calc(var(--spacing) - 1px),#465149 var(--spacing))}svg{position:relative;width:100%;height:100%}</style></head><body>${pages}</body></html>`;
   const { uri } = await Print.printToFileAsync({ html });
   await Sharing.shareAsync(uri, {
     mimeType: "application/pdf",
@@ -84,6 +85,8 @@ export async function exportPagePng(
     ? `<image href="${esc(page.customTemplateUri)}" width="${canvasWidth}" height="${canvasHeight}" preserveAspectRatio="none"/>`
     : page.template === "dark"
       ? `<rect width="${canvasWidth}" height="${canvasHeight}" fill="#202522"/><path d="${Array.from({length:Math.ceil(canvasHeight/spacing)},(_,i)=>`M0 ${(i+1)*spacing}H${canvasWidth}`).join(' ')}" stroke="#465149"/>`
+      : page.template === "flashcard"
+        ? `<rect width="${canvasWidth}" height="${canvasHeight}" fill="white"/><path d="M24 ${canvasHeight/2}H${canvasWidth-24}" stroke="#8cb6a6" stroke-width="2"/><text x="28" y="32" font-family="sans-serif" font-size="10" font-weight="800" letter-spacing="1.5" fill="#5c8b79">QUESTION</text><text x="28" y="${canvasHeight/2+24}" font-family="sans-serif" font-size="10" font-weight="800" letter-spacing="1.5" fill="#5c8b79">ANSWER</text>`
       : page.template === "cornell"
         ? `${ruled}<rect width="${canvasWidth}" height="${canvasHeight}" fill="white"/><rect x="${canvasWidth*.25}" width="${canvasWidth*.75}" height="${canvasHeight*.82}" fill="url(#r)"/><path d="M${canvasWidth*.25} 0V${canvasHeight*.82}M0 ${canvasHeight*.82}H${canvasWidth}" stroke="#bfd0c8"/>`
         : page.template === "planner"
@@ -139,6 +142,6 @@ export async function exportPagePng(
   return output;
 }
 
-export async function createPageFlashcardAssets(_page:Page,_pageIndex:number,_splitRatio=.5):Promise<{questionUri:string;answerUri:string}>{
+export async function createPageFlashcardAssets(_page:Page,_pageIndex:number,_splitRatio=FLASHCARD_SPLIT_RATIO):Promise<{questionUri:string;answerUri:string}>{
   throw new Error('페이지 Q/A 이미지 카드는 iPad 앱에서 사용할 수 있습니다.');
 }

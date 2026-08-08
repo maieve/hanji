@@ -83,6 +83,8 @@ export function Paper({
         </View>
       </>
     );
+  else if(template==='flashcard')
+    content=(<><View style={s.flashcardDivider}/><Text style={[s.flashcardLabel,{top:22}]}>QUESTION</Text><Text style={[s.flashcardLabel,{top:'52%'}]}>ANSWER</Text></>);
   else if (template === "dark")
     content = (
       <View style={[StyleSheet.absoluteFill, s.dark]}>
@@ -192,6 +194,8 @@ const s = StyleSheet.create({
     backgroundColor: rule,
   },
   dark: { backgroundColor: "#202522" },
+  flashcardDivider:{position:'absolute',left:24,right:24,top:'50%',height:2,backgroundColor:'#8CB6A6'},
+  flashcardLabel:{position:'absolute',left:28,fontSize:10,fontWeight:'900',letterSpacing:1.5,color:'#5C8B79'},
   darkCaption: {
     position: "absolute",
     right: 24,
