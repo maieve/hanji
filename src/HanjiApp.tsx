@@ -60,6 +60,7 @@ import { NotebookOrganizer } from "./components/NotebookOrganizer";
 import { PdfOutlinePanel } from "./components/PdfOutlinePanel";
 import type { PdfOutlineItem } from "./components/DocumentCanvas";
 import { DocumentTabs } from "./components/DocumentTabs";
+import {ReferencePanel} from './components/ReferencePanel';
 import { ElementsLayer } from "./components/ElementsLayer";
 import { pickPersistentImage } from "./imageAssets";
 import { usePrivacyLock } from "./privacyLock";
@@ -94,6 +95,7 @@ import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
 import { PagePaintPanel } from "./components/PagePaintPanel";
 import { selectionTextToQuestion } from "./flashcardDraft";
 import {normalizeCanvasExtent,resizePageCanvas} from './canvasExtent';
+import {resolveReferenceNotebook} from './referenceDocument';
 import { insertPage } from "./pageInsert";
 import type { PencilAction } from "./pencilActions";
 import { resolvePencilPreferredAction } from "./pencilPreferredAction";
@@ -129,6 +131,7 @@ export function HanjiApp() {
   );
   const [pageIndex, setPageIndex] = useState(0);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [referenceId,setReferenceId]=useState<string>();
   const tabPages = useRef<Record<string, number>>({});
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[] | null>(null);
@@ -624,16 +627,20 @@ export function HanjiApp() {
   const page = current.pages[pageIndex] ?? current.pages[0];
   if (!page) return null;
   const canvasExtent = normalizeCanvasExtent(page.canvasExtent);
+  const referenceNote=resolveReferenceNotebook(items,referenceId,current.id);
   const selectTab = async (id: string) => {
     const note = items.find((item) => item.id === id);
     if (!note || !(await unlockNotebook(note))) return;
     setOpenId(id);
+    if(referenceId===id)setReferenceId(undefined);
     setPageIndex(tabPages.current[id] ?? 0);
   };
+  const selectReference=async(id:string)=>{const note=items.find(item=>item.id===id);if(!note||note.id===current.id||!(await unlockNotebook(note)))return;setReferenceId(id)};
   const closeTab = (id: string) => {
     const index = openTabs.indexOf(id),
       remaining = openTabs.filter((x) => x !== id);
     setOpenTabs(remaining);
+    if(referenceId===id)setReferenceId(undefined);
     if (openId === id) {
       const next =
         remaining[Math.min(Math.max(index, 0), remaining.length - 1)];
@@ -1336,7 +1343,9 @@ export function HanjiApp() {
           ids={openTabs}
           items={items}
           activeId={current.id}
+          referenceId={referenceId}
           onSelect={selectTab}
+          onReference={selectReference}
           onClose={closeTab}
         />
       )}
@@ -1453,6 +1462,16 @@ export function HanjiApp() {
                 />
               )}
             </ZoomablePage>
+          )}
+          {referenceNote && (
+            <ReferencePanel
+              notebook={referenceNote}
+              initialIndex={tabPages.current[referenceNote.id] ?? 0}
+              onPageChange={(index) => {
+                tabPages.current[referenceNote.id] = index;
+              }}
+              onClose={() => setReferenceId(undefined)}
+            />
           )}
           <AudioPanel
             sessions={current.audioSessions ?? []}
