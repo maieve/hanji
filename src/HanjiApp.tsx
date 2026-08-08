@@ -49,6 +49,7 @@ import {FolderManager} from './components/FolderManager';
 import {librarySearchMatches,mayRevealNotebookSnippet} from './notebookPrivacy';
 import Constants from 'expo-constants';
 import {sortNotebooks,type LibrarySort,type LibraryViewMode} from './libraryView';
+import {FOCUS_TOOLBAR_IDLE_MS} from './focusPolicy';
 
 const buildIdentity=`${Constants.expoConfig?.version??'0.1.0'} (${Constants.nativeBuildVersion??'dev'}) · ${String(Constants.expoConfig?.extra?.hanjiBuild??'dev')}`;
 
@@ -108,6 +109,8 @@ export function HanjiApp() {
   const [zoomWindowEnabled, setZoomWindowEnabled] = useState(false);
   const [elementMode, setElementMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [focusToolbarVisible,setFocusToolbarVisible]=useState(false);
+  const focusHideTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const [uiPreferences,setUiPreferences]=useState<UiPreferences>(defaultUiPreferences);
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [documentSearchOpen,setDocumentSearchOpen]=useState(false);
@@ -173,6 +176,8 @@ export function HanjiApp() {
     return () => clearTimeout(timer);
   }, [query]);
   useEffect(()=>{if(!searchFocus)return;const timer=setTimeout(()=>setSearchFocus(undefined),5000);return()=>clearTimeout(timer)},[searchFocus?.nonce]);
+  const showFocusToolbar=()=>{if(!focusMode)return;setFocusToolbarVisible(true);if(focusHideTimer.current)clearTimeout(focusHideTimer.current);focusHideTimer.current=setTimeout(()=>setFocusToolbarVisible(false),FOCUS_TOOLBAR_IDLE_MS)};
+  useEffect(()=>{if(!focusMode){if(focusHideTimer.current)clearTimeout(focusHideTimer.current);focusHideTimer.current=null;setFocusToolbarVisible(false);return}setFocusToolbarVisible(true);focusHideTimer.current=setTimeout(()=>setFocusToolbarVisible(false),FOCUS_TOOLBAR_IDLE_MS);return()=>{if(focusHideTimer.current)clearTimeout(focusHideTimer.current)}},[focusMode]);
   useEffect(() => {
     if (openId) tabPages.current[openId] = pageIndex;
   }, [openId, pageIndex]);
@@ -450,6 +455,7 @@ export function HanjiApp() {
     applyTemplateInk(uiPreferences.defaultTemplate);
   };
   const changeDrawing = (target: typeof page, drawingData: string) => {
+    showFocusToolbar();
     update(current.id, (n) => ({
       ...n,
       updatedAt: new Date().toISOString(),
@@ -584,8 +590,11 @@ export function HanjiApp() {
   };
   return (
     <SafeAreaView style={s.root}>
-      {!focusMode && (
+      {(!focusMode||focusToolbarVisible) && (
         <Toolbar
+          focusMode={focusMode}
+          focusOverlay={focusMode}
+          onActivity={showFocusToolbar}
           tool={tool}
           setTool={setTool}
           onUndo={performUndo}
@@ -638,7 +647,7 @@ export function HanjiApp() {
           onStickers={() => setStickerOpen(true)}
           privacyEnabled={privacy.enabled}
           onPrivacyToggle={() => void privacy.toggle()}
-          onFocusMode={() => setFocusMode(true)}
+          onFocusMode={() => setFocusMode(!focusMode)}
           onSettings={() => setSettingsOpen(true)}
           onSearch={() => setDocumentSearchOpen(true)}
           onExportPdf={() => setExportOpen(true)}
@@ -819,10 +828,10 @@ export function HanjiApp() {
           </ScrollView>
         </View>
       </View>
-      {focusMode && (
+      {focusMode&&!focusToolbarVisible && (
         <Pressable
-          accessibilityLabel="집중 모드 종료"
-          onPress={() => setFocusMode(false)}
+          accessibilityLabel="집중 모드 도구 열기"
+          onPress={showFocusToolbar}
           style={{
             position: 'absolute',
             right: leftHanded?undefined:20,
@@ -837,7 +846,7 @@ export function HanjiApp() {
             justifyContent: 'center',
           }}
         >
-          <Ionicons name="contract-outline" size={22} color={C.white} />
+          <Ionicons name="chevron-down" size={22} color={C.white} />
         </Pressable>
       )}
       <FlashcardPanel

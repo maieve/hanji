@@ -22,7 +22,7 @@ const colors = ['#20201E', '#225D50', '#315E9C', '#A4493D', '#8A653E'];
 const eraserLabels = {vector:'획',bitmap:'픽셀',fixedWidthBitmap:'고정'} as const;
 const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사각',triangle:'삼각'} as const;
 
-export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, viewMode, onToggleViewMode, elementMode, onAddText, onAddImage, onStickers, privacyEnabled, onPrivacyToggle, onFocusMode, onSettings,onSearch, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;viewMode:'page'|'continuous';onToggleViewMode:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void;onStickers:()=>void;privacyEnabled:boolean;onPrivacyToggle:()=>void;onFocusMode:()=>void;onSettings:()=>void;onSearch:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
+export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, viewMode, onToggleViewMode, elementMode, onAddText, onAddImage, onStickers, privacyEnabled, onPrivacyToggle, focusMode,focusOverlay,onActivity,onFocusMode, onSettings,onSearch, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;viewMode:'page'|'continuous';onToggleViewMode:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void;onStickers:()=>void;privacyEnabled:boolean;onPrivacyToggle:()=>void;focusMode?:boolean;focusOverlay?:boolean;onActivity?:()=>void;onFocusMode:()=>void;onSettings:()=>void;onSearch:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
   const [preferences,setPreferences]=useState<ToolPreferences>({presets:defaultToolPresets,recentColors:[]});
   const {width}=useWindowDimensions();const compact=width<760;
   useEffect(()=>{void loadToolPreferences().then(setPreferences)},[]);
@@ -31,7 +31,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
   const openColorPicker=async()=>{const color=await pickColor(tool.color);if(/^#[0-9A-F]{6}$/i.test(color))chooseColor(color)};
   const savePreset=(index:number)=>{if(!isInkTool(tool.kind))return;const presets=[...preferences.presets];const preset=presets[index];if(!preset)return;presets[index]={...preset,tool:{...tool}};persist({...preferences,presets})};
   const addPreset=()=>{if(!isInkTool(tool.kind)||preferences.presets.length>=12)return;persist({...preferences,presets:[...preferences.presets,{id:`preset-${Date.now()}`,name:`프리셋 ${preferences.presets.length+1}`,tool:{...tool}}]})};
-  return <View style={s.bar}>
+  return <View style={[s.bar,focusOverlay&&s.overlay]} onTouchStart={onActivity}>
     <Pressable accessibilityLabel="서재" onPress={onLibrary} style={s.nav}><Ionicons name="library-outline" size={20} color={C.ink} />{!compact&&<Text style={s.navText}>서재</Text>}</Pressable>
     {!compact&&<><TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={s.title} accessibilityLabel="노트 제목" /><View style={s.rule} /></>}
     <ScrollView horizontal style={s.toolScroll} contentContainerStyle={s.tools} showsHorizontalScrollIndicator={false}>
@@ -66,14 +66,14 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
     <Pressable accessibilityLabel="스티커 컬렉션" onPress={onStickers} style={s.tool}><Ionicons name="file-tray-stacked-outline" size={21} color={C.accent}/></Pressable>
     <Pressable accessibilityLabel={privacyEnabled?'노트 잠금 끄기':'노트 잠금 켜기'} onPress={onPrivacyToggle} style={[s.tool,privacyEnabled&&s.selected]}><Ionicons name={privacyEnabled?'lock-closed':'lock-open-outline'} size={19} color={privacyEnabled?C.accent:C.muted}/></Pressable>
     <Pressable accessibilityLabel="필기 환경 설정" onPress={onSettings} style={s.tool}><Ionicons name="settings-outline" size={20} color={C.muted}/></Pressable>
-    <Pressable accessibilityLabel="집중 모드" onPress={onFocusMode} style={s.tool}><Ionicons name="expand-outline" size={20} color={C.muted}/></Pressable>
+    <Pressable accessibilityLabel={focusMode?'집중 모드 종료':'집중 모드'} onPress={onFocusMode} style={[s.tool,focusMode&&s.selected]}><Ionicons name={focusMode?'contract-outline':'expand-outline'} size={20} color={focusMode?C.accent:C.muted}/></Pressable>
     <Pressable accessibilityLabel="페이지 추가" onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" />{!compact&&<Text style={s.addText}>페이지</Text>}</Pressable>
     </ScrollView>
   </View>;
 }
 
 const s = StyleSheet.create({
-  bar: { height: 64, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },
+  bar: { height: 64, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },overlay:{position:'absolute',top:0,left:0,right:0,zIndex:50,shadowColor:'#000',shadowOpacity:.12,shadowRadius:10,shadowOffset:{width:0,height:5}},
   nav: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 8 }, navText: { fontSize: 14, fontWeight: '600', color: C.ink }, title: { maxWidth: 160, fontWeight: '700', color: C.ink },compactTitle:{width:112,height:38,borderWidth:1,borderColor:C.line,borderRadius:10,paddingHorizontal:9},
   rule: { height: 28, width: 1, backgroundColor: C.line },toolScroll:{flex:1,minWidth:70}, tools: { alignItems: 'center', gap: 6 },trailingScroll:{flexShrink:0,width:430},trailingCompact:{width:124},trailing:{alignItems:'center',gap:5,paddingHorizontal:2}, tool: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, selected: { backgroundColor: C.accentSoft },
   presets:{flexDirection:'row',gap:5,alignItems:'center'},preset:{width:30,height:34,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.white,alignItems:'center',justifyContent:'center'},presetActive:{borderColor:C.accent,backgroundColor:C.accentSoft},presetNib:{borderRadius:20},disabled:{opacity:.3},
