@@ -25,7 +25,7 @@ public final class HanjiVisionModule: Module {
     }
     AsyncFunction("exportPDF") { (pages: [[String: String]], outputUri: String) throws -> String in
       let outputURL = outputUri.hasPrefix("file://") ? URL(string: outputUri)! : URL(fileURLWithPath: outputUri)
-      let defaultBounds = CGRect(x: 0, y: 0, width: 595, height: 842)
+      let defaultBounds = CGRect(x: 0, y: 0, width: 900, height: 636)
       let renderer = UIGraphicsPDFRenderer(bounds: defaultBounds)
       try renderer.writePDF(to: outputURL) { context in
         for (index, item) in pages.enumerated() {
@@ -42,7 +42,7 @@ public final class HanjiVisionModule: Module {
             context.cgContext.scaleBy(x: 1, y: -1)
             sourcePage.draw(with: .mediaBox, to: context.cgContext)
             context.cgContext.restoreGState()
-          } else { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+          } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
           if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
             drawing.image(from: bounds, scale: 3).draw(in: bounds)
           }
@@ -67,7 +67,7 @@ public final class HanjiVisionModule: Module {
           context.cgContext.scaleBy(x: 1, y: -1)
           sourcePage.draw(with: .mediaBox, to: context.cgContext)
           context.cgContext.restoreGState()
-        } else { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+        } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
         if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
           drawing.image(from: bounds, scale: 3).draw(in: bounds)
         }
@@ -78,6 +78,13 @@ public final class HanjiVisionModule: Module {
       return outputURL.absoluteString
     }
   }
+}
+
+@discardableResult private func drawTemplateImage(_ uri: String, in bounds: CGRect) -> Bool {
+  guard !uri.isEmpty else { return false }
+  let url = uri.hasPrefix("file://") ? URL(string: uri) : URL(fileURLWithPath: uri)
+  guard let path = url?.path, let image = UIImage(contentsOfFile: path) else { return false }
+  image.draw(in: bounds); return true
 }
 
 private func drawTextElements(_ json: String, in bounds: CGRect) {

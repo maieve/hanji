@@ -1,10 +1,11 @@
-import {StyleSheet,Text,View} from 'react-native';
+import {Image,StyleSheet,Text,View} from 'react-native';
 import type {Page} from '../types';
 
 const horizontal=(count:number,start=48,step=32)=><>{Array.from({length:count},(_,i)=><View key={`h${i}`} style={[s.horizontal,{top:start+i*step}]}/>)}</>;
 const vertical=(count:number,start=42,step=32)=><>{Array.from({length:count},(_,i)=><View key={`v${i}`} style={[s.vertical,{left:start+i*step}]}/>)}</>;
 
-export function Paper({template}:{template:Page['template']}){
+export function Paper({template,customTemplateUri}:{template:Page['template'];customTemplateUri?:string}){
+ if(customTemplateUri)return <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={{uri:customTemplateUri}} resizeMode="stretch" style={StyleSheet.absoluteFill}/></View>;
  if(template==='plain')return null;
  if(template==='line')return <View pointerEvents="none" style={StyleSheet.absoluteFill}>{horizontal(24,54)}</View>;
  if(template==='grid')return <View pointerEvents="none" style={[StyleSheet.absoluteFill,s.tint]}>{horizontal(28,0)}{vertical(30,0)}</View>;

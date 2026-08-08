@@ -14,12 +14,13 @@ Windows에서는 iOS 프로젝트 생성과 Swift 컴파일이 지원되지 않�
 - G8 PDF navigation: 목차와 내부/외부 링크가 포함된 PDF에서 목차 20개와 내부 링크 20개가 정확한 페이지로 이동하고, 외부 링크 5개가 시스템 브라우저에서 열린다. Apple Pencil 입력은 링크를 열지 않는다.
 - G9 Cloud restore: 100MB 초과 `.hanji` 백업을 R2 멀티파트로 업로드하고 새 설치에서 복원한다. 노트·페이지·PDF·오디오·플래시카드·태그·북마크 수와 대표 파일 SHA-256이 원본과 일치한다.
 - G10 Hybrid canvas: 200쪽 PDF를 세로 연속 모드로 1→200→100쪽 순서로 이동하고 메모리 경고나 빈 캔버스가 없어야 한다. 일반 노트 끝에서 직접 스크롤했을 때 페이지가 정확히 1장만 자동 추가되고, 페이지 모드로 전환한 뒤 같은 페이지의 잉크·요소·현재 위치가 유지된다.
+- G11 Custom template: 눈금 모서리에 기준점이 있는 900×636 PNG를 배경으로 가져와 네 모서리에 필기한 뒤 PNG/PDF와 `.hanji` 백업을 만든다. 내보낸 파일과 새 설치 복원본에서 배경·필기 기준점 오차가 2px 이하이고, 템플릿 교체·제거 후 잉크는 유지되어야 한다.
 
 ## Device test procedure
 
 1. `main`의 최신 `iOS Native Build`가 성공했는지 확인하고 unsigned IPA artifact를 내려받는다.
 2. [IPAD_INSTALL.md](./IPAD_INSTALL.md)에 따라 AltServer/SideStore로 동일 빌드를 설치한다.
-3. iPadOS 17 이상 실제 iPad와 Apple Pencil로 G1–G10을 순서대로 수행한다.
+3. iPadOS 17 이상 실제 iPad와 Apple Pencil로 G1–G11을 순서대로 수행한다.
 4. 각 게이트의 기기 모델, iPadOS 버전, Pencil 모델, 성공 횟수/전체 횟수, 화면 녹화 또는 샘플 파일을 기록한다.
 5. G1/G2/G3 중 하나라도 실패하면 필기 앱 완성으로 판정하지 않는다. PDF G3 실패 시 설계의 Plan B인 페이지 이미지 렌더 방식으로 전환한다.
 
