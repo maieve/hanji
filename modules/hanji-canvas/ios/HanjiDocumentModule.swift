@@ -64,6 +64,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var circleToLasso = true
   private var markerStraightLine = true
   private var zoomWindowEnabled = false
+  private var previousCanvasSize = CGSize.zero
   private var sourceDrawing = PKDrawing()
   private var replayCutoff: Double?
   private let selectionLayer = CAShapeLayer()
@@ -176,7 +177,26 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     pdfView.frame = bounds
     canvas.frame = bounds
     if canvas.contentSize.width < bounds.width || canvas.contentSize.height < bounds.height { canvas.contentSize = bounds.size }
+    rescaleDrawingIfNeeded(to: bounds.size)
     if !zoomWindowEnabled { DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() } }
+  }
+
+  private func rescaleDrawingIfNeeded(to size: CGSize) {
+    guard size.width > 1, size.height > 1 else { return }
+    defer { previousCanvasSize = size }
+    guard previousCanvasSize.width > 1, previousCanvasSize.height > 1,
+          abs(previousCanvasSize.width - size.width) > 0.5 || abs(previousCanvasSize.height - size.height) > 0.5,
+          !sourceDrawing.strokes.isEmpty else { return }
+    var scaled = sourceDrawing
+    scaled.transform(using: CGAffineTransform(scaleX: size.width / previousCanvasSize.width, y: size.height / previousCanvasSize.height))
+    applyingShape = true
+    canvas.drawing = scaled
+    applyingShape = false
+    sourceDrawing = scaled
+    knownStrokeCount = scaled.strokes.count
+    let encoded = scaled.dataRepresentation().base64EncodedString()
+    loadedDrawing = encoded
+    onDrawingChange(["drawingData": encoded])
   }
 
   private func emitCanvasMetrics() {

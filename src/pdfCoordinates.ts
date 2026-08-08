@@ -10,3 +10,9 @@ export function mapCanvasRectToPage(rect: Rect, viewport: DrawingViewport, page:
     height: (rect.height / viewport.height) * page.height,
   };
 }
+
+export function scaleCanvasRect(rect: Rect, from: { width: number; height: number }, to: { width: number; height: number }): Rect {
+  const scaleX = to.width / from.width;
+  const scaleY = to.height / from.height;
+  return { x: rect.x * scaleX, y: rect.y * scaleY, width: rect.width * scaleX, height: rect.height * scaleY };
+}

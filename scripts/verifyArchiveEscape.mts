@@ -15,4 +15,6 @@ assert.deepEqual(JSON.parse(fallbackStrokeDump('[{"d":"M0 0"}]')!).strokes,[{d:'
 assert.equal(fallbackStrokeDump('AAECAw=='),null);
 const payload=pageExportPayload({id:'page',drawingData:'drawing',template:'grid',templateSpacing:'wide',rotation:90,canvasExtent:{columns:4,rows:3},updatedAt:'now',elements:[]},7);
 assert.deepEqual({page:payload.pdfPageIndex,spacing:payload.templateSpacing,rotation:payload.rotation,columns:payload.canvasColumns,rows:payload.canvasRows},{page:'7',spacing:'wide',rotation:'90',columns:'4',rows:'3'});
+const pdfPayload=pageExportPayload({id:'pdf',drawingData:'drawing',template:'plain',updatedAt:'now',drawingViewport:{x:225,y:0,width:450,height:636,canvasWidth:900,canvasHeight:636}},0);
+assert.deepEqual({x:pdfPayload.viewportX,y:pdfPayload.viewportY,width:pdfPayload.viewportWidth,height:pdfPayload.viewportHeight,canvasWidth:pdfPayload.canvasWidth,canvasHeight:pdfPayload.canvasHeight},{x:'225',y:'0',width:'450',height:'636',canvasWidth:'900',canvasHeight:'636'});
 console.log('Archive escape-copy verification passed.');
