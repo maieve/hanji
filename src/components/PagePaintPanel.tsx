@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { pickColor } from "../colorPicker";
 import { C } from "../theme";
+import type { PagePaintDirection } from "../types";
 
 const colors = [
   "#F4C7C3",
@@ -21,6 +22,12 @@ const gradients = [
   ["#F4C7C3", "#F7D9A0"],
   ["#B8DDD8", "#BED4F4"],
 ] as const;
+const directions: { value: PagePaintDirection; label: string; icon: "swap-vertical" | "swap-horizontal" | "trending-down-outline" | "trending-up-outline" }[] = [
+  { value: "vertical", label: "세로", icon: "swap-vertical" },
+  { value: "horizontal", label: "가로", icon: "swap-horizontal" },
+  { value: "diagonalDown", label: "대각선 ↘", icon: "trending-down-outline" },
+  { value: "diagonalUp", label: "대각선 ↗", icon: "trending-up-outline" },
+];
 
 export function PagePaintPanel({
   visible,
@@ -36,14 +43,18 @@ export function PagePaintPanel({
   visible: boolean;
   color?: string;
   color2?: string;
-  gradientDirection?: "vertical" | "horizontal";
+  gradientDirection?: PagePaintDirection;
   opacity: number;
-  onChange: (color: string | undefined, opacity: number, color2?: string, gradientDirection?: "vertical" | "horizontal") => void;
+  onChange: (color: string | undefined, opacity: number, color2?: string, gradientDirection?: PagePaintDirection) => void;
   onApplyAll: () => void;
   onClearAll: () => void;
   onClose: () => void;
 }) {
   const active = color ?? "#FFF1A8";
+  const directionIndex = directions.findIndex((item) => item.value === gradientDirection);
+  const fallbackDirection = directions[0]!;
+  const direction = directions[directionIndex < 0 ? 0 : directionIndex] ?? fallbackDirection;
+  const nextDirection = directions[(directionIndex < 0 ? 1 : directionIndex + 1) % directions.length] ?? fallbackDirection;
   const custom = async () => {
     const next = await pickColor(active);
     if (/^#[0-9A-F]{6}$/i.test(next)) onChange(next, opacity || 0.25, color2, gradientDirection);
@@ -119,13 +130,13 @@ export function PagePaintPanel({
               );
             })}
             <Pressable
-              accessibilityLabel={`그라데이션 방향 ${gradientDirection === "vertical" ? "세로" : "가로"}`}
-              accessibilityHint="두 번 탭하여 방향 전환"
-              onPress={() => onChange(active, opacity || 0.25, color2 ?? gradients[0][1], gradientDirection === "vertical" ? "horizontal" : "vertical")}
+              accessibilityLabel={`그라데이션 방향 ${direction.label}`}
+              accessibilityHint={`두 번 탭하여 ${nextDirection.label} 방향으로 전환`}
+              onPress={() => onChange(active, opacity || 0.25, color2 ?? gradients[0][1], nextDirection.value)}
               style={s.direction}
             >
-              <Ionicons name={gradientDirection === "vertical" ? "swap-vertical" : "swap-horizontal"} size={18} color={C.accent} />
-              <Text style={s.directionText}>{gradientDirection === "vertical" ? "세로" : "가로"}</Text>
+              <Ionicons name={direction.icon} size={18} color={C.accent} />
+              <Text style={s.directionText}>{direction.label}</Text>
             </Pressable>
             <Pressable
               accessibilityLabel="그라데이션 끝 색상 선택"

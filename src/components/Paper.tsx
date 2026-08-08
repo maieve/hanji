@@ -1,6 +1,6 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import type { Page } from "../types";
+import type { Page, PagePaintDirection } from "../types";
 import { templateSpacingPoints } from "../templateSpacing";
 
 const horizontal = (count: number, start = 48, step = 32) => (
@@ -32,10 +32,17 @@ export function Paper({
   customTemplateUri?: string;
   backgroundColor?: string;
   backgroundColor2?: string;
-  backgroundGradientDirection?: "vertical" | "horizontal";
+  backgroundGradientDirection?: PagePaintDirection;
   backgroundOpacity?: number;
 }) {
   const step = templateSpacingPoints(templateSpacing);
+  const gradientCoordinates = backgroundGradientDirection === "horizontal"
+    ? { x1: "0", y1: "0", x2: "1", y2: "0" }
+    : backgroundGradientDirection === "diagonalDown"
+      ? { x1: "0", y1: "0", x2: "1", y2: "1" }
+      : backgroundGradientDirection === "diagonalUp"
+        ? { x1: "0", y1: "1", x2: "1", y2: "0" }
+        : { x1: "0", y1: "0", x2: "0", y2: "1" };
   let content: React.ReactNode = null;
   if (customTemplateUri)
     content = (
@@ -105,10 +112,7 @@ export function Paper({
           <Defs>
             <LinearGradient
               id="pagePaintGradient"
-              x1="0"
-              y1="0"
-              x2={backgroundGradientDirection === "horizontal" ? "1" : "0"}
-              y2={backgroundGradientDirection === "vertical" ? "1" : "0"}
+              {...gradientCoordinates}
             >
               <Stop offset="0" stopColor={backgroundColor} />
               <Stop offset="1" stopColor={backgroundColor2} />
