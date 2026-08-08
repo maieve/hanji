@@ -1,10 +1,17 @@
 import {useMemo,useRef} from 'react';
-import {PanResponder,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
+import {Image,PanResponder,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
 import {C} from '../theme';
-import type {TextElement} from '../types';
+import type {ImageElement,PageElement,TextElement} from '../types';
 
-export function ElementsLayer({elements,editable,onChange}:{elements:TextElement[];editable:boolean;onChange:(v:TextElement[])=>void}){
- return <View pointerEvents={editable?'box-none':'none'} style={StyleSheet.absoluteFill}>{elements.map(element=><TextBox key={element.id} element={element} editable={editable} onChange={next=>onChange(elements.map(x=>x.id===next.id?next:x))} onDelete={()=>onChange(elements.filter(x=>x.id!==element.id))}/>)}</View>;
+export function ElementsLayer({elements,editable,onChange}:{elements:PageElement[];editable:boolean;onChange:(v:PageElement[])=>void}){
+ const replace=(next:PageElement)=>onChange(elements.map(x=>x.id===next.id?next:x));
+ return <View pointerEvents={editable?'box-none':'none'} style={StyleSheet.absoluteFill}>{elements.map(element=>element.kind==='text'?<TextBox key={element.id} element={element} editable={editable} onChange={replace} onDelete={()=>onChange(elements.filter(x=>x.id!==element.id))}/>:<ImageBox key={element.id} element={element} editable={editable} onChange={replace} onDelete={()=>onChange(elements.filter(x=>x.id!==element.id))}/>)}</View>;
+}
+
+function ImageBox({element,editable,onChange,onDelete}:{element:ImageElement;editable:boolean;onChange:(v:ImageElement)=>void;onDelete:()=>void}){
+ const start=useRef({x:element.x,y:element.y}),latest=useRef(element);latest.current=element;
+ const pan=useMemo(()=>PanResponder.create({onStartShouldSetPanResponder:()=>editable,onMoveShouldSetPanResponder:(_,g)=>editable&&(Math.abs(g.dx)>3||Math.abs(g.dy)>3),onPanResponderGrant:()=>{start.current={x:latest.current.x,y:latest.current.y}},onPanResponderMove:(_,g)=>onChange({...latest.current,x:Math.max(0,Math.min(1-latest.current.width,start.current.x+g.dx/900)),y:Math.max(0,Math.min(1-latest.current.height,start.current.y+g.dy/636))})}),[editable,onChange]);
+ return <View {...pan.panHandlers} style={[s.box,{left:`${element.x*100}%`,top:`${element.y*100}%`,width:`${element.width*100}%`,height:`${element.height*100}%`},editable&&s.editable]}><Image source={{uri:element.uri}} resizeMode="contain" style={StyleSheet.absoluteFill}/>{editable&&<View style={s.controls}><Pressable onPress={()=>onChange({...element,width:Math.max(.1,element.width-.05),height:Math.max(.1,element.height-.05)})} style={s.control}><Text>−</Text></Pressable><Pressable onPress={()=>onChange({...element,width:Math.min(.9,element.width+.05),height:Math.min(.9,element.height+.05)})} style={s.control}><Text>＋</Text></Pressable><Pressable onPress={onDelete} style={s.control}><Text style={{color:C.danger}}>삭제</Text></Pressable></View>}</View>;
 }
 
 function TextBox({element,editable,onChange,onDelete}:{element:TextElement;editable:boolean;onChange:(v:TextElement)=>void;onDelete:()=>void}){

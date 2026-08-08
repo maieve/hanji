@@ -1,0 +1,2 @@
+import * as DocumentPicker from 'expo-document-picker';
+export async function pickPersistentImage():Promise<string|null>{const picked=await DocumentPicker.getDocumentAsync({type:'image/*',copyToCacheDirectory:true});const asset=picked.canceled?undefined:picked.assets[0];if(!asset)return null;const blob=await (await fetch(asset.uri)).blob();return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob)})}

@@ -83,12 +83,18 @@ public final class HanjiVisionModule: Module {
 private func drawTextElements(_ json: String, in bounds: CGRect) {
   guard let data = json.data(using: .utf8), let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
   for item in items {
-    guard let text = item["text"] as? String else { continue }
     let x = (item["x"] as? NSNumber)?.doubleValue ?? 0, y = (item["y"] as? NSNumber)?.doubleValue ?? 0
     let width = (item["width"] as? NSNumber)?.doubleValue ?? 0.4, height = (item["height"] as? NSNumber)?.doubleValue ?? 0.12
+    let rect = CGRect(x: bounds.width * x, y: bounds.height * y, width: bounds.width * width, height: bounds.height * height)
+    if item["kind"] as? String == "image", let uri = item["uri"] as? String {
+      let url = uri.hasPrefix("file://") ? URL(string: uri) : URL(fileURLWithPath: uri)
+      if let path = url?.path, let image = UIImage(contentsOfFile: path) { image.draw(in: rect) }
+      continue
+    }
+    guard let text = item["text"] as? String else { continue }
     let size = (item["fontSize"] as? NSNumber)?.doubleValue ?? 20
     let style = NSMutableParagraphStyle(); style.lineBreakMode = .byWordWrapping
-    text.draw(in: CGRect(x: bounds.width * x, y: bounds.height * y, width: bounds.width * width, height: bounds.height * height), withAttributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: UIColor(hanjiHex: item["color"] as? String ?? "#20201E"), .paragraphStyle: style])
+    text.draw(in: rect, withAttributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: UIColor(hanjiHex: item["color"] as? String ?? "#20201E"), .paragraphStyle: style])
   }
 }
 

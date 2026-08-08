@@ -14,6 +14,7 @@ export async function exportLibrary(items:Notebook[]){
   for(const note of items){
     for(const page of note.pages){
       if(page.pdfUri)await addAsset(page.pdfUri,'pdf');
+      for(const element of page.elements??[])if(element.kind==='image')await addAsset(element.uri,'image');
       if(page.drawingData){const path=`notebooks/${note.id}/pages/${page.id}.${page.drawingData.trimStart().startsWith('[')?'drawing.json':'pkdrawing'}`;zip.file(path,page.drawingData.trimStart().startsWith('[')?page.drawingData:page.drawingData,{base64:!page.drawingData.trimStart().startsWith('[')});}
     }
     for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio');
@@ -32,7 +33,7 @@ export async function writeAutomaticBackup(items:Notebook[],keep=5,minIntervalMs
   if(existing[0]?.modificationTime&&Date.now()-existing[0].modificationTime<minIntervalMs)return existing[0].uri;
   const zip=new JSZip();const assets:Record<string,string>={};let assetIndex=0;
   const addAsset=async(uri:string,folder:string)=>{if(!uri||assets[uri])return;try{const archived=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(archived,await bytes(uri));assets[uri]=archived}catch{}};
-  for(const note of items){for(const page of note.pages){if(page.pdfUri)await addAsset(page.pdfUri,'pdf');if(page.drawingData){const json=page.drawingData.trimStart().startsWith('[');zip.file(`notebooks/${note.id}/pages/${page.id}.${json?'drawing.json':'pkdrawing'}`,page.drawingData,{base64:!json})}}for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio')}
+  for(const note of items){for(const page of note.pages){if(page.pdfUri)await addAsset(page.pdfUri,'pdf');for(const element of page.elements??[])if(element.kind==='image')await addAsset(element.uri,'image');if(page.drawingData){const json=page.drawingData.trimStart().startsWith('[');zip.file(`notebooks/${note.id}/pages/${page.id}.${json?'drawing.json':'pkdrawing'}`,page.drawingData,{base64:!json})}}for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio')}
   zip.file('manifest.json',JSON.stringify({format:'hanji-archive',version:2,createdAt:new Date().toISOString(),assets},null,2));zip.file('library.json',JSON.stringify(items,null,2));
   const file=new File(directory,`hanji-auto-${new Date().toISOString().replace(/[:.]/g,'-')}.hanji`);file.create();file.write(await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}}));
   const all=[file,...existing].sort((a,b)=>(b.modificationTime??0)-(a.modificationTime??0));for(const old of all.slice(keep))if(old.exists)old.delete();return file.uri;
@@ -49,5 +50,5 @@ export async function importLibraryBackupFromUri(uri:string):Promise<Notebook[]>
   const root=new Directory(Paths.document,'Hanji','restored',String(Date.now()));root.create({intermediates:true});
   const uriMap:Record<string,string>={};
   for(const [oldUri,path] of Object.entries(manifest.assets)){const entry=zip.file(path);if(!entry)continue;const file=new File(root,clean(path.split('/').pop()||'asset'));file.create();file.write(await entry.async('uint8array'));uriMap[oldUri]=file.uri;}
-  return restored.map(note=>({...note,pages:note.pages.map(page=>({...page,pdfUri:page.pdfUri?uriMap[page.pdfUri]??page.pdfUri:undefined})),audioSessions:note.audioSessions?.map(audio=>({...audio,uri:uriMap[audio.uri]??audio.uri}))}));
+  return restored.map(note=>({...note,pages:note.pages.map(page=>({...page,pdfUri:page.pdfUri?uriMap[page.pdfUri]??page.pdfUri:undefined,elements:page.elements?.map(element=>element.kind==='image'?{...element,uri:uriMap[element.uri]??element.uri}:element)})),audioSessions:note.audioSessions?.map(audio=>({...audio,uri:uriMap[audio.uri]??audio.uri}))}));
 }
