@@ -10,7 +10,7 @@ type Props = {
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
-  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'flashcard' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'flashcard' | 'imageFlashcard' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
   onDrawingChange: (v: string) => void;
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: []) => void;

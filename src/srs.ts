@@ -6,6 +6,7 @@ export function createFlashcard(question:string,answer:string,now=new Date()):Fl
   const stamp=now.toISOString();
   return{id:`card-${now.getTime()}-${Math.random().toString(36).slice(2,8)}`,question:question.trim(),answer:answer.trim(),createdAt:stamp,updatedAt:stamp,dueAt:stamp,intervalDays:0,easeFactor:2.5,repetitions:0,lapses:0};
 }
+export function createImageFlashcard(questionImageUri:string,question:string,answer:string,now=new Date()):Flashcard{return{...createFlashcard(question||'이미지 질문',answer,now),questionImageUri}}
 
 export function reviewFlashcard(card:Flashcard,grade:ReviewGrade,now=new Date()):Flashcard{
   let ease=card.easeFactor,repetitions=card.repetitions,interval=card.intervalDays,lapses=card.lapses;

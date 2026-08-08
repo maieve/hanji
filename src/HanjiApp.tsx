@@ -200,6 +200,7 @@ export function HanjiApp() {
       | "recolor"
       | "text"
       | "flashcard"
+      | "imageFlashcard"
       | "clip"
       | "clear"
       | "copy"
@@ -221,6 +222,7 @@ export function HanjiApp() {
   } | null>(null);
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [flashcardDraft, setFlashcardDraft] = useState<string>();
+  const [flashcardDraftImage, setFlashcardDraftImage] = useState<string>();
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [undoSignal, setUndoSignal] = useState(0);
@@ -1028,6 +1030,14 @@ export function HanjiApp() {
       height: number;
     },
   ) => {
+    if (selectionAction?.type === "imageFlashcard") {
+      setFlashcardDraft("이미지 질문");
+      setFlashcardDraftImage(result.uri);
+      setFlashcardsOpen(true);
+      setSelection({ pageId: "", count: 0 });
+      actOnSelection("clear");
+      return;
+    }
     const element: ImageElement = {
       id: makeId(),
       kind: "image",
@@ -1049,6 +1059,7 @@ export function HanjiApp() {
       | "recolor"
       | "text"
       | "flashcard"
+      | "imageFlashcard"
       | "clip"
       | "clear"
       | "copy"
@@ -1556,6 +1567,7 @@ export function HanjiApp() {
             onRecolor={() => actOnSelection("recolor")}
             onCopy={() => actOnSelection("copy")}
             onClip={() => actOnSelection("clip")}
+            onImageFlashcard={() => actOnSelection("imageFlashcard")}
             onCut={() => actOnSelection("cut")}
             onDuplicate={() => actOnSelection("duplicate")}
             onShrink={() => actOnSelection("shrink")}
@@ -1873,8 +1885,9 @@ export function HanjiApp() {
       <FlashcardPanel
         visible={flashcardsOpen}
         initialQuestion={flashcardDraft}
+        initialQuestionImageUri={flashcardDraftImage}
         cards={current.flashcards ?? []}
-        onClose={() => { setFlashcardsOpen(false); setFlashcardDraft(undefined); }}
+        onClose={() => { setFlashcardsOpen(false); setFlashcardDraft(undefined); setFlashcardDraftImage(undefined); }}
         onChange={(flashcards) =>
           update(current.id, (n) => ({
             ...n,

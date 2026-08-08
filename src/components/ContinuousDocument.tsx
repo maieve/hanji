@@ -34,6 +34,7 @@ type Props = {
       | "recolor"
       | "text"
       | "flashcard"
+      | "imageFlashcard"
       | "clip"
       | "clear"
       | "copy"

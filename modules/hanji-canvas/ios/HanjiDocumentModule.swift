@@ -467,7 +467,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       copySelectionToPasteboard()
       return
     }
-    if action == "clip" { createSelectionClip(); return }
+    if action == "clip" || action == "imageFlashcard" { createSelectionClip(); return }
     if action == "duplicate" {
       let original = canvas.drawing, chosen = original.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? offsetStroke($0.element, dx: 18, dy: 18) : nil }
       guard !chosen.isEmpty else { return }
