@@ -13,9 +13,10 @@ type Props = {
   onSaved: (v: AudioSaved) => void;
   onReplayCutoffChange: (cutoff?: number) => void;
   onTranscribe: (session: AudioSession) => Promise<void>;
+  leftHanded?: boolean;
 };
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds) % 60).padStart(2, '0')}`;
-export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, onReplayCutoffChange, onTranscribe }: Props) {
+export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, onReplayCutoffChange, onTranscribe, leftHanded=false }: Props) {
   const [replay, setReplay] = useState(false);
   const [transcribing,setTranscribing]=useState(false);
   const [transcriptOpen,setTranscriptOpen]=useState(false);
@@ -61,7 +62,7 @@ export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, o
   };
   const transcribe=async()=>{if(!latest||transcribing)return;setTranscribing(true);try{await onTranscribe(latest)}catch(error){Alert.alert('전사 실패',error instanceof Error?error.message:'오디오를 전사하지 못했습니다.')}finally{setTranscribing(false)}};
   return (
-    <View style={s.wrap}>
+    <View style={[s.wrap,leftHanded&&s.wrapLeftHanded]}>
       {latest && (
         <View style={s.playback}>
           <Pressable onPress={togglePlay} style={s.round}>
@@ -98,6 +99,7 @@ const s = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
   },
+  wrapLeftHanded:{left:undefined,right:18},
   record: {
     height: 42,
     paddingHorizontal: 15,

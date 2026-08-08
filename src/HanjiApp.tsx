@@ -29,6 +29,7 @@ import { ContinuousDocument } from './components/ContinuousDocument';
 import { childFolder, expandFolderPaths, folderBreadcrumb, folderContains, folderDepth, folderLabel } from './folders';
 import { PageTransferPanel } from './components/PageTransferPanel';
 import { transferPage as transferNotebookPage } from './pageTransfer';
+import {loadUiPreferences,saveUiPreferences} from './uiPreferences';
 import { RotatedPage } from './components/RotatedPage';
 import { PageGridPanel } from './components/PageGridPanel';
 import { StickerPanel } from './components/StickerPanel';
@@ -89,6 +90,7 @@ export function HanjiApp() {
   const [zoomWindowEnabled, setZoomWindowEnabled] = useState(false);
   const [elementMode, setElementMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [leftHanded,setLeftHanded]=useState(false);
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
   const [pageGridOpen, setPageGridOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
@@ -100,6 +102,7 @@ export function HanjiApp() {
       setReady(true);
     });
     void loadStickers().then(setStickers);
+    void loadUiPreferences().then(value=>setLeftHanded(value.leftHanded));
   }, []);
   useEffect(() => {
     if (ready) saveCategories(categories);
@@ -428,6 +431,7 @@ export function HanjiApp() {
     selectionUndoRef.current={pageId:target.id,element};selectionRedoRef.current=null;
   };
   const actOnSelection=(type:'delete'|'recolor'|'text'|'clear'|'copy'|'cut'|'paste'|'duplicate'|'shrink'|'grow'|'rotate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
+  const toggleLeftHanded=()=>setLeftHanded(value=>{const next=!value;void saveUiPreferences({leftHanded:next});return next});
   const activateLasso=()=>setTool(active=>({...active,kind:'lasso'}));
   const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
   const performRedo=()=>{const conversion=selectionRedoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:[...(p.elements??[]),conversion.element]}:p)}));selectionUndoRef.current=conversion;selectionRedoRef.current=null}setRedoSignal(v=>v+1)};
@@ -581,7 +585,7 @@ export function HanjiApp() {
         />
       )}
       {!focusMode && <DocumentTabs ids={openTabs} items={items} activeId={current.id} onSelect={selectTab} onClose={closeTab} />}
-      <View style={[s.editor, focusMode && { marginRight: -112 }]}>
+      <View style={[s.editor,leftHanded&&s.editorLeftHanded,focusMode&&(leftHanded?{marginLeft:-112}:{marginRight:-112})]}>
         <View style={s.canvasArea}>
           {(current.viewMode ?? 'page') === 'continuous' ? (
             <ContinuousDocument pages={current.pages} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onCircleLasso={activateLasso} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
@@ -619,13 +623,15 @@ export function HanjiApp() {
             }}
             onReplayCutoffChange={setReplayCutoff}
             onTranscribe={transcribeSession}
+            leftHanded={leftHanded}
           />
-          {tool.kind==='lasso'&&Platform.OS==='ios'&&<Pressable accessibilityLabel="원본 필기 붙여넣기" onPress={()=>actOnSelection('paste')} style={s.lassoPaste}><Ionicons name="clipboard" size={18} color={C.accent}/><Text style={s.lassoPasteText}>붙여넣기</Text></Pressable>}
+          {tool.kind==='lasso'&&Platform.OS==='ios'&&<Pressable accessibilityLabel="원본 필기 붙여넣기" onPress={()=>actOnSelection('paste')} style={[s.lassoPaste,leftHanded&&s.lassoPasteLeft]}><Ionicons name="clipboard" size={18} color={C.accent}/><Text style={s.lassoPasteText}>붙여넣기</Text></Pressable>}
           <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onCut={()=>actOnSelection('cut')} onDuplicate={()=>actOnSelection('duplicate')} onShrink={()=>actOnSelection('shrink')} onGrow={()=>actOnSelection('grow')} onRotate={()=>actOnSelection('rotate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
         </View>
-        <View style={s.rail}>
+        <View style={[s.rail,leftHanded&&s.railLeft]}>
           <Text style={s.railTitle}>페이지</Text>
           <View style={s.railActions}>
+            <Pressable accessibilityLabel={leftHanded?'오른손 모드로 전환':'왼손 모드로 전환'} accessibilityState={{selected:leftHanded}} onPress={toggleLeftHanded} style={[s.railAction,leftHanded&&s.templateActive]}><Ionicons name="hand-left-outline" size={16} color={leftHanded?C.white:C.accent}/></Pressable>
             <Pressable accessibilityLabel="PNG 내보내기" onPress={() => exportPagePng(current, page, pageIndex)} style={s.railAction}>
               <Ionicons name="image-outline" size={16} color={C.accent} />
             </Pressable>
@@ -743,7 +749,8 @@ export function HanjiApp() {
           onPress={() => setFocusMode(false)}
           style={{
             position: 'absolute',
-            right: 20,
+            right: leftHanded?undefined:20,
+            left: leftHanded?20:undefined,
             top: 18,
             zIndex: 30,
             width: 44,
@@ -795,10 +802,10 @@ export function HanjiApp() {
         }}
       />
       <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
-      <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={s.pageGrid}>
+      <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>
-      <Pressable accessibilityLabel="페이지 시계 방향 90도 회전" onPress={rotatePage} style={s.rotatePage}>
+      <Pressable accessibilityLabel="페이지 시계 방향 90도 회전" onPress={rotatePage} style={[s.rotatePage,leftHanded&&s.rotatePageLeft]}>
         <Ionicons name="refresh-outline" size={19} color={C.white} />
       </Pressable>
     </SafeAreaView>
@@ -1003,6 +1010,7 @@ const s = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   muted: { color: C.muted },
   editor: { flex: 1, flexDirection: 'row' },
+  editorLeftHanded:{flexDirection:'row-reverse'},
   canvasArea: { flex: 1, padding: 24, alignItems: 'center' },
   paper: {
     width: '100%',
@@ -1030,6 +1038,7 @@ const s = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
+  pageGridLeft:{right:undefined,left:178},
   rotatePage: {
     position: 'absolute',
     right: 128,
@@ -1044,12 +1053,14 @@ const s = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
+  rotatePageLeft:{right:undefined,left:128},
   rail: {
     width: 112,
     backgroundColor: C.sidebar,
     borderLeftWidth: 1,
     borderLeftColor: C.line,
   },
+  railLeft:{borderLeftWidth:0,borderRightWidth:1,borderRightColor:C.line},
   railActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1298,6 +1309,7 @@ const s = StyleSheet.create({
     fontSize: 10,
   },
   lassoPaste:{position:'absolute',top:110,right:18,zIndex:31,height:38,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:6,shadowColor:'#000',shadowOpacity:.12,shadowRadius:8},
+  lassoPasteLeft:{right:undefined,left:18},
   lassoPasteText:{fontSize:11,fontWeight:'800',color:C.accent},
   cardTitle: { marginTop: 11, fontWeight: '700', color: C.ink, fontSize: 14 },
   tagLine: { fontSize: 10, color: C.accent, marginTop: 4 },
