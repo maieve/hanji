@@ -311,8 +311,9 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let point = recognizer.location(in: canvas)
     let hit = canvas.drawing.strokes.reversed().first { $0.renderBounds.insetBy(dx: -14, dy: -14).contains(point) }
     if let hit { onStrokeTapped(["createdAt": hit.path.creationDate.timeIntervalSince1970]); return }
-    guard let page = document?.page(at: currentPage) else { return }
-    let pagePoint = pdfView.convert(point, to: page)
+    let pdfPoint = canvas.convert(point, to: pdfView)
+    guard let page = pdfView.page(for: pdfPoint, nearest: false) else { return }
+    let pagePoint = pdfView.convert(pdfPoint, to: page)
     guard let annotation = page.annotation(at: pagePoint), let action = annotation.action else { return }
     if let goTo = action as? PDFActionGoTo, let targetPage = goTo.destination.page, let document {
       let index = document.index(for: targetPage)
