@@ -14,3 +14,7 @@ export function setNotebookSelectionFavorite(items: Notebook[], selected: Readon
 export function deleteNotebookSelection(items: Notebook[], selected: ReadonlySet<string>) {
   return items.filter((note) => !selected.has(note.id));
 }
+
+export function moveNotebookSelection(items: Notebook[], selected: ReadonlySet<string>, folder: string, updatedAt: string) {
+  return items.map((note) => selected.has(note.id) ? { ...note, folder, updatedAt } : note);
+}

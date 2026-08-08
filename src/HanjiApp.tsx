@@ -117,6 +117,7 @@ import {resolveDarkInkTransition} from './darkInkPolicy';
 type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'native'};
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
+import { LibraryMovePanel } from "./components/LibraryMovePanel";
 import {
   librarySearchMatches,
   mayRevealNotebookSnippet,
@@ -128,7 +129,7 @@ import {
   type LibrarySort,
   type LibraryViewMode,
 } from "./libraryView";
-import { deleteNotebookSelection, setNotebookSelectionFavorite, toggleNotebookSelection } from "./librarySelection";
+import { deleteNotebookSelection, moveNotebookSelection, setNotebookSelectionFavorite, toggleNotebookSelection } from "./librarySelection";
 import { FOCUS_TOOLBAR_IDLE_MS } from "./focusPolicy";
 import { configurePageHaptics, playPageHaptic } from "./pageHaptics";
 import { OCR_LOW_POWER_RETRY_MS, ocrJobDisposition } from "./ocrPolicy";
@@ -2372,6 +2373,7 @@ function Library({
   const [managingFolder, setManagingFolder] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [moveSelectionOpen, setMoveSelectionOpen] = useState(false);
   const hitMap = useMemo(
     () => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []),
     [searchHits],
@@ -2415,6 +2417,7 @@ function Library({
     setSelectedIds(new Set([id]));
   };
   const closeSelectionMode = () => {
+    setMoveSelectionOpen(false);
     setSelectionMode(false);
     setSelectedIds(new Set());
   };
@@ -2715,6 +2718,7 @@ function Library({
               <Text style={s.bulkCount}>{selectedIds.size}권 선택</Text>
               <Pressable accessibilityLabel="선택한 노트 모두 즐겨찾기" disabled={!selectedIds.size} onPress={() => setSelectedFavorite(true)} style={[s.bulkAction, !selectedIds.size && s.bulkDisabled]}><Ionicons name="star" size={16} color={C.accent}/><Text style={s.bulkActionText}>즐겨찾기</Text></Pressable>
               <Pressable accessibilityLabel="선택한 노트 모두 즐겨찾기 해제" disabled={!selectedIds.size} onPress={() => setSelectedFavorite(false)} style={[s.bulkAction, !selectedIds.size && s.bulkDisabled]}><Ionicons name="star-outline" size={16} color={C.accent}/><Text style={s.bulkActionText}>해제</Text></Pressable>
+              <Pressable accessibilityLabel={`선택한 노트 ${selectedIds.size}권 폴더 이동`} disabled={!selectedIds.size} onPress={() => setMoveSelectionOpen(true)} style={[s.bulkAction, !selectedIds.size && s.bulkDisabled]}><Ionicons name="folder-open-outline" size={16} color={C.accent}/><Text style={s.bulkActionText}>이동</Text></Pressable>
               <Pressable accessibilityLabel={`선택한 노트 ${selectedIds.size}권 삭제`} disabled={!selectedIds.size} onPress={() => onDeleteMany([...selectedIds], closeSelectionMode)} style={[s.bulkDelete, !selectedIds.size && s.bulkDisabled]}><Ionicons name="trash-outline" size={16} color={C.danger}/><Text style={s.bulkDeleteText}>삭제</Text></Pressable>
             </View>
           )}
@@ -3028,6 +3032,19 @@ function Library({
         items={items}
         backupRetention={backupRetention}
         onRestore={onCloudRestore}
+      />
+      <LibraryMovePanel
+        visible={moveSelectionOpen}
+        count={selectedIds.size}
+        categories={categories}
+        onClose={() => setMoveSelectionOpen(false)}
+        onMove={(folder) => {
+          const updatedAt = new Date().toISOString();
+          moveNotebookSelection(items, selectedIds, folder, updatedAt)
+            .filter((note, index) => note !== items[index])
+            .forEach(onUpdate);
+          closeSelectionMode();
+        }}
       />
       <NotebookOrganizer
         notebook={managing}
