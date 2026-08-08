@@ -3,6 +3,27 @@ import type { Notebook, Page } from "./types";
 export type StoredPage = Omit<Page, "drawingData"> & { drawingRef?: string };
 export type StoredNotebook = Omit<Notebook, "pages"> & { pages: StoredPage[] };
 
+export function isStoredLibraryMetadata(value: unknown): value is StoredNotebook[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (note) =>
+        !!note &&
+        typeof note === "object" &&
+        typeof (note as StoredNotebook).id === "string" &&
+        Array.isArray((note as StoredNotebook).pages) &&
+        (note as StoredNotebook).pages.every(
+          (page) =>
+            !!page &&
+            typeof page === "object" &&
+            typeof page.id === "string" &&
+            (page.drawingRef === undefined ||
+              typeof page.drawingRef === "string"),
+        ),
+    )
+  );
+}
+
 const signature = (value: string) => {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index++) {

@@ -3,7 +3,7 @@ import type { Notebook, Page, PageTemplate, TemplateSpacing } from "./types";
 import { expandFolderPaths } from "./folders";
 import { normalizeTemplateSpacing } from "./templateSpacing";
 import { Directory, File, Paths } from "expo-file-system";
-import { drawingBlobName, libraryMetadata, staleDrawingRefs, type StoredNotebook } from "./drawingPersistence";
+import { drawingBlobName, isStoredLibraryMetadata, libraryMetadata, staleDrawingRefs, type StoredNotebook } from "./drawingPersistence";
 const KEY = "hanji.library.v3";
 const LEGACY_KEY = "hanji.library.v2";
 const CATEGORY_KEY = "hanji.categories.v1";
@@ -58,6 +58,7 @@ const unrecoverableDrawingRefs=new Map<string,string>();
 export async function loadLibrary(): Promise<Notebook[]> {
   const raw = await AsyncStorage.getItem(KEY);
   const legacyRaw = (await AsyncStorage.getItem(LEGACY_KEY)) ?? (await AsyncStorage.getItem("hanji.library.v1"));
+  let currentMetadataParsed = false;
   try {
     if (!raw) {
       const legacy = (legacyRaw ? JSON.parse(legacyRaw) : []) as Notebook[];
@@ -65,7 +66,11 @@ export async function loadLibrary(): Promise<Notebook[]> {
       if (normalized.length) await saveLibrary(normalized);
       return normalized;
     }
-    const stored = JSON.parse(raw) as StoredNotebook[];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isStoredLibraryMetadata(parsed))
+      throw new Error("저장된 노트 메타데이터가 손상되었습니다.");
+    const stored = parsed;
+    currentMetadataParsed = true;
     const fallback = new Map<string,string>();
     if (legacyRaw) for(const note of JSON.parse(legacyRaw) as Notebook[])for(const page of note.pages)fallback.set(`${note.id}:${page.id}`,page.drawingData);
     const directory = drawingDirectory();
@@ -90,8 +95,17 @@ export async function loadLibrary(): Promise<Notebook[]> {
       return {...page,drawingData};
     }))})));
     return normalizeLibrary(notes);
-  } catch {
-    try { return normalizeLibrary(legacyRaw ? JSON.parse(legacyRaw) as Notebook[] : []); } catch { return []; }
+  } catch (error) {
+    if (!currentMetadataParsed && legacyRaw) {
+      try {
+        return normalizeLibrary(JSON.parse(legacyRaw) as Notebook[]);
+      } catch {
+        // Both the current metadata and its legacy recovery snapshot are invalid.
+      }
+    }
+    throw error instanceof Error
+      ? error
+      : new Error("저장된 노트를 읽지 못했습니다.");
   }
 }
 const normalizeLibrary=(notes:Notebook[])=>notes.map((note) => ({

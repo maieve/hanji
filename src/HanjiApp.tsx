@@ -141,6 +141,8 @@ export function HanjiApp() {
   const [items, setItems] = useState<Notebook[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
   const [unlockedNotes, setUnlockedNotes] = useState<Set<string>>(
     () => new Set(),
@@ -308,16 +310,32 @@ export function HanjiApp() {
   const [stickerOpen, setStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<Sticker[]>([]);
   useEffect(() => {
-    Promise.all([loadLibrary(), loadCategories()]).then(([notes, cats]) => {
-      setItems(notes);
-      setCategories(
-        expandFolderPaths([...cats, ...notes.map((n) => n.folder)]),
-      );
-      setReady(true);
-    });
-    void loadStickers().then(setStickers);
-    void loadUiPreferences().then(setUiPreferences);
-  }, []);
+    let cancelled = false;
+    setLoadError("");
+    Promise.all([loadLibrary(), loadCategories()]).then(
+      ([notes, cats]) => {
+        if (cancelled) return;
+        setItems(notes);
+        setCategories(
+          expandFolderPaths([...cats, ...notes.map((n) => n.folder)]),
+        );
+        setReady(true);
+      },
+      (error: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "저장된 노트를 읽지 못했습니다.",
+        );
+      },
+    );
+    void loadStickers().then(setStickers, () => undefined);
+    void loadUiPreferences().then(setUiPreferences, () => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAttempt]);
   useEffect(
     () => () => {
       for (const timer of ocrTimers.current.values()) clearTimeout(timer);
@@ -561,6 +579,29 @@ export function HanjiApp() {
   };
   const update = (id: string, fn: (n: Notebook) => Notebook) =>
     setItems((all) => all.map((n) => (n.id === id ? fn(n) : n)));
+  if (!ready && loadError)
+    return (
+      <SafeAreaView style={s.loadFailure}>
+        <Ionicons name="alert-circle-outline" size={38} color="#C64B47" />
+        <Text accessibilityRole="alert" style={s.loadFailureTitle}>
+          노트를 열지 못했습니다
+        </Text>
+        <Text style={s.loadFailureMessage}>{loadError}</Text>
+        <Text style={s.loadFailureHelp}>
+          기존 데이터는 변경하지 않았습니다. 저장 공간을 확인한 뒤 다시
+          시도하세요.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="저장된 노트 다시 읽기"
+          onPress={() => setLoadAttempt((attempt) => attempt + 1)}
+          style={s.loadRetry}
+        >
+          <Ionicons name="refresh" size={18} color={C.white} />
+          <Text style={s.loadRetryText}>다시 시도</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
   if (!ready)
     return (
       <View style={s.loading}>
@@ -2815,6 +2856,43 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.canvas },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   muted: { color: C.muted },
+  loadFailure: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    backgroundColor: C.canvas,
+  },
+  loadFailureTitle: {
+    marginTop: 14,
+    fontSize: 20,
+    fontWeight: "800",
+    color: C.ink,
+  },
+  loadFailureMessage: {
+    marginTop: 8,
+    maxWidth: 520,
+    color: "#A53330",
+    textAlign: "center",
+  },
+  loadFailureHelp: {
+    marginTop: 8,
+    maxWidth: 520,
+    color: C.muted,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  loadRetry: {
+    marginTop: 20,
+    minHeight: 46,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: C.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  loadRetryText: { color: C.white, fontSize: 15, fontWeight: "800" },
   editor: { flex: 1, flexDirection: "row" },
   editorLeftHanded: { flexDirection: "row-reverse" },
   canvasArea: { flex: 1, padding: 24, alignItems: "center" },
