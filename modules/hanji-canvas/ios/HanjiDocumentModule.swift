@@ -68,6 +68,9 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var sourceDrawing = PKDrawing()
   private var replayCutoff: Double?
   private let selectionLayer = CAShapeLayer()
+  private let pdfTextSelectionLayer = CAShapeLayer()
+  private weak var pdfTextSelectionPage: PDFPage?
+  private var pdfTextSelectionStart: CGPoint?
   private var selectionStart = CGPoint.zero
   private var selectedStrokeIndexes: [Int] = []
   private var lassoMode = "freeform"
@@ -128,6 +131,10 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     selectionLayer.lineWidth = 1.5
     selectionLayer.lineDashPattern = [6, 4]
     canvas.layer.addSublayer(selectionLayer)
+    pdfTextSelectionLayer.fillColor = UIColor.systemYellow.withAlphaComponent(0.22).cgColor
+    pdfTextSelectionLayer.strokeColor = UIColor.systemYellow.withAlphaComponent(0.65).cgColor
+    pdfTextSelectionLayer.lineWidth = 1
+    canvas.layer.addSublayer(pdfTextSelectionLayer)
     let selectionPan = UIPanGestureRecognizer(target: self, action: #selector(handleSelectionPan(_:)))
     selectionPan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
     selectionPan.maximumNumberOfTouches = 1
@@ -363,32 +370,74 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   }
 
   @objc private func handlePDFTextPress(_ recognizer: UILongPressGestureRecognizer) {
-    guard recognizer.state == .began, (activeKind == "marker" || activeKind == "lasso"), replayCutoff == nil, let document else { return }
+    guard (activeKind == "marker" || activeKind == "lasso"), replayCutoff == nil, let document else { clearPDFTextSelection(); return }
     let canvasPoint = recognizer.location(in: canvas), pdfPoint = canvas.convert(canvasPoint, to: pdfView)
     guard let page = pdfView.page(for: pdfPoint, nearest: false) else { return }
     let pagePoint = pdfView.convert(pdfPoint, to: page)
-    guard let selection = page.selectionForWord(at: pagePoint) else { return }
     if activeKind == "lasso" {
+      guard recognizer.state == .began, let selection = page.selectionForWord(at: pagePoint) else { return }
       let text = selection.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       guard !text.isEmpty else { return }
       onPdfExcerpt(["text": text, "pageIndex": document.index(for: page)])
       UINotificationFeedbackGenerator().notificationOccurred(.success)
       return
     }
-    let pageBounds = selection.bounds(for: page)
-    guard !pageBounds.isNull, pageBounds.width > 1, pageBounds.height > 1 else { return }
-    let pdfBounds = pdfView.convert(pageBounds, from: page)
-    let rect = canvas.convert(pdfBounds, from: pdfView).insetBy(dx: -1.5, dy: 0)
-    let thickness = max(3, rect.height * 0.72), y = rect.midY
-    let points = [
-      PKStrokePoint(location: CGPoint(x: rect.minX + thickness / 2, y: y), timeOffset: 0, size: CGSize(width: thickness, height: thickness), opacity: 1, force: 1, azimuth: 0, altitude: .pi / 2),
-      PKStrokePoint(location: CGPoint(x: rect.maxX - thickness / 2, y: y), timeOffset: 0.01, size: CGSize(width: thickness, height: thickness), opacity: 1, force: 1, azimuth: 0, altitude: .pi / 2)
-    ]
-    let stroke = PKStroke(ink: PKInk(.marker, color: activeInkColor), path: PKStrokePath(controlPoints: points, creationDate: Date()))
+    switch recognizer.state {
+    case .began:
+      pdfTextSelectionPage = page
+      pdfTextSelectionStart = pagePoint
+      if let selection = page.selectionForWord(at: pagePoint) { showPDFTextSelection(selection, page: page) }
+    case .changed:
+      guard page === pdfTextSelectionPage, let start = pdfTextSelectionStart,
+            let selection = page.selection(from: start, to: pagePoint) else { return }
+      showPDFTextSelection(selection, page: page)
+    case .ended:
+      guard page === pdfTextSelectionPage, let start = pdfTextSelectionStart else { clearPDFTextSelection(); return }
+      let selection = page.selection(from: start, to: pagePoint) ?? page.selectionForWord(at: start)
+      if let selection { commitPDFTextSelection(selection, page: page) }
+      clearPDFTextSelection()
+    case .cancelled, .failed:
+      clearPDFTextSelection()
+    default: break
+    }
+  }
+
+  private func pdfTextLineRects(_ selection: PDFSelection, page: PDFPage) -> [CGRect] {
+    selection.selectionsByLine().compactMap { line in
+      let bounds = line.bounds(for: page)
+      guard !bounds.isNull, bounds.width > 1, bounds.height > 1 else { return nil }
+      let pdfBounds = pdfView.convert(bounds, from: page)
+      return canvas.convert(pdfBounds, from: pdfView).insetBy(dx: -1.5, dy: 0)
+    }
+  }
+
+  private func showPDFTextSelection(_ selection: PDFSelection, page: PDFPage) {
+    let path = UIBezierPath()
+    pdfTextLineRects(selection, page: page).forEach { path.append(UIBezierPath(roundedRect: $0, cornerRadius: 2)) }
+    pdfTextSelectionLayer.path = path.cgPath
+  }
+
+  private func commitPDFTextSelection(_ selection: PDFSelection, page: PDFPage) {
+    let strokes = pdfTextLineRects(selection, page: page).compactMap { rect -> PKStroke? in
+      let thickness = max(3, rect.height * 0.72), y = rect.midY
+      guard rect.width > thickness else { return nil }
+      let points = [
+        PKStrokePoint(location: CGPoint(x: rect.minX + thickness / 2, y: y), timeOffset: 0, size: CGSize(width: thickness, height: thickness), opacity: 1, force: 1, azimuth: 0, altitude: .pi / 2),
+        PKStrokePoint(location: CGPoint(x: rect.maxX - thickness / 2, y: y), timeOffset: 0.01, size: CGSize(width: thickness, height: thickness), opacity: 1, force: 1, azimuth: 0, altitude: .pi / 2)
+      ]
+      return PKStroke(ink: PKInk(.marker, color: activeInkColor), path: PKStrokePath(controlPoints: points, creationDate: Date()))
+    }
+    guard !strokes.isEmpty else { return }
     let original = canvas.drawing
     registerTransformUndo(original)
-    replaceDrawing(PKDrawing(strokes: original.strokes + [stroke]))
+    replaceDrawing(PKDrawing(strokes: original.strokes + strokes))
     UINotificationFeedbackGenerator().notificationOccurred(.success)
+  }
+
+  private func clearPDFTextSelection() {
+    pdfTextSelectionPage = nil
+    pdfTextSelectionStart = nil
+    pdfTextSelectionLayer.path = nil
   }
 
   @objc private func handleSelectionPan(_ recognizer: UIPanGestureRecognizer) {
