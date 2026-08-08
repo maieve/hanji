@@ -1,5 +1,6 @@
 import { requireNativeViewManager } from 'expo-modules-core';
-import type { DrawingViewport, ToolSpec } from '../types';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+import type { DrawingViewport, NativeStroke, ToolSpec } from '../types';
 export type PdfOutlineItem = {
   title: string;
   pageIndex: number;
@@ -37,10 +38,22 @@ type Props = {
   onCircleLasso?: () => void;
 };
 type E<T> = { nativeEvent: T };
-const Native = requireNativeViewManager('HanjiDocumentCanvas');
-export function DocumentCanvas(p: Props) {
+export type DocumentCanvasHandle={
+  getStrokes:()=>Promise<NativeStroke[]>;
+  replaceStrokes:(ids:string[],replacements:NativeStroke[])=>Promise<boolean>;
+  hitTest:(point:{x:number;y:number},radius:number)=>Promise<string|null>;
+};
+const Native = requireNativeViewManager('HanjiDocumentCanvas') as React.ComponentType<any>;
+export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function DocumentCanvas(p,ref) {
+  const nativeRef=useRef<DocumentCanvasHandle>(null);
+  useImperativeHandle(ref,()=>({
+    getStrokes:()=>nativeRef.current?.getStrokes()??Promise.resolve([]),
+    replaceStrokes:(ids,replacements)=>nativeRef.current?.replaceStrokes(ids,replacements)??Promise.resolve(false),
+    hitTest:(point,radius)=>nativeRef.current?.hitTest(point,radius)??Promise.resolve(null),
+  }),[]);
   return (
     <Native
+      ref={nativeRef}
       style={{ flex: 1 }}
       pdfUri={p.pdfUri}
       pageIndex={p.pageIndex}
@@ -75,4 +88,4 @@ export function DocumentCanvas(p: Props) {
       onCircleLasso={() => p.onCircleLasso?.()}
     />
   );
-}
+});

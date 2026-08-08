@@ -24,6 +24,13 @@ public final class HanjiDocumentModule: Module {
       Prop("replayCutoff") { (view: HanjiDocumentView, value: Double?) in view.setReplayCutoff(value) }
       Prop("selectionAction") { (view: HanjiDocumentView, value: [String: Any]?) in view.applySelectionAction(value) }
       Prop("selectedElementCount") { (view: HanjiDocumentView, value: Int) in view.selectedElementCount = value }
+      AsyncFunction("getStrokes") { (view: HanjiDocumentView) in view.serializedStrokes() }
+      AsyncFunction("replaceStrokes") { (view: HanjiDocumentView, ids: [String], replacements: [[String: Any]]) in
+        view.replaceStrokes(ids: ids, replacements: replacements)
+      }
+      AsyncFunction("hitTest") { (view: HanjiDocumentView, point: [String: Double], radius: Double) in
+        view.hitTestStroke(point: point, radius: radius)
+      }
     }
   }
 }
@@ -144,6 +151,108 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     canvas.addGestureRecognizer(selectionPan)
     addSubview(pdfView)
     addSubview(canvas)
+  }
+
+  func serializedStrokes() -> [[String: Any]] {
+    canvas.drawing.strokes.map { stroke in
+      [
+        "id": strokeIdentifier(stroke),
+        "ink": stroke.ink.inkType.rawValue,
+        "color": stroke.ink.color.hanjiHexWithAlpha,
+        "createdAt": stroke.path.creationDate.timeIntervalSince1970,
+        "points": (0..<stroke.path.count).map { pointIndex -> [String: Any] in
+          let point = stroke.path[pointIndex]
+          return [
+            "x": point.location.x, "y": point.location.y, "t": point.timeOffset,
+            "force": point.force, "azimuth": point.azimuth, "altitude": point.altitude,
+            "width": point.size.width, "height": point.size.height, "opacity": point.opacity
+          ]
+        }
+      ]
+    }
+  }
+
+  func replaceStrokes(ids: [String], replacements: [[String: Any]]) -> Bool {
+    let targets = Set(ids), current = canvas.drawing.strokes
+    guard !targets.isEmpty, current.contains(where: { targets.contains(strokeIdentifier($0)) }) else { return false }
+    let decoded = replacements.compactMap(makeStroke)
+    guard decoded.count == replacements.count else { return false }
+    let before = canvas.drawing
+    var inserted = false, result: [PKStroke] = []
+    for stroke in current {
+      if targets.contains(strokeIdentifier(stroke)) {
+        if !inserted { result.append(contentsOf: decoded); inserted = true }
+      } else { result.append(stroke) }
+    }
+    registerTransformUndo(before)
+    applyingShape = true
+    canvas.drawing = PKDrawing(strokes: result)
+    applyingShape = false
+    sourceDrawing = canvas.drawing
+    knownStrokeCount = result.count
+    emitDrawingChange()
+    return true
+  }
+
+  func hitTestStroke(point: [String: Double], radius: Double) -> String? {
+    guard let x = point["x"], let y = point["y"] else { return nil }
+    let target = CGPoint(x: x, y: y), threshold = CGFloat(max(1, radius))
+    for stroke in canvas.drawing.strokes.reversed() {
+      guard stroke.renderBounds.insetBy(dx: -threshold, dy: -threshold).contains(target) else { continue }
+      for index in 0..<stroke.path.count {
+        let sample = stroke.path[index]
+        if hypot(sample.location.x - target.x, sample.location.y - target.y) <= threshold + max(sample.size.width, sample.size.height) / 2 {
+          return strokeIdentifier(stroke)
+        }
+      }
+    }
+    return nil
+  }
+
+  private func strokeIdentifier(_ stroke: PKStroke) -> String {
+    var hash: UInt64 = 1469598103934665603
+    func mix(_ value: UInt64) { hash = (hash ^ value) &* 1099511628211 }
+    mix(stroke.path.creationDate.timeIntervalSince1970.bitPattern)
+    mix(UInt64(stroke.path.count))
+    for index in 0..<stroke.path.count {
+      let point = stroke.path[index]
+      mix(Double(point.location.x).bitPattern); mix(Double(point.location.y).bitPattern); mix(point.timeOffset.bitPattern)
+    }
+    return String(format: "%016llx", hash)
+  }
+
+  private func makeStroke(_ value: [String: Any]) -> PKStroke? {
+    guard let points = value["points"] as? [[String: Any]], !points.isEmpty else { return nil }
+    let inkName = value["ink"] as? String ?? "pen"
+    let inkType: PKInk.InkType
+    switch inkName {
+    case PKInk.InkType.fountainPen.rawValue: inkType = .fountainPen
+    case PKInk.InkType.monoline.rawValue: inkType = .monoline
+    case PKInk.InkType.pencil.rawValue: inkType = .pencil
+    case PKInk.InkType.crayon.rawValue: inkType = .crayon
+    case PKInk.InkType.watercolor.rawValue: inkType = .watercolor
+    case PKInk.InkType.marker.rawValue: inkType = .marker
+    default: inkType = .pen
+    }
+    let color = UIColor(hanjiHex: value["color"] as? String ?? "#20201EFF")
+    let controlPoints = points.compactMap { item -> PKStrokePoint? in
+      guard let x = (item["x"] as? NSNumber)?.doubleValue, let y = (item["y"] as? NSNumber)?.doubleValue else { return nil }
+      return PKStrokePoint(
+        location: CGPoint(x: x, y: y), timeOffset: (item["t"] as? NSNumber)?.doubleValue ?? 0,
+        size: CGSize(width: (item["width"] as? NSNumber)?.doubleValue ?? 2, height: (item["height"] as? NSNumber)?.doubleValue ?? 2),
+        opacity: (item["opacity"] as? NSNumber)?.doubleValue ?? 1, force: (item["force"] as? NSNumber)?.doubleValue ?? 1,
+        azimuth: (item["azimuth"] as? NSNumber)?.doubleValue ?? 0, altitude: (item["altitude"] as? NSNumber)?.doubleValue ?? .pi / 2
+      )
+    }
+    guard controlPoints.count == points.count else { return nil }
+    let createdAt = Date(timeIntervalSince1970: (value["createdAt"] as? NSNumber)?.doubleValue ?? Date().timeIntervalSince1970)
+    return PKStroke(ink: PKInk(inkType, color: color), path: PKStrokePath(controlPoints: controlPoints, creationDate: createdAt))
+  }
+
+  private func emitDrawingChange() {
+    let value = canvas.drawing.dataRepresentation().base64EncodedString()
+    loadedDrawing = value
+    onDrawingChange(["drawingData": value])
   }
 
   func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
@@ -737,7 +846,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       }
     }
     if strokes.count > knownStrokeCount, let stroke = strokes.last {
-      onStrokeAdded(["createdAt": stroke.path.creationDate.timeIntervalSince1970])
+      onStrokeAdded(["id": strokeIdentifier(stroke), "createdAt": stroke.path.creationDate.timeIntervalSince1970])
       if zoomWindowEnabled { autoAdvance(after: stroke) }
     }
     knownStrokeCount = strokes.count
@@ -966,11 +1075,18 @@ extension UIColor {
     if raw.count == 3 { raw = raw.map { "\($0)\($0)" }.joined() }
     var value: UInt64 = 0
     Scanner(string: raw).scanHexInt64(&value)
+    let hasAlpha = raw.count == 8
     self.init(
-      red: CGFloat((value >> 16) & 255) / 255,
-      green: CGFloat((value >> 8) & 255) / 255,
-      blue: CGFloat(value & 255) / 255,
-      alpha: 1
+      red: CGFloat((value >> (hasAlpha ? 24 : 16)) & 255) / 255,
+      green: CGFloat((value >> (hasAlpha ? 16 : 8)) & 255) / 255,
+      blue: CGFloat((value >> (hasAlpha ? 8 : 0)) & 255) / 255,
+      alpha: hasAlpha ? CGFloat(value & 255) / 255 : 1
     )
+  }
+
+  var hanjiHexWithAlpha: String {
+    var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+    guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return "#000000FF" }
+    return String(format: "#%02X%02X%02X%02X", Int(round(red * 255)), Int(round(green * 255)), Int(round(blue * 255)), Int(round(alpha * 255)))
   }
 }

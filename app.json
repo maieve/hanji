@@ -2,7 +2,7 @@
   "expo": {
     "name": "yoojin note",
     "slug": "hanji",
-    "version": "0.1.23",
+    "version": "0.1.24",
     "extra": {
       "hanjiBuild": "dev"
     },
