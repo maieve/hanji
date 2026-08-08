@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Appearance,
   Image,
   Linking,
@@ -161,6 +162,33 @@ export function HanjiApp() {
     source: NonNullable<TextElement["source"]>;
   }>();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const saveRevision = useRef(0);
+  const appStateRef = useRef(AppState.currentState);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">(
+    "saved",
+  );
+  const [saveError, setSaveError] = useState("");
+  const runLibrarySave = (
+    snapshot = itemsRef.current,
+    revision = ++saveRevision.current,
+  ) => {
+    setSaveStatus("saving");
+    setSaveError("");
+    return saveLibrary(snapshot).then(
+      () => {
+        if (revision === saveRevision.current) setSaveStatus("saved");
+      },
+      (error: unknown) => {
+        if (revision !== saveRevision.current) return;
+        setSaveStatus("error");
+        setSaveError(
+          error instanceof Error ? error.message : "로컬 저장에 실패했습니다.",
+        );
+      },
+    );
+  };
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ocrTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -312,11 +340,32 @@ export function HanjiApp() {
   useEffect(() => {
     if (!ready) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveLibrary(items), 350);
+    const revision = ++saveRevision.current;
+    setSaveStatus("saving");
+    saveTimer.current = setTimeout(
+      () => void runLibrarySave(items, revision),
+      350,
+    );
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, [items, ready]);
+  useEffect(() => {
+    if (!ready) return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      const wasActive = appStateRef.current === "active";
+      appStateRef.current = state;
+      if (
+        !wasActive ||
+        (state !== "background" && state !== "inactive")
+      )
+        return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+      void runLibrarySave(itemsRef.current);
+    });
+    return () => subscription.remove();
+  }, [ready]);
   useEffect(() => {
     if (!ready) return;
     if (backupTimer.current) clearTimeout(backupTimer.current);
@@ -533,6 +582,9 @@ export function HanjiApp() {
         backupRetention={uiPreferences.backupRetention}
         librarySort={uiPreferences.librarySort}
         libraryView={uiPreferences.libraryView}
+        saveStatus={saveStatus}
+        saveError={saveError}
+        onRetrySave={() => void runLibrarySave()}
         onLibraryDisplayChange={(patch) => {
           const next = { ...uiPreferences, ...patch };
           setUiPreferences(next);
@@ -2087,6 +2139,9 @@ function Library({
   backupRetention,
   librarySort,
   libraryView,
+  saveStatus,
+  saveError,
+  onRetrySave,
   onLibraryDisplayChange,
   setQuery,
   onOpen,
@@ -2110,6 +2165,9 @@ function Library({
   backupRetention: number;
   librarySort: LibrarySort;
   libraryView: LibraryViewMode;
+  saveStatus: "saved" | "saving" | "error";
+  saveError: string;
+  onRetrySave: () => void;
   onLibraryDisplayChange: (
     patch: Partial<Pick<UiPreferences, "librarySort" | "libraryView">>,
   ) => void;
@@ -2305,13 +2363,42 @@ function Library({
                 <Ionicons name="add-circle" size={22} color={C.accent} />
               </Pressable>
             </View>
-            <View style={s.sync}>
-              <View style={s.syncDot} />
+            <Pressable
+              accessibilityRole={saveStatus === "error" ? "button" : undefined}
+              accessibilityLabel={
+                saveStatus === "error"
+                  ? `로컬 저장 실패. 다시 저장. ${saveError}`
+                  : saveStatus === "saving"
+                    ? "로컬 저장 중"
+                    : "로컬 저장 완료"
+              }
+              disabled={saveStatus !== "error"}
+              onPress={onRetrySave}
+              style={s.sync}
+            >
+              {saveStatus === "saving" ? (
+                <ActivityIndicator size="small" color={C.accent} />
+              ) : (
+                <View
+                  style={[
+                    s.syncDot,
+                    saveStatus === "error" && s.syncDotError,
+                  ]}
+                />
+              )}
               <View>
-                <Text style={s.syncTitle}>로컬 저장 완료</Text>
-                <Text style={s.syncSub}>빌드 {buildIdentity}</Text>
+                <Text style={[s.syncTitle, saveStatus === "error" && s.syncTitleError]}>
+                  {saveStatus === "saving"
+                    ? "로컬 저장 중…"
+                    : saveStatus === "error"
+                      ? "저장 실패 · 다시 시도"
+                      : "로컬 저장 완료"}
+                </Text>
+                <Text numberOfLines={1} style={s.syncSub}>
+                  {saveStatus === "error" ? saveError : `빌드 ${buildIdentity}`}
+                </Text>
               </View>
-            </View>
+            </Pressable>
           </View>
         )}
         <View style={s.main}>
@@ -2932,7 +3019,9 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   syncDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#64A37C" },
+  syncDotError: { backgroundColor: "#C64B47" },
   syncTitle: { fontSize: 12, fontWeight: "700", color: C.ink },
+  syncTitleError: { color: "#A53330" },
   syncSub: { fontSize: 10, color: C.muted, marginTop: 2 },
   main: {
     flex: 1,
