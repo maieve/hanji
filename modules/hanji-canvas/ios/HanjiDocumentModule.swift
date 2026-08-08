@@ -68,6 +68,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var selectionStart = CGPoint.zero
   private var selectedStrokeIndexes: [Int] = []
   private var lassoMode = "freeform"
+  private var lassoInkEnabled = true
   private var selectionPoints: [CGPoint] = []
   private var selectionBounds = CGRect.zero
   private var selectionMoveDrawing: PKDrawing?
@@ -265,6 +266,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     scratchEnabled = value["scratchEnabled"] as? Bool ?? true
     circleToLasso = value["circleToLasso"] as? Bool ?? true
     lassoMode = value["lassoMode"] as? String ?? "freeform"
+    lassoInkEnabled = value["lassoInk"] as? Bool ?? true
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     shapeLineStyle = value["shapeLineStyle"] as? String ?? "solid"
@@ -392,12 +394,12 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         return
       }
       let freeformPath = lassoMode == "freeform" ? freeformSelectionPath() : nil
-      selectedStrokeIndexes = canvas.drawing.strokes.enumerated().compactMap { index, stroke in
+      selectedStrokeIndexes = lassoInkEnabled ? canvas.drawing.strokes.enumerated().compactMap { index, stroke in
         guard selectionBounds.intersects(stroke.renderBounds) else { return nil }
         if let freeformPath { return strokeIntersectsSelection(stroke, path: freeformPath) ? index : nil }
         return index
-      }
-      if selectedStrokeIndexes.isEmpty { clearSelection(); return }
+      } : []
+      if selectedStrokeIndexes.isEmpty && selectionBounds.width < 2 && selectionBounds.height < 2 { clearSelection(); return }
       selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
       emitSelection()
       UIImpactFeedbackGenerator(style: .light).impactOccurred()

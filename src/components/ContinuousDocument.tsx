@@ -26,6 +26,7 @@ type Props = {
   threeFingerRedoEnabled: boolean;
   zoomWindowEnabled: boolean;
   elementMode: boolean;
+  selectedElements:{pageId:string;ids:string[]};
   replayCutoff?: number;
   selectionAction?: {
     nonce: number;
@@ -202,8 +203,9 @@ export function ContinuousDocument(props: Props) {
             }
           />
           <ElementsLayer
-            editable={props.elementMode && index === props.activeIndex}
-            elements={item.elements ?? []}
+              editable={props.elementMode && index === props.activeIndex}
+              elements={item.elements ?? []}
+              selectedIds={props.selectedElements.pageId===item.id?props.selectedElements.ids:[]}
             onChange={(elements) => props.onElementsChange(item, elements)}
             onSaveImage={props.onSaveSticker}
             onNavigateSource={props.onNavigateSource}

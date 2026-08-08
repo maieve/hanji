@@ -36,6 +36,7 @@ import type {
   AudioSession,
   ImageElement,
   Notebook,
+  PageElement,
   Sticker,
   TextElement,
   ToolSpec,
@@ -94,6 +95,7 @@ import { defaultUiPreferences, type UiPreferences } from "./uiPreferences";
 import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
 import { PagePaintPanel } from "./components/PagePaintPanel";
 import { selectionTextToQuestion } from "./flashcardDraft";
+import {selectElementIds} from './elementSelection';
 import {normalizeCanvasExtent,resizePageCanvas} from './canvasExtent';
 import {resolveReferenceNotebook} from './referenceDocument';
 import { insertPage } from "./pageInsert";
@@ -193,6 +195,8 @@ export function HanjiApp() {
   const [selection, setSelection] = useState<{ pageId: string; count: number }>(
     { pageId: "", count: 0 },
   );
+  const [selectedElements,setSelectedElements]=useState<{pageId:string;ids:string[]}>({pageId:"",ids:[]});
+  const selectedElementClipboardRef=useRef<PageElement[]>([]);
   const [selectionAction, setSelectionAction] = useState<{
     nonce: number;
     type:
@@ -969,8 +973,12 @@ export function HanjiApp() {
       ),
     }));
   };
-  const handleSelection = (target: typeof page, value: { count: number }) =>
-    setSelection({ pageId: target.id, count: value.count });
+  const handleSelection = (target: typeof page, value: { count: number;x?:number;y?:number;width?:number;height?:number }) => {
+    const hasBounds=value.x!==undefined&&value.y!==undefined&&value.width!==undefined&&value.height!==undefined;
+    const ids=hasBounds?selectElementIds(target.elements??[],{x:value.x!,y:value.y!,width:value.width!,height:value.height!},{text:tool.lassoText??true,images:tool.lassoImages??true}):[];
+    setSelectedElements({pageId:ids.length?target.id:"",ids});
+    setSelection({ pageId: target.id, count: value.count+ids.length });
+  };
   const handleSelectionText = (
     target: typeof page,
     result: {
@@ -1069,12 +1077,24 @@ export function HanjiApp() {
       | "shrink"
       | "grow"
       | "rotate",
-  ) =>
+  ) => {
+    const ids=new Set(selectedElements.ids),targetPage=current.pages.find(p=>p.id===selectedElements.pageId);
+    if(type==='copy'||type==='cut')selectedElementClipboardRef.current=(targetPage?.elements??[]).filter(element=>ids.has(element.id)).map(element=>({...element}));
+    if(type==='paste'&&selectedElementClipboardRef.current.length){const pasted=selectedElementClipboardRef.current.map(element=>({...element,id:makeId(),x:Math.min(.94,element.x+.02),y:Math.min(.94,element.y+.02)}));changeElements(page,[...(page.elements??[]),...pasted]);setSelectedElements({pageId:page.id,ids:pasted.map(x=>x.id)});setSelection({pageId:page.id,count:pasted.length})}
+    else if(targetPage&&ids.size&&(type==='delete'||type==='cut'||type==='duplicate'||type==='recolor'||type==='shrink'||type==='grow'||type==='rotate')){
+      let next=targetPage.elements??[];
+      if(type==='delete'||type==='cut')next=next.filter(element=>!ids.has(element.id));
+      else if(type==='duplicate'){const copies=next.filter(element=>ids.has(element.id)).map(element=>({...element,id:makeId(),x:Math.min(.94,element.x+.02),y:Math.min(.94,element.y+.02)}));next=[...next,...copies];setSelectedElements({pageId:targetPage.id,ids:copies.map(x=>x.id)})}
+      else next=next.map(element=>{if(!ids.has(element.id))return element;if(type==='recolor'&&element.kind==='text')return{...element,color:tool.color};if(type==='rotate'&&element.kind==='image')return{...element,rotation:(((element.rotation??0)+90)%360) as 0|90|180|270};const scale=type==='shrink'?.8:type==='grow'?1.25:1;if(scale!==1){const width=Math.max(.04,Math.min(1,element.width*scale)),height=Math.max(.04,Math.min(1,element.height*scale));return{...element,width,height,x:Math.max(0,Math.min(1-width,element.x+(element.width-width)/2)),y:Math.max(0,Math.min(1-height,element.y+(element.height-height)/2))}}return element});
+      changeElements(targetPage,next);if(type==='delete'||type==='cut'){setSelectedElements({pageId:"",ids:[]});setSelection({pageId:"",count:0})}
+    }
+    if(type==='clear'){setSelectedElements({pageId:"",ids:[]});setSelection({pageId:"",count:0})}
     setSelectionAction({
       nonce: Date.now(),
       type,
       color: type === "recolor" ? tool.color : undefined,
     });
+  };
   const changeUiPreferences = (value: UiPreferences) => {
     setUiPreferences(value);
     void saveUiPreferences(value);
@@ -1380,6 +1400,7 @@ export function HanjiApp() {
               threeFingerRedoEnabled={uiPreferences.threeFingerRedoEnabled}
               zoomWindowEnabled={zoomWindowEnabled}
               elementMode={elementMode}
+              selectedElements={selectedElements}
               replayCutoff={replayCutoff}
               selectionAction={selectionAction}
               undoSignal={undoSignal}
@@ -1462,6 +1483,7 @@ export function HanjiApp() {
               <ElementsLayer
                 editable={elementMode}
                 elements={page.elements ?? []}
+                selectedIds={selectedElements.pageId===page.id?selectedElements.ids:[]}
                 onChange={(elements) => changeElements(page, elements)}
                 onSaveImage={saveImageSticker}
                 onNavigateSource={navigateExcerptSource}

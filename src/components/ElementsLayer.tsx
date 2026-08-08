@@ -3,23 +3,23 @@ import { Image, PanResponder, Pressable, StyleSheet, Text, TextInput, View } fro
 import { C } from '../theme';
 import type { ImageElement, PageElement, TextElement } from '../types';
 
-export function ElementsLayer({ elements, editable, onChange, onSaveImage,onNavigateSource }: { elements: PageElement[]; editable: boolean; onChange: (v: PageElement[]) => void; onSaveImage?: (image: ImageElement) => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
+export function ElementsLayer({ elements, editable, selectedIds=[], onChange, onSaveImage,onNavigateSource }: { elements: PageElement[]; editable: boolean; selectedIds?:string[]; onChange: (v: PageElement[]) => void; onSaveImage?: (image: ImageElement) => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
   const [size,setSize]=useState({width:900,height:636});
   const replace = (next: PageElement) => onChange(elements.map((x) => (x.id === next.id ? next : x)));
   return (
     <View onLayout={event=>setSize({width:event.nativeEvent.layout.width||900,height:event.nativeEvent.layout.height||636})} pointerEvents={editable||onNavigateSource ? 'box-none' : 'none'} style={StyleSheet.absoluteFill}>
       {elements.map((element) =>
         element.kind === 'text' ? (
-          <TextBox key={element.id} element={element} canvasSize={size} editable={editable} onChange={replace} onNavigateSource={onNavigateSource} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
+          <TextBox key={element.id} element={element} selected={selectedIds.includes(element.id)} canvasSize={size} editable={editable} onChange={replace} onNavigateSource={onNavigateSource} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
         ) : (
-          <ImageBox key={element.id} element={element} canvasSize={size} editable={editable} onChange={replace} onSave={onSaveImage ? () => onSaveImage(element) : undefined} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
+          <ImageBox key={element.id} element={element} selected={selectedIds.includes(element.id)} canvasSize={size} editable={editable} onChange={replace} onSave={onSaveImage ? () => onSaveImage(element) : undefined} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
         ),
       )}
     </View>
   );
 }
 
-function ImageBox({ element, canvasSize, editable, onChange, onDelete, onSave }: { element: ImageElement;canvasSize:{width:number;height:number}; editable: boolean; onChange: (v: ImageElement) => void; onDelete: () => void; onSave?: () => void }) {
+function ImageBox({ element, canvasSize, editable, selected, onChange, onDelete, onSave }: { element: ImageElement;canvasSize:{width:number;height:number}; editable: boolean;selected:boolean; onChange: (v: ImageElement) => void; onDelete: () => void; onSave?: () => void }) {
   const start = useRef({ x: element.x, y: element.y }),
     latest = useRef(element);
   latest.current = element;
@@ -43,7 +43,7 @@ function ImageBox({ element, canvasSize, editable, onChange, onDelete, onSave }:
   return (
     <View
       {...pan.panHandlers}
-      style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, height: `${element.height * 100}%` }, editable && s.editable]}
+      style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, height: `${element.height * 100}%` }, editable && s.editable,selected&&s.selected]}
     >
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, s.imageClip]}>
         <Image source={{ uri: element.uri }} resizeMode={element.fit ?? 'contain'} style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${element.rotation ?? 0}deg` }] }]} />
@@ -88,7 +88,7 @@ function ImageBox({ element, canvasSize, editable, onChange, onDelete, onSave }:
   );
 }
 
-function TextBox({ element,canvasSize, editable, onChange, onDelete,onNavigateSource }: { element: TextElement;canvasSize:{width:number;height:number}; editable: boolean; onChange: (v: TextElement) => void; onDelete: () => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
+function TextBox({ element,canvasSize, editable,selected, onChange, onDelete,onNavigateSource }: { element: TextElement;canvasSize:{width:number;height:number}; editable: boolean;selected:boolean; onChange: (v: TextElement) => void; onDelete: () => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
   const start = useRef({ x: element.x, y: element.y });
   const latest = useRef(element);
   latest.current = element;
@@ -108,7 +108,7 @@ function TextBox({ element,canvasSize, editable, onChange, onDelete,onNavigateSo
   return (
     <View
       {...pan.panHandlers}
-      style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, minHeight: element.height * canvasSize.height }, editable && s.editable]}
+      style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, minHeight: element.height * canvasSize.height }, editable && s.editable,selected&&s.selected]}
     >
       {editable ? (
         <TextInput multiline value={element.text} onChangeText={(text) => onChange({ ...element, text })} style={[s.input, { fontSize: element.fontSize, color: element.color }]} />
@@ -136,6 +136,7 @@ const s = StyleSheet.create({
   box: { position: 'absolute', padding: 7, borderRadius: 6 },
   imageClip: { overflow: 'hidden', borderRadius: 5 },
   editable: { borderWidth: 1, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,.82)' },
+  selected:{borderWidth:2,borderColor:C.accent,backgroundColor:'rgba(47,125,102,.10)'},
   input: { minHeight: 34, padding: 0, textAlignVertical: 'top' },
   source:{marginTop:6,alignSelf:'flex-start',paddingHorizontal:8,height:24,borderRadius:12,backgroundColor:C.accentSoft,justifyContent:'center'},sourceText:{fontSize:10,fontWeight:'800',color:C.accent},
   controls: {
