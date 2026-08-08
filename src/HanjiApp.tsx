@@ -38,8 +38,9 @@ export function HanjiApp() {
   const [openId, setOpenId] = useState<string | null>(null); const [pageIndex, setPageIndex] = useState(0);
   const [openTabs,setOpenTabs]=useState<string[]>([]);const tabPages=useRef<Record<string,number>>({});
   const [query, setQuery] = useState(''); const [searchHits,setSearchHits]=useState<SearchHit[]|null>(null); const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const audioStartRef = useRef<number | null>(null); const audioStrokesRef = useRef<{pageId:string;createdAt:number;seekSec:number}[]>([]);
-  const [tool, setTool] = useState<ToolSpec>({ kind: 'pen', color: C.ink, width: 2, opacity: 1, scratchEnabled: true });
+  const [tool, setToolState] = useState<ToolSpec>({ kind: 'pen', color: C.ink, width: 2, opacity: 1, scratchEnabled: true, eraserAutoReturn: true });
   const previousPencilTool=useRef<ToolSpec>(tool);
+  const setTool=(value:ToolSpec|((active:ToolSpec)=>ToolSpec))=>setToolState(active=>{const next=typeof value==='function'?value(active):value;const inks=['pen','fountainPen','monoline','pencil','crayon','watercolor','marker'];if(next.kind==='eraser'&&inks.includes(active.kind))previousPencilTool.current=active;else if(inks.includes(next.kind))previousPencilTool.current=next;return next});
   const [audioSeek,setAudioSeek]=useState<{seconds:number;nonce:number}>();
   const [flashcardsOpen,setFlashcardsOpen]=useState(false);
   const [pdfOutline,setPdfOutline]=useState<PdfOutlineItem[]>([]);const [outlineOpen,setOutlineOpen]=useState(false);

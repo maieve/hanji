@@ -1,7 +1,7 @@
 export type ToolKind='pen'|'fountainPen'|'monoline'|'pencil'|'crayon'|'watercolor'|'marker'|'eraser'|'lasso'|'shape';
 export type ShapeKind='line'|'arrow'|'ellipse'|'rectangle'|'triangle';
 export type PageRotation=0|90|180|270;
-export type ToolSpec={kind:ToolKind;color:string;width:number;opacity?:number;eraserMode?:'vector'|'bitmap'|'fixedWidthBitmap';rulerActive?:boolean;shapeKind?:ShapeKind;scratchEnabled?:boolean};
+export type ToolSpec={kind:ToolKind;color:string;width:number;opacity?:number;eraserMode?:'vector'|'bitmap'|'fixedWidthBitmap';eraserAutoReturn?:boolean;rulerActive?:boolean;shapeKind?:ShapeKind;scratchEnabled?:boolean};
 export type OcrWord={text:string;confidence:number;x:number;y:number;width:number;height:number};
 export type TextElement={id:string;kind:'text';text:string;x:number;y:number;width:number;height:number;fontSize:number;color:string};
 export type ImageElement={id:string;kind:'image';uri:string;x:number;y:number;width:number;height:number};

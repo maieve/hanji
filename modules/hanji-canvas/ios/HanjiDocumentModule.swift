@@ -6,7 +6,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -34,6 +34,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   let onStrokeAdded = EventDispatcher()
   let onStrokeTapped = EventDispatcher()
   let onHistoryChange = EventDispatcher()
+  let onEraserEnded = EventDispatcher()
   private var document: PDFDocument?
   private var currentPage = 0
   private var loadedDrawing = ""
@@ -236,6 +237,10 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       "canUndo": canvasView.undoManager?.canUndo ?? false,
       "canRedo": canvasView.undoManager?.canRedo ?? false
     ])
+  }
+
+  func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+    if activeKind == "eraser" { onEraserEnded([:]) }
   }
 
   private func autoAdvance(after stroke: PKStroke) {
