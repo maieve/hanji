@@ -1,3 +1,47 @@
-import {StyleSheet,View} from 'react-native'; import type {ToolSpec} from '../types'; import {HanjiCanvas} from './HanjiCanvas'; import {PdfBackground} from './PdfBackground';
-type Props={pdfUri?:string;pageIndex:number;drawingData:string;tool:ToolSpec;zoomWindowEnabled?:boolean;interactionEnabled?:boolean;onDrawingChange:(v:string)=>void;onPageCount?:(n:number)=>void;onPdfOutline?:(items:[])=>void;onPdfLink?:(link:{pageIndex?:number;url?:string})=>void;onPencilDoubleTap?:()=>void;onPencilSqueeze?:()=>void;onEraserEnded?:()=>void;onStrokeAdded?:(createdAt:number)=>void};
-export function DocumentCanvas(p:Props){return <View pointerEvents={p.interactionEnabled===false?'none':'auto'} style={[StyleSheet.absoluteFill,{overflow:'hidden'}]}><View style={[StyleSheet.absoluteFill,p.zoomWindowEnabled&&{transform:[{scale:2.5}],transformOrigin:'top left'} as never]}><PdfBackground uri={p.pdfUri}/><HanjiCanvas drawingData={p.drawingData} tool={p.tool} onDrawingChange={v=>{p.onDrawingChange(v);p.onStrokeAdded?.(Date.now()/1000)}}/></View></View>}
+import { StyleSheet, View } from 'react-native';
+import type { ToolSpec } from '../types';
+import { HanjiCanvas } from './HanjiCanvas';
+import { PdfBackground } from './PdfBackground';
+type Props = {
+  pdfUri?: string;
+  pageIndex: number;
+  drawingData: string;
+  tool: ToolSpec;
+  zoomWindowEnabled?: boolean;
+  interactionEnabled?: boolean;
+  replayCutoff?: number;
+  onDrawingChange: (v: string) => void;
+  onPageCount?: (n: number) => void;
+  onPdfOutline?: (items: []) => void;
+  onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
+  onPencilDoubleTap?: () => void;
+  onPencilSqueeze?: () => void;
+  onEraserEnded?: () => void;
+  onStrokeAdded?: (createdAt: number) => void;
+};
+export function DocumentCanvas(p: Props) {
+  return (
+    <View pointerEvents={p.interactionEnabled === false ? 'none' : 'auto'} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          p.zoomWindowEnabled &&
+            ({
+              transform: [{ scale: 2.5 }],
+              transformOrigin: 'top left',
+            } as never),
+        ]}
+      >
+        <PdfBackground uri={p.pdfUri} />
+        <HanjiCanvas
+          drawingData={p.drawingData}
+          tool={p.tool}
+          onDrawingChange={(v) => {
+            p.onDrawingChange(v);
+            p.onStrokeAdded?.(Date.now() / 1000);
+          }}
+        />
+      </View>
+    </View>
+  );
+}

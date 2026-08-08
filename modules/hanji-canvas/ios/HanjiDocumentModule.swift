@@ -18,6 +18,7 @@ public final class HanjiDocumentModule: Module {
       Prop("redoSignal") { (view: HanjiDocumentView, value: Int) in view.applyRedoSignal(value) }
       Prop("zoomWindowEnabled") { (view: HanjiDocumentView, value: Bool) in view.setZoomWindow(value) }
       Prop("interactionEnabled") { (view: HanjiDocumentView, value: Bool) in view.canvas.isUserInteractionEnabled = value }
+      Prop("replayCutoff") { (view: HanjiDocumentView, value: Double?) in view.setReplayCutoff(value) }
     }
   }
 }
@@ -46,6 +47,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var activeKind = "pen"
   private var scratchEnabled = true
   private var zoomWindowEnabled = false
+  private var sourceDrawing = PKDrawing()
+  private var replayCutoff: Double?
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -147,11 +150,29 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     guard base64 != loadedDrawing else { return }
     loadedDrawing = base64
     if base64.isEmpty {
-      canvas.drawing = PKDrawing()
+      sourceDrawing = PKDrawing()
     } else if let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data) {
-      canvas.drawing = drawing
+      sourceDrawing = drawing
     }
+    renderReplay()
     knownStrokeCount = canvas.drawing.strokes.count
+  }
+
+  func setReplayCutoff(_ cutoff: Double?) {
+    replayCutoff = cutoff
+    renderReplay()
+  }
+
+  private func renderReplay() {
+    let drawing: PKDrawing
+    if let cutoff = replayCutoff {
+      drawing = PKDrawing(strokes: sourceDrawing.strokes.filter { $0.path.creationDate.timeIntervalSince1970 <= cutoff })
+    } else {
+      drawing = sourceDrawing
+    }
+    applyingShape = true
+    canvas.drawing = drawing
+    applyingShape = false
   }
 
   func setTool(_ value: [String: Any]) {
@@ -230,6 +251,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       if zoomWindowEnabled { autoAdvance(after: stroke) }
     }
     knownStrokeCount = strokes.count
+    sourceDrawing = canvasView.drawing
     let value = canvasView.drawing.dataRepresentation().base64EncodedString()
     loadedDrawing = value
     onDrawingChange(["drawingData": value])
