@@ -41,6 +41,7 @@ import type {
   Sticker,
   TextElement,
   ToolSpec,
+  Page,
 } from "./types";
 import {
   exportLibrary,
@@ -86,6 +87,7 @@ import { loadUiPreferences, saveUiPreferences } from "./uiPreferences";
 import { appearanceOverride } from "./themePolicy";
 import { ZoomablePage } from "./components/ZoomablePage";
 import { PageGridPanel } from "./components/PageGridPanel";
+import { resolvePdfPageIndex } from "./pdfNavigation";
 import { StickerPanel } from "./components/StickerPanel";
 import { loadStickers, saveStickers, stickerFromImage } from "./stickers";
 import { mergeCloudRestore } from "./cloudMerge";
@@ -892,9 +894,14 @@ export function HanjiApp() {
       ),
     }));
   const commitElementChange=(target:typeof page,before:PageElement,after:PageElement)=>{const previous=target.elements??[],next=previous.map(element=>element.id===after.id?after:element);recordSelectionHistory({kind:'snapshot',pageId:target.id,before:previous,after:next,native:false});changeElements(target,next)};
-  const handlePdfLink = (link: { pageIndex?: number; url?: string }) => {
-    if (link.pageIndex !== undefined) navigatePage(link.pageIndex);
-    else if (link.url) void Linking.openURL(link.url);
+  const handlePdfLink = (
+    link: { pageIndex?: number; url?: string },
+    sourcePage: Page,
+  ) => {
+    if (link.pageIndex !== undefined) {
+      const target = resolvePdfPageIndex(current.pages, sourcePage, link.pageIndex);
+      if (target !== undefined) navigatePage(target);
+    } else if (link.url) void Linking.openURL(link.url);
   };
   const capturePdfExcerpt = (
     sourcePage: typeof page,
@@ -1457,7 +1464,7 @@ export function HanjiApp() {
                 undoSignal={undoSignal}
                 redoSignal={redoSignal}
                 onPdfOutline={setPdfOutline}
-                onPdfLink={handlePdfLink}
+                onPdfLink={(link) => handlePdfLink(link, page)}
                 onPdfExcerpt={(excerpt) => capturePdfExcerpt(page, excerpt)}
                 onPencilDoubleTap={handlePencilDoubleTap}
                 onPencilSqueeze={handlePencilSqueeze}
@@ -1903,7 +1910,10 @@ export function HanjiApp() {
         visible={outlineOpen}
         items={pdfOutline}
         onClose={() => setOutlineOpen(false)}
-        onSelect={navigatePage}
+        onSelect={(pdfPageIndex) => {
+          const target = resolvePdfPageIndex(current.pages, page, pdfPageIndex);
+          if (target !== undefined) navigatePage(target);
+        }}
       />
       <PageTransferPanel
         visible={pageTransferOpen}

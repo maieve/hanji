@@ -88,7 +88,10 @@ type Props = {
   onAddPage: (placement?: "end") => void;
   onPageCount: (count: number, page: Page) => void;
   onPdfOutline: (items: PdfOutlineItem[]) => void;
-  onPdfLink: (link: { pageIndex?: number; url?: string }) => void;
+  onPdfLink: (
+    link: { pageIndex?: number; url?: string },
+    sourcePage: Page,
+  ) => void;
   onPdfExcerpt: (
     page: Page,
     excerpt: { text: string; pageIndex: number },
@@ -184,7 +187,7 @@ export function ContinuousDocument(props: Props) {
               index === props.activeIndex ? props.redoSignal : undefined
             }
             onPdfOutline={props.onPdfOutline}
-            onPdfLink={props.onPdfLink}
+            onPdfLink={(link) => props.onPdfLink(link, item)}
             onPdfExcerpt={(excerpt) => props.onPdfExcerpt(item, excerpt)}
             onPencilDoubleTap={props.onPencilDoubleTap}
             onPencilSqueeze={props.onPencilSqueeze}
