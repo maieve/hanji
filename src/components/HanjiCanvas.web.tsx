@@ -3,7 +3,7 @@ import { PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import type { HanjiCanvasProps } from './HanjiCanvas.types';
 
-type Stroke = { d: string; color: string; width: number; opacity: number };
+type Stroke = { d: string; color: string; width: number; opacity: number; dashed?: boolean };
 const decode = (raw: string): Stroke[] => { try { return raw ? JSON.parse(raw) : []; } catch { return []; } };
 const touches=(stroke:Stroke,x:number,y:number,radius:number)=>{const n=stroke.d.match(/-?\d+(?:\.\d+)?/g)??[];for(let i=0;i+1<n.length;i+=2)if(Math.hypot(Number(n[i])-x,Number(n[i+1])-y)<=radius+stroke.width/2)return true;return false};
 const shapePath=(kind:NonNullable<HanjiCanvasProps['tool']['shapeKind']>,sx:number,sy:number,x:number,y:number)=>{
@@ -33,7 +33,7 @@ export function HanjiCanvas({ drawingData, tool, onDrawingChange }: HanjiCanvasP
       if (tool.kind === 'lasso') return;
       if(tool.kind==='shape')shapeStart.current={x:nativeEvent.locationX,y:nativeEvent.locationY};
       strokeStart.current={x:nativeEvent.locationX,y:nativeEvent.locationY};strokeEnd.current=strokeStart.current;lastMoveAt.current=Date.now();
-      live.current = { d: `M ${nativeEvent.locationX} ${nativeEvent.locationY}`, color: tool.color, width: tool.width, opacity: tool.opacity ?? (tool.kind === 'marker' ? 0.35 : tool.kind === 'watercolor' ? 0.45 : tool.kind === 'pencil' ? 0.65 : tool.kind === 'crayon' ? 0.85 : 1) };
+      live.current = { d: `M ${nativeEvent.locationX} ${nativeEvent.locationY}`, color: tool.color, width: tool.width, opacity: tool.opacity ?? (tool.kind === 'marker' ? 0.35 : tool.kind === 'watercolor' ? 0.45 : tool.kind === 'pencil' ? 0.65 : tool.kind === 'crayon' ? 0.85 : 1),dashed:tool.kind==='shape'&&tool.shapeLineStyle==='dashed' };
       redraw(v => v + 1);
     },
     onPanResponderMove: ({ nativeEvent }) => {
@@ -50,7 +50,7 @@ export function HanjiCanvas({ drawingData, tool, onDrawingChange }: HanjiCanvasP
       const next = [...strokes, live.current]; live.current = null; shapeStart.current=null; setStrokes(next); onDrawingChange(JSON.stringify(next));
     },
   }), [onDrawingChange, strokes, tool]);
-  return <View style={s.fill} {...responder.panHandlers}><Svg width="100%" height="100%">{[...strokes, ...(live.current ? [live.current] : [])].map((x, i) => <Path key={i} d={x.d} stroke={x.color} strokeWidth={x.width} opacity={x.opacity} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg></View>;
+  return <View style={s.fill} {...responder.panHandlers}><Svg width="100%" height="100%">{[...strokes, ...(live.current ? [live.current] : [])].map((x, i) => <Path key={i} d={x.d} stroke={x.color} strokeWidth={x.width} strokeDasharray={x.dashed?'12 7':undefined} opacity={x.opacity} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg></View>;
 }
 const s = StyleSheet.create({ fill: { ...StyleSheet.absoluteFill } });
 

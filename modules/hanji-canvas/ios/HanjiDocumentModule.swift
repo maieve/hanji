@@ -43,6 +43,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var lastUndoSignal = 0
   private var lastRedoSignal = 0
   private var shapeKind: String?
+  private var shapeLineStyle = "solid"
   private var applyingShape = false
   private var activeKind = "pen"
   private var scratchEnabled = true
@@ -182,6 +183,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     scratchEnabled = value["scratchEnabled"] as? Bool ?? true
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
+    shapeLineStyle = value["shapeLineStyle"] as? String ?? "solid"
     let width = (value["width"] as? NSNumber)?.doubleValue ?? 2
     let opacity = (value["opacity"] as? NSNumber)?.doubleValue ?? 1
     canvas.isRulerActive = value["rulerActive"] as? Bool ?? false
@@ -242,7 +244,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       }
     }
     if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last {
-      let replacements = makeShapeStrokes(source, kind: shapeKind)
+      let replacements = makeShapeStrokes(source, kind: shapeKind, dashed: shapeLineStyle == "dashed")
       if !replacements.isEmpty {
         registerTransformUndo(canvasView.drawing)
         strokes.removeLast(); strokes.append(contentsOf: replacements)
@@ -294,7 +296,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
 
-  private func makeShapeStrokes(_ source: PKStroke, kind: String) -> [PKStroke] {
+  private func makeShapeStrokes(_ source: PKStroke, kind: String, dashed: Bool = false) -> [PKStroke] {
     guard source.path.count > 1 else { return [source] }
     var start = source.path[0].location, end = source.path[source.path.count - 1].location
     let angle = atan2(end.y - start.y, end.x - start.x), tolerance = CGFloat.pi / 60
@@ -313,10 +315,34 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     default: locations = [[start, end]]
     }
     let prototype = source.path[0]
-    return locations.map { points in
+    let paths = dashed ? locations.flatMap { dashedPaths($0) } : locations
+    return paths.map { points in
       let controls = points.enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: prototype.size, opacity: prototype.opacity, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
       return PKStroke(ink: source.ink, path: PKStrokePath(controlPoints: controls, creationDate: source.path.creationDate))
     }
+  }
+
+  private func dashedPaths(_ points: [CGPoint]) -> [[CGPoint]] {
+    guard points.count > 1 else { return [] }
+    var samples: [(CGPoint, CGFloat)] = [(points[0], 0)], distance = CGFloat(0)
+    for index in 1..<points.count {
+      let start = points[index - 1], end = points[index], length = hypot(end.x - start.x, end.y - start.y)
+      let steps = max(1, Int(ceil(length / 2)))
+      for step in 1...steps {
+        let t = CGFloat(step) / CGFloat(steps)
+        distance += length / CGFloat(steps)
+        samples.append((CGPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t), distance))
+      }
+    }
+    var result: [[CGPoint]] = [], active: [CGPoint] = []
+    for (point, traveled) in samples {
+      let drawing = traveled.truncatingRemainder(dividingBy: 19) < 12
+      if drawing { active.append(point) }
+      else if active.count > 1 { result.append(active); active = [] }
+      else { active = [] }
+    }
+    if active.count > 1 { result.append(active) }
+    return result
   }
 
   private func isScratchStroke(_ stroke: PKStroke) -> Bool {

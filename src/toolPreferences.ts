@@ -23,7 +23,7 @@ export const defaultToolPresets:ToolPreset[]=[
 export const isInkTool=(kind:ToolKind):kind is InkToolKind=>inkKinds.includes(kind as InkToolKind);
 
 export function selectToolKind(tool:ToolSpec,kind:ToolKind):ToolSpec{
-  if(!isInkTool(kind))return{...tool,kind,...(kind==='eraser'?{eraserMode:tool.eraserMode??'vector'}:{}),...(kind==='shape'?{shapeKind:tool.shapeKind??'line'}:{})};
+  if(!isInkTool(kind))return{...tool,kind,...(kind==='eraser'?{eraserMode:tool.eraserMode??'vector'}:{}),...(kind==='shape'?{shapeKind:tool.shapeKind??'line',shapeLineStyle:tool.shapeLineStyle??'solid'}:{})};
   return{...tool,kind,...defaults[kind]};
 }
 
