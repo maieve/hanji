@@ -1,11 +1,12 @@
 export type ToolKind='pen'|'fountainPen'|'monoline'|'pencil'|'crayon'|'watercolor'|'marker'|'eraser'|'lasso'|'shape';
 export type ShapeKind='line'|'arrow'|'ellipse'|'rectangle'|'triangle';
+export type PageRotation=0|90|180|270;
 export type ToolSpec={kind:ToolKind;color:string;width:number;opacity?:number;eraserMode?:'vector'|'bitmap'|'fixedWidthBitmap';rulerActive?:boolean;shapeKind?:ShapeKind;scratchEnabled?:boolean};
 export type OcrWord={text:string;confidence:number;x:number;y:number;width:number;height:number};
 export type TextElement={id:string;kind:'text';text:string;x:number;y:number;width:number;height:number;fontSize:number;color:string};
 export type ImageElement={id:string;kind:'image';uri:string;x:number;y:number;width:number;height:number};
 export type PageElement=TextElement|ImageElement;
-export type Page={id:string;drawingData:string;template:'plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'dark';customTemplateUri?:string;updatedAt:string;bookmarked?:boolean;elements?:PageElement[];pdfUri?:string;pdfName?:string;pdfPageIndex?:number;ocrText?:string;ocrWords?:OcrWord[]};
+export type Page={id:string;drawingData:string;template:'plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'dark';rotation?:PageRotation;customTemplateUri?:string;updatedAt:string;bookmarked?:boolean;elements?:PageElement[];pdfUri?:string;pdfName?:string;pdfPageIndex?:number;ocrText?:string;ocrWords?:OcrWord[]};
 export type StrokeSync={pageId:string;createdAt:number;seekSec:number};
 export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[]};
 export type Flashcard={id:string;question:string;answer:string;createdAt:string;updatedAt:string;dueAt:string;intervalDays:number;easeFactor:number;repetitions:number;lapses:number;lastReviewedAt?:string};

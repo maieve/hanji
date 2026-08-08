@@ -34,8 +34,10 @@ public final class HanjiVisionModule: Module {
           let sourceDocument = sourceURL.flatMap { PDFDocument(url: $0) }
           let sourcePage = sourceDocument?.page(at: Int(item["pdfPageIndex"] ?? "") ?? index)
           let bounds = sourcePage?.bounds(for: .mediaBox) ?? defaultBounds
-          context.beginPage(withBounds: bounds, pageInfo: [:])
-          UIColor.white.setFill(); context.cgContext.fill(bounds)
+          let rotation = Int(item["rotation"] ?? "") ?? 0, outputBounds = rotatedBounds(bounds, rotation: rotation)
+          context.beginPage(withBounds: outputBounds, pageInfo: [:])
+          UIColor.white.setFill(); context.cgContext.fill(outputBounds)
+          context.cgContext.saveGState(); applyPageRotation(context.cgContext, source: bounds, rotation: rotation)
           if let sourcePage {
             context.cgContext.saveGState()
             context.cgContext.translateBy(x: 0, y: bounds.height)
@@ -47,6 +49,7 @@ public final class HanjiVisionModule: Module {
             drawing.image(from: bounds, scale: 3).draw(in: bounds)
           }
           drawTextElements(item["elements"] ?? "[]", in: bounds)
+          context.cgContext.restoreGState()
         }
       }
       return outputURL.absoluteString
@@ -58,9 +61,11 @@ public final class HanjiVisionModule: Module {
       let sourceURL = pdfURI.isEmpty ? nil : (pdfURI.hasPrefix("file://") ? URL(string: pdfURI) : URL(fileURLWithPath: pdfURI))
       let sourcePage = sourceURL.flatMap { PDFDocument(url: $0) }?.page(at: Int(item["pdfPageIndex"] ?? "") ?? 0)
       let bounds = sourcePage?.bounds(for: .mediaBox) ?? defaultBounds
+      let rotation = Int(item["rotation"] ?? "") ?? 0, outputBounds = rotatedBounds(bounds, rotation: rotation)
       let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
-      let image = UIGraphicsImageRenderer(size: bounds.size, format: format).image { context in
-        UIColor.white.setFill(); context.cgContext.fill(bounds)
+      let image = UIGraphicsImageRenderer(size: outputBounds.size, format: format).image { context in
+        UIColor.white.setFill(); context.cgContext.fill(outputBounds)
+        context.cgContext.saveGState(); applyPageRotation(context.cgContext, source: bounds, rotation: rotation)
         if let sourcePage {
           context.cgContext.saveGState()
           context.cgContext.translateBy(x: 0, y: bounds.height)
@@ -72,11 +77,26 @@ public final class HanjiVisionModule: Module {
           drawing.image(from: bounds, scale: 3).draw(in: bounds)
         }
         drawTextElements(item["elements"] ?? "[]", in: bounds)
+        context.cgContext.restoreGState()
       }
       guard let data = image.pngData() else { throw NSError(domain: "HanjiExport", code: 1, userInfo: [NSLocalizedDescriptionKey: "PNG encoding failed"]) }
       try data.write(to: outputURL, options: .atomic)
       return outputURL.absoluteString
     }
+  }
+}
+
+private func rotatedBounds(_ source: CGRect, rotation: Int) -> CGRect {
+  let normalized = ((rotation % 360) + 360) % 360
+  return normalized == 90 || normalized == 270 ? CGRect(x: 0, y: 0, width: source.height, height: source.width) : CGRect(origin: .zero, size: source.size)
+}
+
+private func applyPageRotation(_ context: CGContext, source: CGRect, rotation: Int) {
+  switch ((rotation % 360) + 360) % 360 {
+  case 90: context.translateBy(x: source.height, y: 0); context.rotate(by: .pi / 2)
+  case 180: context.translateBy(x: source.width, y: source.height); context.rotate(by: .pi)
+  case 270: context.translateBy(x: 0, y: source.width); context.rotate(by: -.pi / 2)
+  default: break
   }
 }
 
