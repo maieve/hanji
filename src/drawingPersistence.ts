@@ -26,3 +26,18 @@ export function libraryMetadata(items: Notebook[]): StoredNotebook[] {
     })),
   }));
 }
+
+export function referencedDrawingRefs(items: StoredNotebook[]) {
+  return new Set(
+    items.flatMap((note) =>
+      note.pages.flatMap((page) => (page.drawingRef ? [page.drawingRef] : [])),
+    ),
+  );
+}
+
+export function staleDrawingRefs(existingNames: string[], items: StoredNotebook[]) {
+  const referenced = referencedDrawingRefs(items);
+  return existingNames.filter(
+    (name) => name.endsWith(".drawing") && !referenced.has(name),
+  );
+}

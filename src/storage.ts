@@ -3,7 +3,7 @@ import type { Notebook, Page, PageTemplate, TemplateSpacing } from "./types";
 import { expandFolderPaths } from "./folders";
 import { normalizeTemplateSpacing } from "./templateSpacing";
 import { Directory, File, Paths } from "expo-file-system";
-import { drawingBlobName, libraryMetadata, type StoredNotebook } from "./drawingPersistence";
+import { drawingBlobName, libraryMetadata, staleDrawingRefs, type StoredNotebook } from "./drawingPersistence";
 const KEY = "hanji.library.v3";
 const LEGACY_KEY = "hanji.library.v2";
 const CATEGORY_KEY = "hanji.categories.v1";
@@ -120,6 +120,9 @@ export async function saveLibrary(v: Notebook[]) {
       corruptDrawingRefs.delete(drawingRef);
     }
     await AsyncStorage.setItem(KEY,JSON.stringify(metadata));
+    const drawingFiles=directory.list().filter((entry):entry is File=>entry instanceof File&&entry.extension===".drawing");
+    const stale=new Set(staleDrawingRefs(drawingFiles.map((file)=>file.name),metadata));
+    for(const file of drawingFiles)if(stale.has(file.name)&&file.exists)file.delete();
   });
   saveQueue=task.then(()=>undefined,()=>undefined);await task;
 }
