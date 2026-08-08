@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useMemo } from "react";
 import { pencilDoubleTapActions, pencilSqueezeActions } from "../pencilActions";
 import type { PencilAction } from "../pencilActions";
 import { C } from "../theme";
@@ -16,6 +17,7 @@ import type { PageTemplate } from "../types";
 import type { UiPreferences } from "../uiPreferences";
 import { templateSpacings } from "../templateSpacing";
 import { appColorSchemes } from "../themePolicy";
+import { collectNativeDiagnostics, nativeBuildIdentity, nativeDiagnosticSummary } from "../nativeDiagnostics";
 
 const templates: { value: PageTemplate; label: string }[] = [
   { value: "plain", label: "백지" },
@@ -43,6 +45,8 @@ export function SettingsPanel({
   onChange: (value: UiPreferences) => void;
   onClose: () => void;
 }) {
+  const diagnostics = useMemo(collectNativeDiagnostics, [visible]);
+  const diagnosticSummary = nativeDiagnosticSummary(diagnostics);
   const toggle =
     (
       key:
@@ -348,6 +352,31 @@ export function SettingsPanel({
               )}
             </Pressable>
           </View>
+          <Text style={s.section}>설치 진단</Text>
+          <View
+            accessibilityRole="summary"
+            accessibilityLabel={`네이티브 기능 ${diagnosticSummary.available}/${diagnosticSummary.total}개 준비됨`}
+            style={[s.diagnosticCard, !diagnosticSummary.ready && s.diagnosticCardError]}
+          >
+            <View style={s.diagnosticHeader}>
+              <View style={[s.diagnosticStatus, !diagnosticSummary.ready && s.diagnosticStatusError]} />
+              <View style={s.grow}>
+                <Text style={s.label}>{diagnosticSummary.ready ? "iPad 기능 준비 완료" : "네이티브 기능 누락"}</Text>
+                <Text selectable style={s.buildText}>{nativeBuildIdentity()}</Text>
+              </View>
+              <Text style={[s.diagnosticCount, !diagnosticSummary.ready && s.error]}>{diagnosticSummary.available}/{diagnosticSummary.total}</Text>
+            </View>
+            <View style={s.diagnosticList}>
+              {diagnostics.map((item) => (
+                <View key={item.name} style={s.diagnosticRow}>
+                  <Ionicons name={item.available ? "checkmark-circle" : "close-circle"} size={17} color={item.available ? C.accent : C.danger} />
+                  <Text style={s.diagnosticLabel}>{item.label}</Text>
+                  <Text style={s.diagnosticCode}>{item.name}</Text>
+                </View>
+              ))}
+            </View>
+            {!diagnosticSummary.ready && <Text accessibilityRole="alert" style={s.diagnosticHelp}>이 IPA에는 필수 iPad 모듈이 빠졌습니다. 최신 릴리스 IPA를 기존 앱 위에 다시 설치하세요.</Text>}
+          </View>
           <Text style={s.note}>
             설정은 이 iPad에 저장됩니다. 기본 템플릿과 삽입 위치는 새 페이지부터
             적용되고 기존 페이지는 바뀌지 않습니다. 자동 백업은 선택한 최소
@@ -553,6 +582,18 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 14,
   },
+  diagnosticCard: { padding: 15, borderRadius: 16, borderWidth: 1, borderColor: C.line, backgroundColor: C.white },
+  diagnosticCardError: { borderColor: C.danger },
+  diagnosticHeader: { flexDirection: "row", alignItems: "center", gap: 11 },
+  diagnosticStatus: { width: 11, height: 11, borderRadius: 6, backgroundColor: C.accent },
+  diagnosticStatusError: { backgroundColor: C.danger },
+  buildText: { fontSize: 10, color: C.muted, marginTop: 4 },
+  diagnosticCount: { fontSize: 14, fontWeight: "900", color: C.accent },
+  diagnosticList: { marginTop: 13, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 9, gap: 8 },
+  diagnosticRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  diagnosticLabel: { flex: 1, fontSize: 11, fontWeight: "700", color: C.ink },
+  diagnosticCode: { fontSize: 9, color: C.muted },
+  diagnosticHelp: { marginTop: 11, fontSize: 11, lineHeight: 16, color: C.danger, fontWeight: "700" },
   rebuild: {
     height: 38,
     borderRadius: 11,
