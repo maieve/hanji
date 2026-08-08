@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
   type ViewToken,
 } from "react-native";
-import type { ImageElement, Page, PageElement, ToolSpec } from "../types";
+import type { ImageElement, Page, PageElement, StrokeEvent, ToolSpec } from "../types";
 import { C } from "../theme";
 import { DocumentCanvas, type PdfOutlineItem } from "./DocumentCanvas";
 import { ElementsLayer } from "./ElementsLayer";
@@ -103,8 +103,8 @@ type Props = {
   onPencilDoubleTap: (preferredAction?: string) => void;
   onPencilSqueeze: (phase: "began" | "ended", preferredAction?: string) => void;
   onEraserEnded: () => void;
-  onStrokeAdded: (page: Page, createdAt: number) => void;
-  onStrokeTapped: (page: Page, createdAt: number) => void;
+  onStrokeAdded: (page: Page, event: StrokeEvent) => void;
+  onStrokeTapped: (page: Page, event: StrokeEvent) => void;
 };
 
 export function ContinuousDocument(props: Props) {
@@ -195,9 +195,9 @@ export function ContinuousDocument(props: Props) {
             onPencilDoubleTap={props.onPencilDoubleTap}
             onPencilSqueeze={props.onPencilSqueeze}
             onEraserEnded={props.onEraserEnded}
-            onStrokeAdded={(createdAt) => props.onStrokeAdded(item, createdAt)}
-            onStrokeTapped={(createdAt) =>
-              props.onStrokeTapped(item, createdAt)
+            onStrokeAdded={(event) => props.onStrokeAdded(item, event)}
+            onStrokeTapped={(event) =>
+              props.onStrokeTapped(item, event)
             }
             onSelectionChange={(selection) =>
               props.onSelectionChange(item, selection)

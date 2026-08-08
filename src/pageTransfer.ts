@@ -5,7 +5,7 @@ const makeId=()=>`${Date.now().toString(36)}-${Math.random().toString(36).slice(
 const blankPage=():Page=>({id:makeId(),drawingData:'',template:'line',templateSpacing:'medium',updatedAt:now()});
 const clonePage=(page:Page):Page=>({...page,id:makeId(),updatedAt:now(),elements:page.elements?.map(element=>({...element,id:makeId()}))});
 const pageAudio=(note:Notebook,pageId:string,nextPageId:string):AudioSession[]=>(note.audioSessions??[]).flatMap(session=>{const strokes=session.strokes.filter(x=>x.pageId===pageId).map(x=>({...x,pageId:nextPageId}));return strokes.length?[{...session,strokes}]:[]});
-const appendAudio=(existing:AudioSession[],incoming:AudioSession[])=>incoming.reduce((all,next)=>{const index=all.findIndex(x=>x.uri===next.uri&&x.createdAt===next.createdAt);if(index<0)return[...all,next];const copy=[...all];const current=copy[index];if(current)copy[index]={...current,strokes:[...current.strokes,...next.strokes].filter((stroke,i,array)=>array.findIndex(x=>x.pageId===stroke.pageId&&x.createdAt===stroke.createdAt)===i)};return copy},existing);
+const appendAudio=(existing:AudioSession[],incoming:AudioSession[])=>incoming.reduce((all,next)=>{const index=all.findIndex(x=>x.uri===next.uri&&x.createdAt===next.createdAt);if(index<0)return[...all,next];const copy=[...all];const current=copy[index];if(current)copy[index]={...current,strokes:[...current.strokes,...next.strokes].filter((stroke,i,array)=>array.findIndex(x=>x.pageId===stroke.pageId&&(stroke.strokeId?x.strokeId===stroke.strokeId:x.createdAt===stroke.createdAt))===i)};return copy},existing);
 
 export function duplicateNotebookPage(note:Notebook,pageId:string):Notebook{
  const index=note.pages.findIndex(page=>page.id===pageId),source=note.pages[index];if(!source)return note;

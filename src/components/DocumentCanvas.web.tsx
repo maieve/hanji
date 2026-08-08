@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import type { DrawingViewport, ToolSpec } from '../types';
+import type { DrawingViewport, StrokeEvent, ToolSpec } from '../types';
 import { HanjiCanvas } from './HanjiCanvas';
 import { PdfBackground } from './PdfBackground';
 type Props = {
@@ -21,7 +21,7 @@ type Props = {
   onPencilDoubleTap?: () => void;
   onPencilSqueeze?: () => void;
   onEraserEnded?: () => void;
-  onStrokeAdded?: (createdAt: number) => void;
+  onStrokeAdded?: (event: StrokeEvent) => void;
   onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
   onSelectionClip?: (result: { uri: string; x: number; y: number; width: number; height: number }) => void;
@@ -46,7 +46,7 @@ export function DocumentCanvas(p: Props) {
           tool={p.tool}
           onDrawingChange={(v) => {
             p.onDrawingChange(v);
-            p.onStrokeAdded?.(Date.now() / 1000);
+            p.onStrokeAdded?.({createdAt:Date.now() / 1000});
           }}
         />
       </View>

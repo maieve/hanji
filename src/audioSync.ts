@@ -6,7 +6,14 @@ export function findAudioStroke(
   sessions: AudioSession[],
   pageId: string,
   createdAt: number,
+  strokeId?: string,
 ): AudioStrokeMatch | undefined {
+  if(strokeId){
+    for(const session of sessions){
+      const stroke=session.strokes.find(item=>item.pageId===pageId&&item.strokeId===strokeId);
+      if(stroke)return{session,stroke};
+    }
+  }
   let best: AudioStrokeMatch | undefined;
   let distance = Number.POSITIVE_INFINITY;
   for (const session of sessions) {

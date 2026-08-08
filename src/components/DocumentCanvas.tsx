@@ -1,6 +1,6 @@
 import { requireNativeViewManager } from 'expo-modules-core';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import type { DrawingViewport, NativeStroke, ToolSpec } from '../types';
+import type { DrawingViewport, NativeStroke, StrokeEvent, ToolSpec } from '../types';
 export type PdfOutlineItem = {
   title: string;
   pageIndex: number;
@@ -30,8 +30,8 @@ type Props = {
   onPencilDoubleTap?: (preferredAction?: string) => void;
   onPencilSqueeze?: (phase: 'began' | 'ended', preferredAction?: string) => void;
   onEraserEnded?: () => void;
-  onStrokeAdded?: (createdAt: number) => void;
-  onStrokeTapped?: (createdAt: number) => void;
+  onStrokeAdded?: (event: StrokeEvent) => void;
+  onStrokeTapped?: (event: StrokeEvent) => void;
   onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
   onSelectionClip?: (result: { uri: string; x: number; y: number; width: number; height: number }) => void;
@@ -80,8 +80,8 @@ export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function Do
       onEraserEnded={() => {
         if (p.tool.kind === 'eraser' && (p.tool.eraserAutoReturn ?? true)) p.onEraserEnded?.();
       }}
-      onStrokeAdded={(e: E<{ createdAt: number }>) => p.onStrokeAdded?.(e.nativeEvent.createdAt)}
-      onStrokeTapped={(e: E<{ createdAt: number }>) => p.onStrokeTapped?.(e.nativeEvent.createdAt)}
+      onStrokeAdded={(e: E<StrokeEvent>) => p.onStrokeAdded?.(e.nativeEvent)}
+      onStrokeTapped={(e: E<StrokeEvent>) => p.onStrokeTapped?.(e.nativeEvent)}
       onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }>) => p.onSelectionChange?.(e.nativeEvent)}
       onSelectionText={(e: E<{ text: string; x: number; y: number; width: number; height: number }>) => p.onSelectionText?.(e.nativeEvent)}
       onSelectionClip={(e: E<{ uri: string; x: number; y: number; width: number; height: number }>) => p.onSelectionClip?.(e.nativeEvent)}

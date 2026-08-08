@@ -470,7 +470,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   @objc private func handleCanvasTap(_ recognizer: UITapGestureRecognizer) {
     let point = recognizer.location(in: canvas)
     let hit = canvas.drawing.strokes.reversed().first { $0.renderBounds.insetBy(dx: -14, dy: -14).contains(point) }
-    if let hit { onStrokeTapped(["createdAt": hit.path.creationDate.timeIntervalSince1970]); return }
+    if let hit { onStrokeTapped(["id": strokeIdentifier(hit), "createdAt": hit.path.creationDate.timeIntervalSince1970]); return }
     let pdfPoint = canvas.convert(point, to: pdfView)
     guard let page = pdfView.page(for: pdfPoint, nearest: false) else { return }
     let pagePoint = pdfView.convert(pdfPoint, to: page)

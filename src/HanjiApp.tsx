@@ -41,6 +41,8 @@ import type {
   Notebook,
   PageElement,
   Sticker,
+  StrokeEvent,
+  StrokeSync,
   TextElement,
   ToolSpec,
   Page,
@@ -217,9 +219,7 @@ export function HanjiApp() {
   const ocrJobs = useRef<Array<() => Promise<void>>>([]);
   const ocrRunning = useRef(0);
   const audioStartRef = useRef<number | null>(null);
-  const audioStrokesRef = useRef<
-    { pageId: string; createdAt: number; seekSec: number }[]
-  >([]);
+  const audioStrokesRef = useRef<StrokeSync[]>([]);
   const [tool, setToolState] = useState<ToolSpec>({
     kind: "pen",
     color: DOCUMENT_INK,
@@ -1230,18 +1230,19 @@ export function HanjiApp() {
     )
       queueOcr(current.id, target.id, target.drawingData);
   };
-  const handleStrokeAdded = (target: typeof page, createdAt: number) => {
+  const handleStrokeAdded = (target: typeof page, event: StrokeEvent) => {
     selectionUndoRef.current=[];selectionRedoRef.current=[];
     const started = audioStartRef.current;
     if (started === null) return;
     audioStrokesRef.current.push({
       pageId: target.id,
-      createdAt,
-      seekSec: Math.max(0, createdAt - started),
+      strokeId:event.id,
+      createdAt:event.createdAt,
+      seekSec: Math.max(0, event.createdAt - started),
     });
   };
-  const handleStrokeTapped = (target: typeof page, createdAt: number) => {
-    const match = findAudioStroke(current.audioSessions ?? [], target.id, createdAt);
+  const handleStrokeTapped = (target: typeof page, event: StrokeEvent) => {
+    const match = findAudioStroke(current.audioSessions ?? [], target.id, event.createdAt,event.id);
     if (match)
       setAudioSeek({
         seconds: match.stroke.seekSec,
@@ -1752,8 +1753,8 @@ export function HanjiApp() {
                 onPencilDoubleTap={handlePencilDoubleTap}
                 onPencilSqueeze={handlePencilSqueeze}
                 onEraserEnded={restorePencilTool}
-                onStrokeAdded={(createdAt) =>
-                  handleStrokeAdded(page, createdAt)
+                onStrokeAdded={(event) =>
+                  handleStrokeAdded(page, event)
                 }
                 onStrokeTapped={(createdAt) =>
                   handleStrokeTapped(page, createdAt)
