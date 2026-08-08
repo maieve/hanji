@@ -78,7 +78,7 @@ export function HanjiApp() {
   }>();
   const [replayCutoff, setReplayCutoff] = useState<number>();
   const [selection,setSelection]=useState<{pageId:string;count:number}>({pageId:'',count:0});
-  const [selectionAction,setSelectionAction]=useState<{nonce:number;type:'delete'|'recolor'|'text'|'clear';color?:string}>();
+  const [selectionAction,setSelectionAction]=useState<{nonce:number;type:'delete'|'recolor'|'text'|'clear'|'copy'|'duplicate';color?:string}>();
   const selectionUndoRef=useRef<{pageId:string;element:TextElement}|null>(null);const selectionRedoRef=useRef<{pageId:string;element:TextElement}|null>(null);
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
@@ -427,7 +427,7 @@ export function HanjiApp() {
     update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===target.id?{...p,elements:[...(p.elements??[]),element],updatedAt:new Date().toISOString()}:p)}));setElementMode(true);setSelection({pageId:'',count:0});
     selectionUndoRef.current={pageId:target.id,element};selectionRedoRef.current=null;
   };
-  const actOnSelection=(type:'delete'|'recolor'|'text'|'clear')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
+  const actOnSelection=(type:'delete'|'recolor'|'text'|'clear'|'copy'|'duplicate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
   const activateLasso=()=>setTool(active=>({...active,kind:'lasso'}));
   const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
   const performRedo=()=>{const conversion=selectionRedoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:[...(p.elements??[]),conversion.element]}:p)}));selectionUndoRef.current=conversion;selectionRedoRef.current=null}setRedoSignal(v=>v+1)};
@@ -621,7 +621,7 @@ export function HanjiApp() {
             onReplayCutoffChange={setReplayCutoff}
             onTranscribe={transcribeSession}
           />
-          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
+          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onDuplicate={()=>actOnSelection('duplicate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
         </View>
         <View style={s.rail}>
           <Text style={s.railTitle}>페이지</Text>

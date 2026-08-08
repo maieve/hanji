@@ -14,7 +14,7 @@ type Props = {
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
-  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear'; color?: string };
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear' | 'copy' | 'duplicate'; color?: string };
   undoSignal?: number;
   redoSignal?: number;
   onDrawingChange: (v: string) => void;

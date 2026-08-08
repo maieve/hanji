@@ -10,7 +10,7 @@ type Props = {
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
-  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear'; color?: string };
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear' | 'copy' | 'duplicate'; color?: string };
   onDrawingChange: (v: string) => void;
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: []) => void;

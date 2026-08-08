@@ -298,6 +298,25 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let action = value["type"] as? String ?? ""
     if action == "clear" { clearSelection(); return }
     guard !selectedStrokeIndexes.isEmpty else { return }
+    if action == "copy" {
+      let chosen = canvas.drawing.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? $0.element : nil }
+      let drawing = PKDrawing(strokes: chosen), bounds = drawing.bounds.insetBy(dx: -10, dy: -10)
+      UIPasteboard.general.image = drawing.image(from: bounds, scale: 3)
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      return
+    }
+    if action == "duplicate" {
+      let original = canvas.drawing, chosen = original.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? offsetStroke($0.element, dx: 18, dy: 18) : nil }
+      guard !chosen.isEmpty else { return }
+      registerTransformUndo(original)
+      let first = original.strokes.count
+      replaceDrawing(PKDrawing(strokes: original.strokes + chosen))
+      selectedStrokeIndexes = Array(first..<(first + chosen.count))
+      selectionBounds = selectionBounds.offsetBy(dx: 18, dy: 18)
+      selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+      emitSelection(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      return
+    }
     if action == "text" { recognizeSelection(); return }
     let original = canvas.drawing, selected = Set(selectedStrokeIndexes), strokes = original.strokes
     var changed: [PKStroke]
@@ -345,6 +364,14 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     sourceDrawing = drawing; knownStrokeCount = drawing.strokes.count
     let encoded = drawing.dataRepresentation().base64EncodedString(); loadedDrawing = encoded
     onDrawingChange(["drawingData": encoded])
+  }
+
+  private func offsetStroke(_ stroke: PKStroke, dx: CGFloat, dy: CGFloat) -> PKStroke {
+    let controls = (0..<stroke.path.count).map { index in
+      let point = stroke.path[index]
+      return PKStrokePoint(location: CGPoint(x: point.location.x + dx, y: point.location.y + dy), timeOffset: point.timeOffset, size: point.size, opacity: point.opacity, force: point.force, azimuth: point.azimuth, altitude: point.altitude)
+    }
+    return PKStroke(ink: stroke.ink, path: PKStrokePath(controlPoints: controls, creationDate: stroke.path.creationDate))
   }
 
   func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
