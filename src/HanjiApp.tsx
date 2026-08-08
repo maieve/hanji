@@ -46,6 +46,7 @@ import {insertPage} from './pageInsert';
 import {backupIntervalMs} from './backupPolicy';
 import {ExportPanel} from './components/ExportPanel';
 import {FolderManager} from './components/FolderManager';
+import {librarySearchMatches,mayRevealNotebookSnippet} from './notebookPrivacy';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -54,6 +55,7 @@ export function HanjiApp() {
   const [categories, setCategories] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [unlockedNotes,setUnlockedNotes]=useState<Set<string>>(()=>new Set());
   const [pageIndex, setPageIndex] = useState(0);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const tabPages = useRef<Record<string, number>>({});
@@ -173,6 +175,7 @@ export function HanjiApp() {
   useEffect(() => {
     if (openId) setOpenTabs((tabs) => (tabs.includes(openId) ? tabs : [...tabs, openId]));
   }, [openId]);
+  useEffect(()=>setUnlockedNotes(new Set()),[privacy.sessionRevision]);
   const importPdf = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: 'application/pdf',
@@ -206,6 +209,12 @@ export function HanjiApp() {
     ocrTimers.current.set(key,timer);
   };
   const current = items.find((x) => x.id === openId);
+  const unlockNotebook=async(note:Notebook)=>{
+    if(!note.locked||unlockedNotes.has(note.id))return true;
+    const success=await privacy.authenticate(`${note.title} 잠금 해제`);
+    if(success)setUnlockedNotes(currentSet=>new Set(currentSet).add(note.id));
+    return success;
+  };
   const update = (id: string, fn: (n: Notebook) => Notebook) => setItems((all) => all.map((n) => (n.id === id ? fn(n) : n)));
   if (!ready)
     return (
@@ -215,6 +224,7 @@ export function HanjiApp() {
       </View>
     );
   if (privacy.locked) return <LockScreen onUnlock={() => void privacy.authenticate()} />;
+  if(current?.locked&&!unlockedNotes.has(current.id))return <LockScreen onUnlock={()=>void unlockNotebook(current)} />;
   if (!current)
     return (
       <Library
@@ -224,13 +234,15 @@ export function HanjiApp() {
         searchHits={searchHits}
         backupRetention={uiPreferences.backupRetention}
         setQuery={setQuery}
-        onOpen={(id, index = 0, searchQuery) => {
+        onOpen={async(id, index = 0, searchQuery) => {
+          const opening=items.find(note=>note.id===id);if(!opening||!await unlockNotebook(opening))return;
           update(id, (n) => ({ ...n, lastOpenedAt: new Date().toISOString() }));
           const target=items.find(note=>note.id===id)?.pages[index];setSearchFocus(searchQuery&&target?{pageId:target.id,query:searchQuery,nonce:Date.now()}:undefined);if(searchQuery&&target?.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(id,target.id,target.drawingData);
           setOpenId(id);
           setPageIndex(index);
         }}
         onUpdate={(changed) => setItems((all) => all.map((n) => (n.id === changed.id ? changed : n)))}
+        onToggleNotebookLock={async(note)=>{const success=await privacy.authenticate(note.locked?`${note.title} 잠금 끄기`:`${note.title} 잠금 켜기`);if(!success)return false;const changed={...note,locked:!note.locked,updatedAt:new Date().toISOString()};setItems(all=>all.map(item=>item.id===note.id?changed:item));setUnlockedNotes(currentSet=>{const next=new Set(currentSet);if(changed.locked)next.add(note.id);else next.delete(note.id);return next});return true}}
         onCloudRestore={(restored) => {
           setCategories((all) => expandFolderPaths([...all, ...restored.map((n) => n.folder)]));
           setItems((existing) => mergeCloudRestore(existing, restored));
@@ -293,7 +305,8 @@ export function HanjiApp() {
     );
   const page = current.pages[pageIndex] ?? current.pages[0];
   if (!page) return null;
-  const selectTab = (id: string) => {
+  const selectTab = async(id: string) => {
+    const note=items.find(item=>item.id===id);if(!note||!await unlockNotebook(note))return;
     setOpenId(id);
     setPageIndex(tabPages.current[id] ?? 0);
   };
@@ -872,7 +885,7 @@ export function HanjiApp() {
   );
 }
 
-function Library({ items, categories, query, searchHits,backupRetention, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory,onRenameCategory,onDeleteCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void;onRenameCategory:(folder:string,name:string)=>boolean;onDeleteCategory:(folder:string)=>void; onMoveCategory: (id: string, category: string) => void }) {
+function Library({ items, categories, query, searchHits,backupRetention, setQuery, onOpen, onUpdate,onToggleNotebookLock, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory,onRenameCategory,onDeleteCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void|Promise<void>; onUpdate: (n: Notebook) => void;onToggleNotebookLock:(n:Notebook)=>Promise<boolean>; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void;onRenameCategory:(folder:string,name:string)=>boolean;onDeleteCategory:(folder:string)=>void; onMoveCategory: (id: string, category: string) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [selected, setSelected] = useState('전체');
@@ -881,7 +894,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
   const [managing, setManaging] = useState<Notebook | null>(null);
   const [managingFolder,setManagingFolder]=useState<string|null>(null);
   const hitMap = useMemo(() => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []), [searchHits]);
-  const filtered = useMemo(() => items.filter((x) => (selected === '전체' || (selected === '즐겨찾기' && x.favorite) || (selected === '최근 문서' && x.lastOpenedAt) || folderContains(selected, x.folder)) && (!query.trim() || (searchHits ? hitMap.has(x.id) : `${x.title} ${x.tags.join(' ')} ${x.pages.map((p) => p.ocrText ?? '').join(' ')}`.toLowerCase().includes(query.toLowerCase())))).sort((a, b) => (selected === '최근 문서' ? (b.lastOpenedAt ?? '').localeCompare(a.lastOpenedAt ?? '') : b.updatedAt.localeCompare(a.updatedAt))), [items, query, selected, searchHits, hitMap]);
+  const filtered = useMemo(() => items.filter((x) => (selected === '전체' || (selected === '즐겨찾기' && x.favorite) || (selected === '최근 문서' && x.lastOpenedAt) || folderContains(selected, x.folder)) && librarySearchMatches(x,query,searchHits?hitMap.has(x.id):false)).sort((a, b) => (selected === '최근 문서' ? (b.lastOpenedAt ?? '').localeCompare(a.lastOpenedAt ?? '') : b.updatedAt.localeCompare(a.updatedAt))), [items, query, selected, searchHits, hitMap]);
   const addCategory = () => {
     const name = draft.trim();
     if (!name) return;
@@ -994,7 +1007,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
           ) : (
             <ScrollView contentContainerStyle={s.grid}>
               {filtered.map((n) => {
-                const hit = hitMap.get(n.id);
+                const hit = mayRevealNotebookSnippet(n)?hitMap.get(n.id):undefined;
                 return (
                   <Pressable key={n.id} onPress={() => onOpen(n.id, hit?.pageIndex,hit?query:undefined)} onLongPress={() => manage(n)} style={s.card}>
                     <View style={s.cover}>
@@ -1016,6 +1029,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
                         <Ionicons name={n.favorite ? 'star' : 'star-outline'} size={17} color={n.favorite ? '#B77A18' : C.muted} />
                       </Pressable>
                       <Text style={s.coverPage}>{hit ? `p.${hit.pageIndex + 1}` : `${n.pages.length}p`}</Text>
+                      {n.locked&&<View style={s.cardLock}><Ionicons name="lock-closed" size={13} color={C.accent}/></View>}
                     </View>
                     <Text numberOfLines={1} style={s.cardTitle}>
                       {n.title}
@@ -1057,6 +1071,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
         categories={categories}
         onClose={() => setManaging(null)}
         onDelete={onDelete}
+        onToggleLock={onToggleNotebookLock}
         onSave={(next) => {
           onUpdate(next);
           setManaging(next);
@@ -1370,6 +1385,7 @@ const s = StyleSheet.create({
     color: C.muted,
     fontSize: 10,
   },
+  cardLock:{position:'absolute',left:22,bottom:8,width:25,height:25,borderRadius:13,backgroundColor:'rgba(255,255,255,.9)',alignItems:'center',justifyContent:'center'},
   lassoPaste:{position:'absolute',top:110,right:18,zIndex:31,height:38,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:6,shadowColor:'#000',shadowOpacity:.12,shadowRadius:8},
   lassoPasteLeft:{right:undefined,left:18},
   lassoPasteText:{fontSize:11,fontWeight:'800',color:C.accent},
