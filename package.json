@@ -8,9 +8,10 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:cloud-merge && npm run test:document-search",
+    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert",
     "test:cloud-merge": "node --no-warnings --experimental-strip-types scripts/verifyCloudMerge.mts",
     "test:document-search": "node --no-warnings --experimental-strip-types scripts/verifyDocumentSearch.mts",
+    "test:page-insert": "node --no-warnings --experimental-strip-types scripts/verifyPageInsert.mts",
     "postinstall": "patch-package"
   },
   "dependencies": {

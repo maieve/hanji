@@ -28,7 +28,7 @@ type Props = {
   onSelectionText: (page: Page, result: { text: string; x: number; y: number; width: number; height: number }) => void;
   onSelectionClip: (page: Page, result: { uri: string; x: number; y: number; width: number; height: number }) => void;
   onCircleLasso: () => void;
-  onAddPage: () => void;
+  onAddPage: (placement?:'end') => void;
   onPageCount: (count: number, page: Page) => void;
   onPdfOutline: (items: PdfOutlineItem[]) => void;
   onPdfLink: (link: { pageIndex?: number; url?: string }) => void;
@@ -149,7 +149,7 @@ export function ContinuousDocument(props: Props) {
         if (!interacted.current || props.pages.some((p) => p.pdfUri) || lastAddedLength.current === props.pages.length) return;
         lastAddedLength.current = props.pages.length;
         interacted.current = false;
-        props.onAddPage();
+        props.onAddPage('end');
       }}
       onScrollToIndexFailed={({ index }) =>
         list.current?.scrollToOffset({

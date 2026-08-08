@@ -1,0 +1,13 @@
+import {insertPage} from '../src/pageInsert.ts';
+import type {Page} from '../src/types.ts';
+const page=(id:string):Page=>({id,drawingData:id,template:'line',updatedAt:'2026-01-01'});
+const assert=(condition:unknown,message:string)=>{if(!condition)throw new Error(message)};
+const original=[page('a'),page('b'),page('c')],created=page('new');
+const after=insertPage(original,created,1,'after-current');
+assert(after.index===2&&after.pages.map(item=>item.id).join(',')==='a,b,new,c','after-current must insert directly after active page');
+assert(original.map(item=>item.id).join(',')==='a,b,c','insertion must not mutate original pages');
+const end=insertPage(original,created,0,'end');
+assert(end.index===3&&end.pages.map(item=>item.id).join(',')==='a,b,c,new','end placement must append regardless of active page');
+const clamped=insertPage(original,created,99,'after-current');
+assert(clamped.index===3,'out-of-range active index must clamp safely');
+console.log('page insertion verification passed');

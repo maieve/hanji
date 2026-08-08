@@ -42,6 +42,7 @@ import {SettingsPanel} from './components/SettingsPanel';
 import {defaultUiPreferences,type UiPreferences} from './uiPreferences';
 import {DocumentSearchPanel} from './components/DocumentSearchPanel';
 import {PagePaintPanel} from './components/PagePaintPanel';
+import {insertPage} from './pageInsert';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -404,12 +405,12 @@ export function HanjiApp() {
     setPageIndex(target);
   };
   const applyTemplateInk=(template:import('./types').PageTemplate)=>{if(!uiPreferences.autoDarkInk)return;if(template==='dark'&&['#20201E','#000000'].includes(tool.color.toUpperCase()))setTool({...tool,color:'#F4F1E8'});if(template!=='dark'&&tool.color.toUpperCase()==='#F4F1E8')setTool({...tool,color:C.ink})};
-  const addPage = () => {
-    update(current.id, (n) => ({
-      ...n,
-      pages: [...n.pages, blankPage(uiPreferences.defaultTemplate)],
-      updatedAt: new Date().toISOString(),
-    }));
+  const addPage = (placement?:'end') => {
+    const targetPlacement=placement==='end'?'end':uiPreferences.newPagePlacement;
+    const created=blankPage(uiPreferences.defaultTemplate);
+    const inserted=insertPage(current.pages,created,pageIndex,targetPlacement);
+    update(current.id, (n) => ({...n,pages:inserted.pages,updatedAt: new Date().toISOString()}));
+    setPageIndex(inserted.index);
     applyTemplateInk(uiPreferences.defaultTemplate);
   };
   const changeDrawing = (target: typeof page, drawingData: string) => {
