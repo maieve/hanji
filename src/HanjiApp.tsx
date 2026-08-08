@@ -80,7 +80,7 @@ import {
 import { PageTransferPanel } from "./components/PageTransferPanel";
 import { transferPage as transferNotebookPage } from "./pageTransfer";
 import { loadUiPreferences, saveUiPreferences } from "./uiPreferences";
-import { RotatedPage } from "./components/RotatedPage";
+import { ZoomablePage } from "./components/ZoomablePage";
 import { PageGridPanel } from "./components/PageGridPanel";
 import { StickerPanel } from "./components/StickerPanel";
 import { loadStickers, saveStickers, stickerFromImage } from "./stickers";
@@ -1368,7 +1368,7 @@ export function HanjiApp() {
               onStrokeTapped={handleStrokeTapped}
             />
           ) : (
-            <RotatedPage
+            <ZoomablePage
               rotation={page.rotation}
               style={[
                 s.paper,
@@ -1433,7 +1433,7 @@ export function HanjiApp() {
                   query={searchFocus.query}
                 />
               )}
-            </RotatedPage>
+            </ZoomablePage>
           )}
           <AudioPanel
             sessions={current.audioSessions ?? []}

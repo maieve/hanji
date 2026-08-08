@@ -100,6 +100,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     canvas.drawingPolicy = .pencilOnly
     canvas.maximumSupportedContentVersion = .version2
     canvas.delegate = self
+    canvas.pinchGestureRecognizer?.isEnabled = false
+    canvas.panGestureRecognizer.isEnabled = false
     let tap = UITapGestureRecognizer(target: self, action: #selector(handleCanvasTap(_:)))
     tap.cancelsTouchesInView = false
     tap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
@@ -176,6 +178,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     zoomWindowEnabled = enabled
     canvas.minimumZoomScale = 1
     canvas.maximumZoomScale = enabled ? 5 : 1
+    canvas.pinchGestureRecognizer?.isEnabled = enabled
+    canvas.panGestureRecognizer.isEnabled = enabled
     canvas.setZoomScale(enabled ? 2.5 : 1, animated: true)
     if !enabled { canvas.setContentOffset(.zero, animated: true) }
   }
