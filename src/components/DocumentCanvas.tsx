@@ -42,6 +42,9 @@ export type DocumentCanvasHandle={
   getStrokes:()=>Promise<NativeStroke[]>;
   replaceStrokes:(ids:string[],replacements:NativeStroke[])=>Promise<boolean>;
   hitTest:(point:{x:number;y:number},radius:number)=>Promise<string|null>;
+  getDrawingData:()=>Promise<string>;
+  loadDrawingData:(base64:string)=>Promise<boolean>;
+  renderImage:(options:{scale:number;rect?:{x:number;y:number;width:number;height:number}})=>Promise<string>;
 };
 const Native = requireNativeViewManager('HanjiDocumentCanvas') as React.ComponentType<any>;
 export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function DocumentCanvas(p,ref) {
@@ -50,7 +53,10 @@ export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function Do
     getStrokes:()=>nativeRef.current?.getStrokes()??Promise.resolve([]),
     replaceStrokes:(ids,replacements)=>nativeRef.current?.replaceStrokes(ids,replacements)??Promise.resolve(false),
     hitTest:(point,radius)=>nativeRef.current?.hitTest(point,radius)??Promise.resolve(null),
-  }),[]);
+    getDrawingData:()=>nativeRef.current?.getDrawingData()??Promise.resolve(p.drawingData),
+    loadDrawingData:(base64)=>nativeRef.current?.loadDrawingData(base64)??Promise.resolve(false),
+    renderImage:({scale,rect})=>nativeRef.current?.renderImage({...rect,scale})??Promise.reject(new Error('네이티브 필기 렌더러를 사용할 수 없습니다.')),
+  }),[p.drawingData]);
   return (
     <Native
       ref={nativeRef}

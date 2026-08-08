@@ -31,6 +31,11 @@ public final class HanjiDocumentModule: Module {
       AsyncFunction("hitTest") { (view: HanjiDocumentView, point: [String: Double], radius: Double) in
         view.hitTestStroke(point: point, radius: radius)
       }
+      AsyncFunction("getDrawingData") { (view: HanjiDocumentView) in view.canvas.drawing.dataRepresentation().base64EncodedString() }
+      AsyncFunction("loadDrawingData") { (view: HanjiDocumentView, base64: String) in view.loadDrawing(base64) }
+      AsyncFunction("renderImage") { (view: HanjiDocumentView, options: [String: Double]) throws in
+        try view.renderDrawingImage(options)
+      }
     }
   }
 }
@@ -385,17 +390,36 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() }
   }
 
-  func loadDrawing(_ base64: String) {
-    guard base64 != loadedDrawing else { return }
+  @discardableResult func loadDrawing(_ base64: String) -> Bool {
+    guard base64 != loadedDrawing else { return true }
     clearPDFTextSelection()
-    loadedDrawing = base64
+    let drawing: PKDrawing
     if base64.isEmpty {
-      sourceDrawing = PKDrawing()
+      drawing = PKDrawing()
     } else if let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data) {
       sourceDrawing = drawing
-    }
+      loadedDrawing = base64
+      renderReplay()
+      knownStrokeCount = canvas.drawing.strokes.count
+      return true
+    } else { return false }
+    sourceDrawing = drawing
+    loadedDrawing = base64
     renderReplay()
     knownStrokeCount = canvas.drawing.strokes.count
+    return true
+  }
+
+  func renderDrawingImage(_ options: [String: Double]) throws -> String {
+    let scale = CGFloat(min(6, max(0.5, options["scale"] ?? 3)))
+    let rect: CGRect
+    if let x = options["x"], let y = options["y"], let width = options["width"], let height = options["height"], width > 0, height > 0 {
+      rect = CGRect(x: x, y: y, width: width, height: height)
+    } else { rect = canvas.bounds }
+    guard rect.width > 0, rect.height > 0, let data = canvas.drawing.image(from: rect, scale: scale).pngData() else {
+      throw NSError(domain: "HanjiDocumentCanvas", code: 2, userInfo: [NSLocalizedDescriptionKey: "필기 이미지를 만들 수 없습니다."])
+    }
+    return data.base64EncodedString()
   }
 
   func setReplayCutoff(_ cutoff: Double?) {
