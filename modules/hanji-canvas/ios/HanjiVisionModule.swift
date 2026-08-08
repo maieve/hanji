@@ -113,7 +113,8 @@ public final class HanjiVisionModule: Module {
           let sourcePage = sourceDocument?.page(at: Int(item["pdfPageIndex"] ?? "") ?? index)
           let columns = max(1, min(4, Int(item["canvasColumns"] ?? "") ?? 1))
           let rows = max(1, min(4, Int(item["canvasRows"] ?? "") ?? 1))
-          let bounds = sourcePage?.bounds(for: .mediaBox) ?? CGRect(x: 0, y: 0, width: defaultBounds.width * CGFloat(columns), height: defaultBounds.height * CGFloat(rows))
+          let sourceBounds = sourcePage?.bounds(for: .mediaBox)
+          let bounds = sourceBounds.map { CGRect(origin: .zero, size: $0.size) } ?? CGRect(x: 0, y: 0, width: defaultBounds.width * CGFloat(columns), height: defaultBounds.height * CGFloat(rows))
           let rotation = Int(item["rotation"] ?? "") ?? 0, outputBounds = rotatedBounds(bounds, rotation: rotation)
           context.beginPage(withBounds: outputBounds, pageInfo: [:])
           UIColor.white.setFill(); context.cgContext.fill(outputBounds)
@@ -122,6 +123,7 @@ public final class HanjiVisionModule: Module {
             context.cgContext.saveGState()
             context.cgContext.translateBy(x: 0, y: bounds.height)
             context.cgContext.scaleBy(x: 1, y: -1)
+            if let sourceBounds { context.cgContext.translateBy(x: -sourceBounds.minX, y: -sourceBounds.minY) }
             sourcePage.draw(with: .mediaBox, to: context.cgContext)
             context.cgContext.restoreGState()
           } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", spacing: item["templateSpacing"] ?? "medium", columns: columns, in: bounds, context: context.cgContext) }
@@ -143,7 +145,8 @@ public final class HanjiVisionModule: Module {
       let sourcePage = sourceURL.flatMap { PDFDocument(url: $0) }?.page(at: Int(item["pdfPageIndex"] ?? "") ?? 0)
       let columns = max(1, min(4, Int(item["canvasColumns"] ?? "") ?? 1))
       let rows = max(1, min(4, Int(item["canvasRows"] ?? "") ?? 1))
-      let bounds = sourcePage?.bounds(for: .mediaBox) ?? CGRect(x: 0, y: 0, width: defaultBounds.width * CGFloat(columns), height: defaultBounds.height * CGFloat(rows))
+      let sourceBounds = sourcePage?.bounds(for: .mediaBox)
+      let bounds = sourceBounds.map { CGRect(origin: .zero, size: $0.size) } ?? CGRect(x: 0, y: 0, width: defaultBounds.width * CGFloat(columns), height: defaultBounds.height * CGFloat(rows))
       let rotation = Int(item["rotation"] ?? "") ?? 0, outputBounds = rotatedBounds(bounds, rotation: rotation)
       let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
       let image = UIGraphicsImageRenderer(size: outputBounds.size, format: format).image { context in
@@ -153,6 +156,7 @@ public final class HanjiVisionModule: Module {
           context.cgContext.saveGState()
           context.cgContext.translateBy(x: 0, y: bounds.height)
           context.cgContext.scaleBy(x: 1, y: -1)
+          if let sourceBounds { context.cgContext.translateBy(x: -sourceBounds.minX, y: -sourceBounds.minY) }
           sourcePage.draw(with: .mediaBox, to: context.cgContext)
           context.cgContext.restoreGState()
         } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", spacing: item["templateSpacing"] ?? "medium", columns: columns, in: bounds, context: context.cgContext) }
