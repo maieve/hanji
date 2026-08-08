@@ -30,6 +30,7 @@ import {
   makeId,
   newNotebook,
   pdfNotebook,
+  replaceLibrary,
   saveCategories,
   saveLibrary,
 } from "./storage";
@@ -143,6 +144,7 @@ export function HanjiApp() {
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadRecoveryBusy, setLoadRecoveryBusy] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [unlockedNotes, setUnlockedNotes] = useState<Set<string>>(
     () => new Set(),
@@ -579,6 +581,22 @@ export function HanjiApp() {
   };
   const update = (id: string, fn: (n: Notebook) => Notebook) =>
     setItems((all) => all.map((n) => (n.id === id ? fn(n) : n)));
+  const restoreFailedLibrary = async () => {
+    setLoadRecoveryBusy(true);
+    try {
+      const restored = await importLibraryBackup();
+      if (!restored) return;
+      await replaceLibrary(restored);
+      setLoadError("");
+      setLoadAttempt((attempt) => attempt + 1);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error ? error.message : "백업을 복원하지 못했습니다.",
+      );
+    } finally {
+      setLoadRecoveryBusy(false);
+    }
+  };
   if (!ready && loadError)
     return (
       <SafeAreaView style={s.loadFailure}>
@@ -599,6 +617,20 @@ export function HanjiApp() {
         >
           <Ionicons name="refresh" size={18} color={C.white} />
           <Text style={s.loadRetryText}>다시 시도</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="한지 백업 파일 복원"
+          disabled={loadRecoveryBusy}
+          onPress={() => void restoreFailedLibrary()}
+          style={s.loadRestore}
+        >
+          {loadRecoveryBusy ? (
+            <ActivityIndicator size="small" color={C.accent} />
+          ) : (
+            <Ionicons name="cloud-upload-outline" size={18} color={C.accent} />
+          )}
+          <Text style={s.loadRestoreText}>.hanji 백업 복원</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -2893,6 +2925,18 @@ const s = StyleSheet.create({
     gap: 8,
   },
   loadRetryText: { color: C.white, fontSize: 15, fontWeight: "800" },
+  loadRestore: {
+    marginTop: 10,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  loadRestoreText: { color: C.accent, fontSize: 14, fontWeight: "800" },
   editor: { flex: 1, flexDirection: "row" },
   editorLeftHanded: { flexDirection: "row-reverse" },
   canvasArea: { flex: 1, padding: 24, alignItems: "center" },

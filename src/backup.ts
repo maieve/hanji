@@ -6,7 +6,7 @@ import type {Notebook} from './types';
 import {normalizeBackupRetention} from './backupPolicy';
 import {requireNativeModule} from 'expo-modules-core';
 import {escapePdfPath,escapePngPath,escapeStrokePath,fallbackStrokeDump,isSupportedArchiveVersion,notebookExportPayload,pageExportPayload,type EscapeCopy} from './archiveEscape';
-import {notebookAssetReferences} from './archiveAssets';
+import {isNotebookLibrary,notebookAssetReferences} from './archiveAssets';
 
 type ArchiveManifest={format:'hanji-archive';version:2|3|4;createdAt:string;assets:Record<string,string>;escapeCopies?:EscapeCopy[]};
 const clean=(value:string)=>value.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-90)||'asset';
@@ -73,7 +73,7 @@ export async function importLibraryBackupFromUri(uri:string):Promise<Notebook[]>
   const source=new File(uri);const zip=await JSZip.loadAsync(await source.bytes());
   const manifestFile=zip.file('manifest.json');const libraryFile=zip.file('library.json');if(!manifestFile||!libraryFile)throw new Error('올바른 Hanji 백업 파일이 아닙니다.');
   const manifest=JSON.parse(await manifestFile.async('string')) as ArchiveManifest;if(manifest.format!=='hanji-archive'||!isSupportedArchiveVersion(manifest.version))throw new Error('지원하지 않는 Hanji 백업입니다.');
-  const restored=JSON.parse(await libraryFile.async('string')) as Notebook[];
+  const restored=JSON.parse(await libraryFile.async('string')) as unknown;if(!isNotebookLibrary(restored))throw new Error('백업의 노트 데이터가 손상되었습니다.');
   const root=new Directory(Paths.document,'Hanji','restored',String(Date.now()));root.create({intermediates:true});
   const uriMap:Record<string,string>={};
   for(const [oldUri,path] of Object.entries(manifest.assets)){const entry=zip.file(path);if(!entry)throw new Error(`백업 자산이 누락되었습니다: ${path}`);const file=new File(root,clean(path.split('/').pop()||'asset'));file.create();file.write(await entry.async('uint8array'));uriMap[oldUri]=file.uri;}

@@ -3,6 +3,10 @@ import type { Notebook } from "./types";
 export type ArchiveAssetKind = "cover" | "pdf" | "template" | "image" | "flashcard" | "audio";
 export type ArchiveAssetReference = { uri: string; kind: ArchiveAssetKind };
 
+export function isNotebookLibrary(value:unknown):value is Notebook[]{
+  return Array.isArray(value)&&value.every(note=>!!note&&typeof note==='object'&&typeof (note as Notebook).id==='string'&&typeof (note as Notebook).title==='string'&&Array.isArray((note as Notebook).pages)&&(note as Notebook).pages.every(page=>!!page&&typeof page==='object'&&typeof page.id==='string'&&typeof page.drawingData==='string'));
+}
+
 export function notebookAssetReferences(items: Notebook[]): ArchiveAssetReference[] {
   const result = new Map<string, ArchiveAssetReference>();
   const add = (uri: string | undefined, kind: ArchiveAssetKind) => {

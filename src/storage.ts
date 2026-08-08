@@ -58,6 +58,9 @@ const unrecoverableDrawingRefs=new Map<string,string>();
 export async function loadLibrary(): Promise<Notebook[]> {
   const raw = await AsyncStorage.getItem(KEY);
   const legacyRaw = (await AsyncStorage.getItem(LEGACY_KEY)) ?? (await AsyncStorage.getItem("hanji.library.v1"));
+  corruptDrawingRefs.clear();
+  unrecoverableDrawingRefs.clear();
+  const unrecoverablePages = new Set<string>();
   let currentMetadataParsed = false;
   try {
     if (!raw) {
@@ -72,7 +75,7 @@ export async function loadLibrary(): Promise<Notebook[]> {
     const stored = parsed;
     currentMetadataParsed = true;
     const fallback = new Map<string,string>();
-    if (legacyRaw) for(const note of JSON.parse(legacyRaw) as Notebook[])for(const page of note.pages)fallback.set(`${note.id}:${page.id}`,page.drawingData);
+    if (legacyRaw) try { for(const note of JSON.parse(legacyRaw) as Notebook[])for(const page of note.pages)fallback.set(`${note.id}:${page.id}`,page.drawingData); } catch { /* The current v3 metadata remains authoritative. */ }
     const directory = drawingDirectory();
     const notes = await Promise.all(stored.map(async(note)=>({...note,pages:await Promise.all(note.pages.map(async({drawingRef,...page})=>{
       let drawingData="";
@@ -83,17 +86,18 @@ export async function loadLibrary(): Promise<Notebook[]> {
           if(drawingBlobName(note.id,page.id,candidate)===drawingRef)drawingData=candidate;
           else{
             const recovered=fallback.get(`${note.id}:${page.id}`)??"";
-            if(recovered)corruptDrawingRefs.add(drawingRef);else unrecoverableDrawingRefs.set(`${note.id}:${page.id}`,drawingRef);
+            if(recovered)corruptDrawingRefs.add(drawingRef);else{unrecoverableDrawingRefs.set(`${note.id}:${page.id}`,drawingRef);unrecoverablePages.add(`${note.id}:${page.id}`);}
             drawingData=recovered;
           }
         }else{
           const recovered=fallback.get(`${note.id}:${page.id}`)??"";
-          if(!recovered)unrecoverableDrawingRefs.set(`${note.id}:${page.id}`,drawingRef);
+          if(!recovered){unrecoverableDrawingRefs.set(`${note.id}:${page.id}`,drawingRef);unrecoverablePages.add(`${note.id}:${page.id}`);}
           drawingData=recovered;
         }
       }
       return {...page,drawingData};
     }))})));
+    if(unrecoverablePages.size)throw new Error(`필기 파일이 없거나 손상된 페이지가 ${unrecoverablePages.size}개 있습니다. .hanji 백업을 복원하거나 저장 공간을 확인한 뒤 다시 시도하세요.`);
     return normalizeLibrary(notes);
   } catch (error) {
     if (!currentMetadataParsed && legacyRaw) {
@@ -139,6 +143,11 @@ export async function saveLibrary(v: Notebook[]) {
     for(const file of drawingFiles)if(stale.has(file.name)&&file.exists)file.delete();
   });
   saveQueue=task.then(()=>undefined,()=>undefined);await task;
+}
+export async function replaceLibrary(v:Notebook[]){
+  corruptDrawingRefs.clear();
+  unrecoverableDrawingRefs.clear();
+  await saveLibrary(v);
 }
 export async function loadCategories(): Promise<string[]> {
   const raw = await AsyncStorage.getItem(CATEGORY_KEY);
