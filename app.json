@@ -18,7 +18,8 @@
       "expo-sharing",
       "expo-audio",
       "expo-sqlite",
-      "expo-asset"
+      "expo-asset",
+      ["expo-local-authentication", {"faceIDPermission": "Hanji 노트를 잠금 해제하려면 Face ID를 사용합니다."}]
     ]
   }
 }

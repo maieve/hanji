@@ -19,7 +19,7 @@ const colors = ['#20201E', '#225D50', '#315E9C', '#A4493D', '#8A653E'];
 const eraserLabels = {vector:'획',bitmap:'픽셀',fixedWidthBitmap:'고정'} as const;
 const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사각',triangle:'삼각'} as const;
 
-export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, elementMode, onAddText, onAddImage, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
+export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, elementMode, onAddText, onAddImage, privacyEnabled, onPrivacyToggle, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void;privacyEnabled:boolean;onPrivacyToggle:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
   return <View style={s.bar}>
     <Pressable onPress={onLibrary} style={s.nav}><Ionicons name="library-outline" size={20} color={C.ink} /><Text style={s.navText}>서재</Text></Pressable>
     <TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={s.title} accessibilityLabel="노트 제목" /><View style={s.rule} />
@@ -43,6 +43,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
     <Pressable accessibilityLabel="확대 필기창 자동 전진" onPress={onToggleZoomWindow} style={[s.tool,zoomWindowEnabled&&s.selected]}><Ionicons name="scan-circle-outline" size={21} color={zoomWindowEnabled?C.accent:C.muted}/></Pressable>
     <Pressable accessibilityLabel="텍스트 상자 추가" onPress={onAddText} style={[s.tool,elementMode&&s.selected]}><Ionicons name="text-outline" size={21} color={elementMode?C.accent:C.muted}/></Pressable>
     <Pressable accessibilityLabel="이미지 삽입" onPress={onAddImage} style={s.tool}><Ionicons name="image-outline" size={21} color={C.accent}/></Pressable>
+    <Pressable accessibilityLabel={privacyEnabled?'노트 잠금 끄기':'노트 잠금 켜기'} onPress={onPrivacyToggle} style={[s.tool,privacyEnabled&&s.selected]}><Ionicons name={privacyEnabled?'lock-closed':'lock-open-outline'} size={19} color={privacyEnabled?C.accent:C.muted}/></Pressable>
     <Pressable onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" /><Text style={s.addText}>페이지</Text></Pressable>
   </View>;
 }
