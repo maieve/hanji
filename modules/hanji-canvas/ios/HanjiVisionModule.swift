@@ -95,6 +95,17 @@ public final class HanjiVisionModule: Module {
       try data.write(to: outputURL, options: .atomic)
       return outputURL.absoluteString
     }
+    AsyncFunction("splitPNG") { (inputUri: String, questionUri: String, answerUri: String, splitRatio: Double) throws -> [String: String] in
+      let inputURL = inputUri.hasPrefix("file://") ? URL(string: inputUri)! : URL(fileURLWithPath: inputUri)
+      let questionURL = questionUri.hasPrefix("file://") ? URL(string: questionUri)! : URL(fileURLWithPath: questionUri)
+      let answerURL = answerUri.hasPrefix("file://") ? URL(string: answerUri)! : URL(fileURLWithPath: answerUri)
+      guard let image = UIImage(contentsOfFile: inputURL.path), let source = image.cgImage else { throw NSError(domain: "HanjiExport", code: 2, userInfo: [NSLocalizedDescriptionKey: "Question/answer source image unavailable"]) }
+      let ratio = CGFloat(min(0.8, max(0.2, splitRatio))), width = source.width, height = source.height
+      let questionHeight = max(1, Int(CGFloat(height) * ratio)), answerHeight = max(1, height - questionHeight)
+      guard let questionCG = source.cropping(to: CGRect(x: 0, y: 0, width: width, height: questionHeight)), let answerCG = source.cropping(to: CGRect(x: 0, y: questionHeight, width: width, height: answerHeight)), let questionData = UIImage(cgImage: questionCG, scale: image.scale, orientation: .up).pngData(), let answerData = UIImage(cgImage: answerCG, scale: image.scale, orientation: .up).pngData() else { throw NSError(domain: "HanjiExport", code: 3, userInfo: [NSLocalizedDescriptionKey: "Question/answer image crop failed"]) }
+      try questionData.write(to: questionURL, options: .atomic); try answerData.write(to: answerURL, options: .atomic)
+      return ["questionUri": questionURL.absoluteString, "answerUri": answerURL.absoluteString]
+    }
   }
 }
 

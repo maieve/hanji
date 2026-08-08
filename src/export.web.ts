@@ -138,3 +138,7 @@ export async function exportPagePng(
   setTimeout(() => URL.revokeObjectURL(output), 1000);
   return output;
 }
+
+export async function createPageFlashcardAssets(_page:Page,_pageIndex:number,_splitRatio=.5):Promise<{questionUri:string;answerUri:string}>{
+  throw new Error('페이지 Q/A 이미지 카드는 iPad 앱에서 사용할 수 있습니다.');
+}

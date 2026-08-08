@@ -8,6 +8,8 @@ export function createFlashcard(question:string,answer:string,now=new Date()):Fl
 }
 export function createImageFlashcard(questionImageUri:string,question:string,answer:string,now=new Date()):Flashcard{return{...createFlashcard(question||'이미지 질문',answer,now),questionImageUri}}
 
+export function createPageFlashcard(questionImageUri:string,answerImageUri:string,now=new Date()):Flashcard{return{...createFlashcard('페이지 질문','아래쪽에서 정답을 확인하세요.',now),questionImageUri,answerImageUri}}
+
 export function updateFlashcardContent(card:Flashcard,question:string,answer:string,questionImageUri:string|undefined,now=new Date()):Flashcard{
   return{...card,question:(question.trim()||(questionImageUri?'이미지 질문':'')),answer:answer.trim(),questionImageUri,updatedAt:now.toISOString()};
 }

@@ -47,7 +47,7 @@ import {
   writeAutomaticBackup,
 } from "./backup";
 import { recognizeDrawing } from "./vision";
-import { exportNotebookPdf, exportPagePng } from "./export";
+import { createPageFlashcardAssets, exportNotebookPdf, exportPagePng } from "./export";
 import { uploadArchiveIfEnabled } from "./cloudSync";
 import {
   rebuildSearchIndex,
@@ -55,7 +55,7 @@ import {
   type SearchHit,
 } from "./searchIndex";
 import { FlashcardPanel } from "./components/FlashcardPanel";
-import { dueFlashcards } from "./srs";
+import { createPageFlashcard, dueFlashcards } from "./srs";
 import { NotebookOrganizer } from "./components/NotebookOrganizer";
 import { PdfOutlinePanel } from "./components/PdfOutlinePanel";
 import type { PdfOutlineItem } from "./components/DocumentCanvas";
@@ -1887,6 +1887,7 @@ export function HanjiApp() {
         initialQuestion={flashcardDraft}
         initialQuestionImageUri={flashcardDraftImage}
         cards={current.flashcards ?? []}
+        onCreatePageCard={Platform.OS==='ios'?async()=>{try{const assets=await createPageFlashcardAssets(page,pageIndex);const card=createPageFlashcard(assets.questionUri,assets.answerUri);update(current.id,n=>({...n,flashcards:[...(n.flashcards??[]),card],updatedAt:new Date().toISOString()}))}catch(error){Alert.alert('페이지 카드 생성 실패',error instanceof Error?error.message:'페이지 이미지를 만들 수 없습니다.')}}:undefined}
         onClose={() => { setFlashcardsOpen(false); setFlashcardDraft(undefined); setFlashcardDraftImage(undefined); }}
         onChange={(flashcards) =>
           update(current.id, (n) => ({

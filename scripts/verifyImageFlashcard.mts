@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createImageFlashcard,reviewFlashcard,updateFlashcardContent} from '../src/srs.ts';
+import {createImageFlashcard,createPageFlashcard,reviewFlashcard,updateFlashcardContent} from '../src/srs.ts';
 
 const now=new Date('2026-08-08T00:00:00.000Z');
 const card=createImageFlashcard('file:///Hanji/assets/clips/question.png','', '정답',now);
@@ -16,4 +16,8 @@ assert.equal(edited.questionImageUri,undefined);
 assert.equal(edited.dueAt,reviewed.dueAt);
 assert.equal(edited.repetitions,reviewed.repetitions);
 assert.equal(edited.updatedAt,'2026-08-09T00:00:00.000Z');
+const pageCard=createPageFlashcard('file:///cards/q.png','file:///cards/a.png',now);
+assert.equal(pageCard.questionImageUri,'file:///cards/q.png');
+assert.equal(pageCard.answerImageUri,'file:///cards/a.png');
+assert.equal(reviewFlashcard(pageCard,2,now).answerImageUri,pageCard.answerImageUri);
 console.log('image flashcard verification passed');
