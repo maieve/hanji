@@ -26,7 +26,7 @@ import { pickPersistentImage } from './imageAssets';
 import { usePrivacyLock } from './privacyLock';
 import { LockScreen } from './components/LockScreen';
 import { ContinuousDocument } from './components/ContinuousDocument';
-import { childFolder, expandFolderPaths, folderBreadcrumb, folderContains, folderDepth, folderLabel } from './folders';
+import { childFolder, deleteFolderPaths, expandFolderPaths, folderBreadcrumb, folderContains, folderDepth, folderLabel, parentFolder, renameFolderPaths, replaceFolderRoot } from './folders';
 import { PageTransferPanel } from './components/PageTransferPanel';
 import { transferPage as transferNotebookPage } from './pageTransfer';
 import {loadUiPreferences,saveUiPreferences} from './uiPreferences';
@@ -45,6 +45,7 @@ import {PagePaintPanel} from './components/PagePaintPanel';
 import {insertPage} from './pageInsert';
 import {backupIntervalMs} from './backupPolicy';
 import {ExportPanel} from './components/ExportPanel';
+import {FolderManager} from './components/FolderManager';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -235,6 +236,18 @@ export function HanjiApp() {
           setItems((existing) => mergeCloudRestore(existing, restored));
         }}
         onAddCategory={(name) => setCategories((all) => expandFolderPaths([...all, name]))}
+        onRenameCategory={(folder,name) => {
+          const target=childFolder(parentFolder(folder),name);
+          if(target!==folder&&categories.includes(target)){Alert.alert('이름 변경 불가','같은 위치에 같은 이름의 폴더가 있습니다.');return false}
+          setCategories((all)=>renameFolderPaths(all,folder,name));
+          setItems((all)=>all.map(note=>folderContains(folder,note.folder)?{...note,folder:replaceFolderRoot(note.folder,folder,target),updatedAt:new Date().toISOString()}:note));
+          return true;
+        }}
+        onDeleteCategory={(folder) => {
+          const destination=parentFolder(folder)||'내 노트';
+          setCategories((all)=>expandFolderPaths([...deleteFolderPaths(all,folder,'내 노트'),destination]));
+          setItems((all)=>all.map(note=>folderContains(folder,note.folder)?{...note,folder:replaceFolderRoot(note.folder,folder,destination),updatedAt:new Date().toISOString()}:note));
+        }}
         onMoveCategory={(id, folder) =>
           update(id, (n) => ({
             ...n,
@@ -859,13 +872,14 @@ export function HanjiApp() {
   );
 }
 
-function Library({ items, categories, query, searchHits,backupRetention, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void; onMoveCategory: (id: string, category: string) => void }) {
+function Library({ items, categories, query, searchHits,backupRetention, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory,onRenameCategory,onDeleteCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void;onRenameCategory:(folder:string,name:string)=>boolean;onDeleteCategory:(folder:string)=>void; onMoveCategory: (id: string, category: string) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [selected, setSelected] = useState('전체');
   const [draft, setDraft] = useState('');
   const [cloudOpen, setCloudOpen] = useState(false);
   const [managing, setManaging] = useState<Notebook | null>(null);
+  const [managingFolder,setManagingFolder]=useState<string|null>(null);
   const hitMap = useMemo(() => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []), [searchHits]);
   const filtered = useMemo(() => items.filter((x) => (selected === '전체' || (selected === '즐겨찾기' && x.favorite) || (selected === '최근 문서' && x.lastOpenedAt) || folderContains(selected, x.folder)) && (!query.trim() || (searchHits ? hitMap.has(x.id) : `${x.title} ${x.tags.join(' ')} ${x.pages.map((p) => p.ocrText ?? '').join(' ')}`.toLowerCase().includes(query.toLowerCase())))).sort((a, b) => (selected === '최근 문서' ? (b.lastOpenedAt ?? '').localeCompare(a.lastOpenedAt ?? '') : b.updatedAt.localeCompare(a.updatedAt))), [items, query, selected, searchHits, hitMap]);
   const addCategory = () => {
@@ -880,7 +894,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
   const chips = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
       {['전체', '즐겨찾기', '최근 문서', ...categories].map((category) => (
-        <Pressable key={category} onPress={() => setSelected(category)} style={[s.categoryChip, selected === category && s.categoryChipActive]}>
+        <Pressable key={category} onPress={() => setSelected(category)} onLongPress={()=>categories.includes(category)&&setManagingFolder(category)} delayLongPress={450} accessibilityLabel={categories.includes(category)?`${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`:category} style={[s.categoryChip, selected === category && s.categoryChipActive]}>
           <Text style={[s.categoryChipText, selected === category && { color: C.white }]}>{categories.includes(category) ? folderBreadcrumb(category) : category}</Text>
         </Pressable>
       ))}
@@ -912,7 +926,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
             ))}
             <Text style={s.section}>폴더</Text>
             {categories.map((category) => (
-              <Pressable accessibilityLabel={`${folderBreadcrumb(category)} 폴더`} key={category} onPress={() => setSelected(category)} style={[s.sideItem, { paddingLeft: 11 + folderDepth(category) * 16 }, selected === category && s.sideActive]}>
+              <Pressable accessibilityLabel={`${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`} key={category} onPress={() => setSelected(category)} onLongPress={()=>setManagingFolder(category)} delayLongPress={450} style={[s.sideItem, { paddingLeft: 11 + folderDepth(category) * 16 }, selected === category && s.sideActive]}>
                 <Ionicons name={selected === category ? 'folder-open-outline' : 'folder-outline'} size={18} color={selected === category ? C.accent : C.muted} />
                 <Text numberOfLines={1} style={[{ flex: 1 }, selected === category ? s.sideActiveText : s.sideText]}>
                   {folderLabel(category)}
@@ -1048,6 +1062,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
           setManaging(next);
         }}
       />
+      <FolderManager folder={managingFolder} noteCount={managingFolder?items.filter(note=>folderContains(managingFolder,note.folder)).length:0} onClose={()=>setManagingFolder(null)} onRename={(name)=>{if(!managingFolder)return;if(onRenameCategory(managingFolder,name)){const next=childFolder(parentFolder(managingFolder),name);if(selected===managingFolder||folderContains(managingFolder,selected))setSelected(replaceFolderRoot(selected,managingFolder,next));setManagingFolder(null)}}} onDelete={()=>{if(!managingFolder)return;const folder=managingFolder;Alert.alert('폴더 삭제',`${folderBreadcrumb(folder)} 폴더를 삭제할까요? 노트와 하위 폴더는 상위 폴더로 이동합니다.`,[{text:'취소'},{text:'삭제',style:'destructive',onPress:()=>{onDeleteCategory(folder);if(selected===folder||folderContains(folder,selected))setSelected(parentFolder(folder)||'내 노트');setManagingFolder(null)}}])}}/>
     </SafeAreaView>
   );
 }

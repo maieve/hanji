@@ -13,9 +13,11 @@ iOS 네이티브 빌드는 macOS 러너에서 `npx expo prebuild --platform ios`
 
 ## 현재 범위
 
-- 서재, 제목/태그 검색, 새 노트, 삭제(길게 누르기)
-- 페이지별 캔버스, 줄 템플릿, 페이지 추가/전환
-- 펜/형광펜/지우개, 색상·굵기, 자동 저장/복원
-- iOS PencilKit 네이티브 모듈 및 웹 개발 대체 구현
+- PencilKit 펜 7종, 형광펜·지우개·자·도형·제스처·고급 올가미
+- PDF 가져오기·목차·링크·텍스트 하이라이트·발췌 카드와 PDF/PNG/`.hanji` 내보내기
+- Vision OCR 검색, 기기 내 음성 전사·필기 동기 재생, 플래시카드 SRS
+- 중첩 폴더·태그·즐겨찾기·최근 문서와 폴더 이름 변경·안전한 삭제
+- 로컬 버전 백업, Cloudflare R2 선택 동기화와 페이지 단위 충돌 보존
+- iOS PencilKit/PDFKit/Vision/Speech 네이티브 모듈 및 웹 개발 대체 구현
 
-다음 게이트는 실기기 G1(Apple Notes 대비 필기감)이다. 통과 전 PDF/OCR 같은 상위 기능은 확장하지 않는다.
+자동 검증과 unsigned iPad 빌드는 GitHub Actions에서 수행한다. 실제 Apple Pencil 감각·OCR 정확도·PDF 좌표는 `docs/NATIVE_VERIFICATION.md`의 실기기 게이트로 최종 확인한다.
