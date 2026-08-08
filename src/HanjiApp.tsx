@@ -104,6 +104,9 @@ import { resolvePencilPreferredAction } from "./pencilPreferredAction";
 import { templateSpacings } from "./templateSpacing";
 import { normalizeNotebookCoverColor } from "./notebookCover";
 import { backupIntervalMs } from "./backupPolicy";
+import {pushBounded} from './boundedHistory';
+
+type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'native'};
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
 import {
@@ -221,8 +224,9 @@ export function HanjiApp() {
       | "rotate";
     color?: string;
   }>();
-  const selectionUndoRef = useRef<({kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean})|null>(null);
-  const selectionRedoRef = useRef<({kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean})|null>(null);
+  const selectionUndoRef = useRef<SelectionHistoryEntry[]>([]);
+  const selectionRedoRef = useRef<SelectionHistoryEntry[]>([]);
+  const recordSelectionHistory=(entry:SelectionHistoryEntry)=>{selectionUndoRef.current=pushBounded(selectionUndoRef.current,entry);selectionRedoRef.current=[]};
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [flashcardDraft, setFlashcardDraft] = useState<string>();
   const [flashcardDraftImage, setFlashcardDraftImage] = useState<string>();
@@ -935,6 +939,7 @@ export function HanjiApp() {
       queueOcr(current.id, target.id, target.drawingData);
   };
   const handleStrokeAdded = (target: typeof page, createdAt: number) => {
+    selectionUndoRef.current=[];selectionRedoRef.current=[];
     const started = audioStartRef.current;
     if (started === null) return;
     audioStrokesRef.current.push({
@@ -984,7 +989,7 @@ export function HanjiApp() {
       selectionBoundsRef.current={pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!};selectionWasMovingRef.current=true;
       setSelection({pageId:target.id,count:value.count+selected.ids.length});return;
     }
-    if(hasBounds&&!value.moving&&selectionWasMovingRef.current&&previous?.pageId===target.id&&selected.pageId===target.id){const origin=selectionElementMoveOriginRef.current;if(origin){selectionUndoRef.current={kind:'snapshot',pageId:target.id,before:origin.elements,after:moveSelectedElements(origin.elements,new Set(selected.ids),value.x!-origin.x,value.y!-origin.y),native:value.count>0};selectionRedoRef.current=null}selectionWasMovingRef.current=false;selectionElementMoveOriginRef.current=undefined;selectionBoundsRef.current={pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!};setSelection({pageId:target.id,count:value.count+selected.ids.length});return}
+    if(hasBounds&&!value.moving&&selectionWasMovingRef.current&&previous?.pageId===target.id&&selected.pageId===target.id){const origin=selectionElementMoveOriginRef.current;if(origin)recordSelectionHistory({kind:'snapshot',pageId:target.id,before:origin.elements,after:moveSelectedElements(origin.elements,new Set(selected.ids),value.x!-origin.x,value.y!-origin.y),native:value.count>0});selectionWasMovingRef.current=false;selectionElementMoveOriginRef.current=undefined;selectionBoundsRef.current={pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!};setSelection({pageId:target.id,count:value.count+selected.ids.length});return}
     const ids=hasBounds?selectElementIds(target.elements??[],{x:value.x!,y:value.y!,width:value.width!,height:value.height!},{text:tool.lassoText??true,images:tool.lassoImages??true}):[];
     selectionBoundsRef.current=hasBounds?{pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!}:undefined;
     setSelectedElements({pageId:ids.length?target.id:"",ids});
@@ -1036,8 +1041,7 @@ export function HanjiApp() {
     }));
     setElementMode(true);
     setSelection({ pageId: "", count: 0 });
-    selectionUndoRef.current = { kind:'element',pageId: target.id, element };
-    selectionRedoRef.current = null;
+    recordSelectionHistory({ kind:'element',pageId: target.id, element });
   };
   const handleSelectionClip = (
     target: typeof page,
@@ -1091,13 +1095,13 @@ export function HanjiApp() {
   ) => {
     const ids=new Set(selectedElements.ids),targetPage=current.pages.find(p=>p.id===selectedElements.pageId);
     if(type==='copy'||type==='cut'){selectedElementClipboardRef.current=(targetPage?.elements??[]).filter(element=>ids.has(element.id)).map(element=>({...element}));elementClipboardHasInkRef.current=selectionInkCountRef.current>0}
-    if(type==='paste'&&selectedElementClipboardRef.current.length){const before=page.elements??[],pasted=selectedElementClipboardRef.current.map(element=>({...element,id:makeId(),x:Math.min(.94,element.x+.02),y:Math.min(.94,element.y+.02)})),after=[...before,...pasted];changeElements(page,after);selectionUndoRef.current={kind:'snapshot',pageId:page.id,before,after,native:elementClipboardHasInkRef.current};selectionRedoRef.current=null;setSelectedElements({pageId:page.id,ids:pasted.map(x=>x.id)});setSelection({pageId:page.id,count:pasted.length})}
+    if(type==='paste'&&selectedElementClipboardRef.current.length){const before=page.elements??[],pasted=selectedElementClipboardRef.current.map(element=>({...element,id:makeId(),x:Math.min(.94,element.x+.02),y:Math.min(.94,element.y+.02)})),after=[...before,...pasted];changeElements(page,after);recordSelectionHistory({kind:'snapshot',pageId:page.id,before,after,native:elementClipboardHasInkRef.current});setSelectedElements({pageId:page.id,ids:pasted.map(x=>x.id)});setSelection({pageId:page.id,count:pasted.length})}
     else if(targetPage&&ids.size&&(type==='delete'||type==='cut'||type==='duplicate'||type==='recolor'||type==='shrink'||type==='grow'||type==='rotate')){
       let next=targetPage.elements??[];
       if(type==='delete'||type==='cut')next=next.filter(element=>!ids.has(element.id));
       else if(type==='duplicate'){const copies=next.filter(element=>ids.has(element.id)).map(element=>({...element,id:makeId(),x:Math.min(.94,element.x+.02),y:Math.min(.94,element.y+.02)}));next=[...next,...copies];setSelectedElements({pageId:targetPage.id,ids:copies.map(x=>x.id)})}
       else next=next.map(element=>{if(!ids.has(element.id))return element;if(type==='recolor'&&element.kind==='text')return{...element,color:tool.color};if(type==='rotate'&&element.kind==='image')return{...element,rotation:(((element.rotation??0)+90)%360) as 0|90|180|270};const scale=type==='shrink'?.8:type==='grow'?1.25:1;if(scale!==1){const width=Math.max(.04,Math.min(1,element.width*scale)),height=Math.max(.04,Math.min(1,element.height*scale));return{...element,width,height,x:Math.max(0,Math.min(1-width,element.x+(element.width-width)/2)),y:Math.max(0,Math.min(1-height,element.y+(element.height-height)/2))}}return element});
-      selectionUndoRef.current={kind:'snapshot',pageId:targetPage.id,before:targetPage.elements??[],after:next,native:selectionInkCountRef.current>0};selectionRedoRef.current=null;changeElements(targetPage,next);if(type==='delete'||type==='cut'){setSelectedElements({pageId:"",ids:[]});setSelection({pageId:"",count:0})}
+      recordSelectionHistory({kind:'snapshot',pageId:targetPage.id,before:targetPage.elements??[],after:next,native:selectionInkCountRef.current>0});changeElements(targetPage,next);if(type==='delete'||type==='cut'){setSelectedElements({pageId:"",ids:[]});setSelection({pageId:"",count:0})}
     }
     if(type==='clear'){setSelectedElements({pageId:"",ids:[]});setSelection({pageId:"",count:0})}
     setSelectionAction({
@@ -1122,37 +1126,21 @@ export function HanjiApp() {
   const activateLasso = () =>
     setTool((active) => ({ ...active, kind: "lasso" }));
   const performUndo = () => {
-    const conversion = selectionUndoRef.current;
+    const conversion = selectionUndoRef.current.pop();
     if (conversion) {
-      update(current.id, (n) => ({
-        ...n,
-        pages: n.pages.map((p) =>
-          p.id === conversion.pageId
-            ? {...p,elements:conversion.kind==='snapshot'?conversion.before:p.elements?.filter(element=>element.id!==conversion.element.id)}
-            : p,
-        ),
-      }));
-      selectionRedoRef.current = conversion;
-      selectionUndoRef.current = null;
-      if(conversion.kind==='element'||conversion.native)setUndoSignal((v)=>v+1);
+      if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.before:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));
+      selectionRedoRef.current=pushBounded(selectionRedoRef.current,conversion);
+      if(conversion.kind==='native'||conversion.kind==='element'||conversion.native)setUndoSignal((v)=>v+1);
       return;
     }
     setUndoSignal((v) => v + 1);
   };
   const performRedo = () => {
-    const conversion = selectionRedoRef.current;
+    const conversion = selectionRedoRef.current.pop();
     if (conversion) {
-      update(current.id, (n) => ({
-        ...n,
-        pages: n.pages.map((p) =>
-          p.id === conversion.pageId
-            ? { ...p, elements: conversion.kind==='snapshot'?conversion.after:[...(p.elements ?? []), conversion.element] }
-            : p,
-        ),
-      }));
-      selectionUndoRef.current = conversion;
-      selectionRedoRef.current = null;
-      if(conversion.kind==='element'||conversion.native)setRedoSignal((v)=>v+1);
+      if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.after:[...(p.elements ?? []),conversion.element]}:p)}));
+      selectionUndoRef.current=pushBounded(selectionUndoRef.current,conversion);
+      if(conversion.kind==='native'||conversion.kind==='element'||conversion.native)setRedoSignal((v)=>v+1);
       return;
     }
     setRedoSignal((v) => v + 1);

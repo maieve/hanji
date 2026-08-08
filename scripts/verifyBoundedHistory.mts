@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {pushBounded} from '../src/boundedHistory.ts';
+let stack:number[]=[];
+for(let value=0;value<125;value++)stack=pushBounded(stack,value);
+assert.equal(stack.length,100);
+assert.equal(stack[0],25);
+assert.equal(stack.at(-1),124);
+const redo:number[]=[];
+const undone=stack.pop();if(undone!==undefined)redo.push(undone);
+assert.equal(redo.pop(),124);
+assert.deepEqual(pushBounded([1,2],3,2),[2,3]);
+console.log('bounded history verification passed');
