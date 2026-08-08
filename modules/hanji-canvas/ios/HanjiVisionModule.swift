@@ -128,6 +128,14 @@ private func drawTextElements(_ json: String, in bounds: CGRect) {
     let size = (item["fontSize"] as? NSNumber)?.doubleValue ?? 20
     let style = NSMutableParagraphStyle(); style.lineBreakMode = .byWordWrapping
     text.draw(in: rect, withAttributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: UIColor(hanjiHex: item["color"] as? String ?? "#20201E"), .paragraphStyle: style])
+    if let source = item["source"] as? [String: Any] {
+      let pdfName = (source["pdfName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      let pageIndex = (source["pageIndex"] as? NSNumber)?.intValue ?? 0
+      let label = "↩ \((pdfName?.isEmpty == false ? pdfName! : "PDF")) · \(pageIndex + 1)쪽"
+      let labelSize = max(9, size * 0.55)
+      let labelRect = CGRect(x: rect.minX, y: max(rect.minY, rect.maxY - labelSize * 1.5), width: rect.width, height: labelSize * 1.5)
+      label.draw(in: labelRect, withAttributes: [.font: UIFont.systemFont(ofSize: labelSize, weight: .medium), .foregroundColor: UIColor(hanjiHex: "#2F7D66")])
+    }
   }
 }
 

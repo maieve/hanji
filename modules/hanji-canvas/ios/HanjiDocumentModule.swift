@@ -7,7 +7,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onCircleLasso")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPdfExcerpt", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onCircleLasso")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -32,6 +32,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   let onPageCount = EventDispatcher()
   let onPdfOutline = EventDispatcher()
   let onPdfLink = EventDispatcher()
+  let onPdfExcerpt = EventDispatcher()
   let onPencilDoubleTap = EventDispatcher()
   let onPencilSqueeze = EventDispatcher()
   let onStrokeAdded = EventDispatcher()
@@ -271,11 +272,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   }
 
   @objc private func handlePDFTextPress(_ recognizer: UILongPressGestureRecognizer) {
-    guard recognizer.state == .began, activeKind == "marker", replayCutoff == nil, document != nil else { return }
+    guard recognizer.state == .began, (activeKind == "marker" || activeKind == "lasso"), replayCutoff == nil, let document else { return }
     let canvasPoint = recognizer.location(in: canvas), pdfPoint = canvas.convert(canvasPoint, to: pdfView)
     guard let page = pdfView.page(for: pdfPoint, nearest: false) else { return }
     let pagePoint = pdfView.convert(pdfPoint, to: page)
     guard let selection = page.selectionForWord(at: pagePoint) else { return }
+    if activeKind == "lasso" {
+      let text = selection.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      guard !text.isEmpty else { return }
+      onPdfExcerpt(["text": text, "pageIndex": document.index(for: page)])
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      return
+    }
     let pageBounds = selection.bounds(for: page)
     guard !pageBounds.isNull, pageBounds.width > 1, pageBounds.height > 1 else { return }
     let pdfBounds = pdfView.convert(pageBounds, from: page)

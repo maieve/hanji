@@ -21,6 +21,7 @@ type Props = {
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: PdfOutlineItem[]) => void;
   onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
+  onPdfExcerpt?: (excerpt:{text:string;pageIndex:number})=>void;
   onPencilDoubleTap?: () => void;
   onPencilSqueeze?: () => void;
   onEraserEnded?: () => void;
@@ -51,6 +52,7 @@ export function DocumentCanvas(p: Props) {
       onPageCount={(e: E<{ count: number }>) => p.onPageCount?.(e.nativeEvent.count)}
       onPdfOutline={(e: E<{ items: PdfOutlineItem[] }>) => p.onPdfOutline?.(e.nativeEvent.items)}
       onPdfLink={(e: E<{ pageIndex?: number; url?: string }>) => p.onPdfLink?.(e.nativeEvent)}
+      onPdfExcerpt={(e:E<{text:string;pageIndex:number}>)=>p.onPdfExcerpt?.(e.nativeEvent)}
       onPencilDoubleTap={() => p.onPencilDoubleTap?.()}
       onPencilSqueeze={() => p.onPencilSqueeze?.()}
       onEraserEnded={() => {

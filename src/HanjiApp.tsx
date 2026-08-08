@@ -52,6 +52,7 @@ export function HanjiApp() {
   const [query, setQuery] = useState('');
   const [searchHits, setSearchHits] = useState<SearchHit[] | null>(null);
   const [searchFocus,setSearchFocus]=useState<{pageId:string;query:string;nonce:number}>();
+  const [pendingExcerpt,setPendingExcerpt]=useState<{text:string;source:NonNullable<TextElement['source']>}>();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -416,6 +417,9 @@ export function HanjiApp() {
     if (link.pageIndex !== undefined) setPageIndex(link.pageIndex);
     else if (link.url) void Linking.openURL(link.url);
   };
+  const capturePdfExcerpt=(sourcePage:typeof page,excerpt:{text:string;pageIndex:number})=>setPendingExcerpt({text:excerpt.text,source:{notebookId:current.id,pageId:sourcePage.id,pageIndex:excerpt.pageIndex,pdfName:sourcePage.pdfName}});
+  const pastePdfExcerpt=()=>{if(!pendingExcerpt)return;const element:TextElement={id:makeId(),kind:'text',text:pendingExcerpt.text,x:.58,y:.12,width:.34,height:.18,fontSize:16,color:C.ink,source:pendingExcerpt.source};changeElements(page,[...(page.elements??[]),element]);setPendingExcerpt(undefined);setElementMode(true)};
+  const navigateExcerptSource=(source:NonNullable<TextElement['source']>)=>{const note=items.find(item=>item.id===source.notebookId);if(!note)return;const index=note.pages.findIndex(item=>item.id===source.pageId);setOpenId(note.id);setPageIndex(index>=0?index:Math.max(0,Math.min(source.pageIndex,note.pages.length-1)))};
   const handleStrokeAdded = (target: typeof page, createdAt: number) => {
     const started = audioStartRef.current;
     if (started === null) return;
@@ -602,7 +606,7 @@ export function HanjiApp() {
       <View style={[s.editor,leftHanded&&s.editorLeftHanded,focusMode&&(leftHanded?{marginLeft:-112}:{marginRight:-112})]}>
         <View style={s.canvasArea}>
           {(current.viewMode ?? 'page') === 'continuous' ? (
-            <ContinuousDocument pages={current.pages} searchFocus={searchFocus} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onCircleLasso={activateLasso} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
+            <ContinuousDocument pages={current.pages} searchFocus={searchFocus} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onCircleLasso={activateLasso} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPdfExcerpt={capturePdfExcerpt} onNavigateSource={navigateExcerptSource} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
           ) : (
             <RotatedPage
               rotation={page.rotation}
@@ -614,8 +618,8 @@ export function HanjiApp() {
               ]}
             >
               <Paper template={page.template} customTemplateUri={page.customTemplateUri} />
-              <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onSelectionChange={(value)=>handleSelection(page,value)} onSelectionText={(result)=>handleSelectionText(page,result)} onCircleLasso={activateLasso} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
-              <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} />
+              <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPdfExcerpt={excerpt=>capturePdfExcerpt(page,excerpt)} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onSelectionChange={(value)=>handleSelection(page,value)} onSelectionText={(result)=>handleSelectionText(page,result)} onCircleLasso={activateLasso} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
+              <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} onNavigateSource={navigateExcerptSource}/>
               {searchFocus?.pageId===page.id&&<SearchHighlight words={page.ocrWords??[]} query={searchFocus.query}/>}
             </RotatedPage>
           )}
@@ -640,6 +644,7 @@ export function HanjiApp() {
             onTranscribe={transcribeSession}
             leftHanded={leftHanded}
           />
+          {pendingExcerpt&&<View style={[s.excerptTray,{width:Math.max(140,Math.min(360,windowWidth-(focusMode?48:160)))},leftHanded&&s.excerptTrayLeft]}><View style={{flex:1}}><Text style={s.excerptLabel}>PDF 발췌 · {pendingExcerpt.source.pageIndex+1}쪽</Text><Text numberOfLines={2} style={s.excerptText}>{pendingExcerpt.text}</Text></View><Pressable accessibilityLabel="현재 페이지에 발췌 붙여넣기" onPress={pastePdfExcerpt} style={s.excerptPaste}><Ionicons name="return-down-forward" size={17} color={C.white}/><Text style={s.excerptPasteText}>붙이기</Text></Pressable><Pressable accessibilityLabel="발췌 취소" onPress={()=>setPendingExcerpt(undefined)} style={s.excerptClose}><Ionicons name="close" size={18} color={C.muted}/></Pressable></View>}
           {tool.kind==='lasso'&&Platform.OS==='ios'&&<Pressable accessibilityLabel="원본 필기 붙여넣기" onPress={()=>actOnSelection('paste')} style={[s.lassoPaste,leftHanded&&s.lassoPasteLeft]}><Ionicons name="clipboard" size={18} color={C.accent}/><Text style={s.lassoPasteText}>붙여넣기</Text></Pressable>}
           <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} availableWidth={windowWidth-(focusMode?48:160)} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onCut={()=>actOnSelection('cut')} onDuplicate={()=>actOnSelection('duplicate')} onShrink={()=>actOnSelection('shrink')} onGrow={()=>actOnSelection('grow')} onRotate={()=>actOnSelection('rotate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
         </View>
@@ -1326,6 +1331,7 @@ const s = StyleSheet.create({
   lassoPaste:{position:'absolute',top:110,right:18,zIndex:31,height:38,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:6,shadowColor:'#000',shadowOpacity:.12,shadowRadius:8},
   lassoPasteLeft:{right:undefined,left:18},
   lassoPasteText:{fontSize:11,fontWeight:'800',color:C.accent},
+  excerptTray:{position:'absolute',left:18,bottom:70,zIndex:32,minHeight:64,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',padding:10,flexDirection:'row',alignItems:'center',gap:8,shadowColor:'#000',shadowOpacity:.14,shadowRadius:10},excerptTrayLeft:{left:undefined,right:18},excerptLabel:{fontSize:9,fontWeight:'900',color:C.accent},excerptText:{fontSize:12,lineHeight:17,color:C.ink,marginTop:3},excerptPaste:{height:36,borderRadius:11,backgroundColor:C.accent,paddingHorizontal:10,flexDirection:'row',alignItems:'center',gap:4},excerptPasteText:{fontSize:10,fontWeight:'800',color:C.white},excerptClose:{width:30,height:30,alignItems:'center',justifyContent:'center'},
   cardTitle: { marginTop: 11, fontWeight: '700', color: C.ink, fontSize: 14 },
   tagLine: { fontSize: 10, color: C.accent, marginTop: 4 },
   hitSnippet: { fontSize: 10, lineHeight: 14, color: C.muted, marginTop: 4 },

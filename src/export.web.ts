@@ -16,7 +16,7 @@ export async function exportNotebookPdf(note: Notebook) {
       const elements = (page.elements ?? [])
         .map((x) =>
           x.kind === 'text'
-            ? `<div style="position:absolute;white-space:pre-wrap;overflow:hidden;left:${x.x * 100}%;top:${x.y * 100}%;width:${x.width * 100}%;height:${x.height * 100}%;font-size:${x.fontSize}px;color:${esc(x.color)}">${esc(x.text)}</div>`
+            ? `<div style="position:absolute;white-space:pre-wrap;overflow:hidden;left:${x.x * 100}%;top:${x.y * 100}%;width:${x.width * 100}%;height:${x.height * 100}%;font-size:${x.fontSize}px;color:${esc(x.color)}">${esc(x.text)}${x.source ? `<span style="position:absolute;left:0;bottom:0;font-size:${Math.max(9, x.fontSize * 0.55)}px;font-weight:600;color:#2f7d66">↩ ${esc(x.source.pdfName || 'PDF')} · ${x.source.pageIndex + 1}쪽</span>` : ''}</div>`
             : `<img src="${esc(x.uri)}" style="position:absolute;object-fit:${x.fit ?? 'contain'};left:${x.x * 100}%;top:${x.y * 100}%;width:${x.width * 100}%;height:${x.height * 100}%;transform:rotate(${x.rotation ?? 0}deg)"/>`,
         )
         .join('');
@@ -42,7 +42,7 @@ export async function exportPagePng(note: Notebook, page: Page, pageIndex: numbe
   const labels = (page.elements ?? [])
     .map((x) =>
       x.kind === 'text'
-        ? `<text x="${x.x * 900}" y="${x.y * 636 + x.fontSize}" font-family="sans-serif" font-size="${x.fontSize}" fill="${esc(x.color)}">${esc(x.text)}</text>`
+        ? `<text x="${x.x * 900}" y="${x.y * 636 + x.fontSize}" font-family="sans-serif" font-size="${x.fontSize}" fill="${esc(x.color)}">${esc(x.text)}</text>${x.source ? `<text x="${x.x * 900}" y="${(x.y + x.height) * 636 - 5}" font-family="sans-serif" font-size="${Math.max(9, x.fontSize * 0.55)}" font-weight="600" fill="#2f7d66">↩ ${esc(x.source.pdfName || 'PDF')} · ${x.source.pageIndex + 1}쪽</text>` : ''}`
         : `<image href="${esc(x.uri)}" x="${x.x * 900}" y="${x.y * 636}" width="${x.width * 900}" height="${x.height * 636}" preserveAspectRatio="xMidYMid ${x.fit === 'cover' ? 'slice' : 'meet'}" transform="rotate(${x.rotation ?? 0} ${x.x * 900 + x.width * 450} ${x.y * 636 + x.height * 318})"/>`,
     )
     .join('');

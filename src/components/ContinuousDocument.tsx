@@ -31,6 +31,8 @@ type Props = {
   onPageCount: (count: number, page: Page) => void;
   onPdfOutline: (items: PdfOutlineItem[]) => void;
   onPdfLink: (link: { pageIndex?: number; url?: string }) => void;
+  onPdfExcerpt:(page:Page,excerpt:{text:string;pageIndex:number})=>void;
+  onNavigateSource:(source:NonNullable<import('../types').TextElement['source']>)=>void;
   onPencilDoubleTap: () => void;
   onPencilSqueeze: () => void;
   onStrokeAdded: (page: Page, createdAt: number) => void;
@@ -90,6 +92,7 @@ export function ContinuousDocument(props: Props) {
             redoSignal={index === props.activeIndex ? props.redoSignal : undefined}
             onPdfOutline={props.onPdfOutline}
             onPdfLink={props.onPdfLink}
+            onPdfExcerpt={excerpt=>props.onPdfExcerpt(item,excerpt)}
             onPencilDoubleTap={props.onPencilDoubleTap}
             onPencilSqueeze={props.onPencilSqueeze}
             onStrokeAdded={(createdAt) => props.onStrokeAdded(item, createdAt)}
@@ -105,6 +108,7 @@ export function ContinuousDocument(props: Props) {
             elements={item.elements ?? []}
             onChange={(elements) => props.onElementsChange(item, elements)}
             onSaveImage={props.onSaveSticker}
+            onNavigateSource={props.onNavigateSource}
           />
           {props.searchFocus?.pageId===item.id&&<SearchHighlight words={item.ocrWords??[]} query={props.searchFocus.query}/>}
         </RotatedPage>

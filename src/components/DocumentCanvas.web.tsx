@@ -15,6 +15,7 @@ type Props = {
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: []) => void;
   onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
+  onPdfExcerpt?: (excerpt:{text:string;pageIndex:number})=>void;
   onPencilDoubleTap?: () => void;
   onPencilSqueeze?: () => void;
   onEraserEnded?: () => void;
