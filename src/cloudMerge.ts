@@ -26,6 +26,17 @@ const pageContent = (page: Page) =>
     pdfName: page.pdfName,
     pdfPageIndex: page.pdfPageIndex,
   });
+const notebookMetadata = (note: Notebook) =>
+  JSON.stringify({
+    title: note.title,
+    folder: note.folder,
+    tags: note.tags,
+    favorite: note.favorite,
+    locked: note.locked,
+    coverColor: note.coverColor,
+    cover: assetIdentity(note.coverUri),
+    viewMode: note.viewMode,
+  });
 const signature = (value: string) => {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i++) {
@@ -68,7 +79,12 @@ function mergeNotebook(
   local: Notebook,
   remote: Notebook,
 ): { note: Notebook; conflicts: ConflictPage[] } {
-  const metadata = remote.updatedAt > local.updatedAt ? remote : local;
+  const metadata =
+    remote.updatedAt > local.updatedAt ||
+    (remote.updatedAt === local.updatedAt &&
+      notebookMetadata(remote) > notebookMetadata(local))
+      ? remote
+      : local;
   const localPages = new Map(local.pages.map((page) => [page.id, page]));
   const remotePages = new Map(remote.pages.map((page) => [page.id, page]));
   const deletedPages = { ...(local.deletedPages ?? {}) };

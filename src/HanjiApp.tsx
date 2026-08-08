@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -95,6 +96,7 @@ import { insertPage } from "./pageInsert";
 import type { PencilAction } from "./pencilActions";
 import { resolvePencilPreferredAction } from "./pencilPreferredAction";
 import { templateSpacings } from "./templateSpacing";
+import { normalizeNotebookCoverColor } from "./notebookCover";
 import { backupIntervalMs } from "./backupPolicy";
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
@@ -2427,14 +2429,33 @@ function Library({
                     onLongPress={() => manage(n)}
                     style={s.card}
                   >
-                    <View style={s.cover}>
-                      <View style={s.coverBand} />
-                      {Array.from({ length: 6 }, (_, i) => (
-                        <View
-                          key={i}
-                          style={[s.coverLine, { top: 42 + i * 20 }]}
+                    <View
+                      style={[
+                        s.cover,
+                        {
+                          backgroundColor: normalizeNotebookCoverColor(
+                            n.coverColor,
+                          ),
+                        },
+                      ]}
+                    >
+                      {n.coverUri && !n.locked && (
+                        <Image
+                          source={{ uri: n.coverUri }}
+                          resizeMode="cover"
+                          style={StyleSheet.absoluteFill}
                         />
-                      ))}
+                      )}
+                      {(!n.coverUri || n.locked) && (
+                        <View style={s.coverBand} />
+                      )}
+                      {(!n.coverUri || n.locked) &&
+                        Array.from({ length: 6 }, (_, i) => (
+                          <View
+                            key={i}
+                            style={[s.coverLine, { top: 42 + i * 20 }]}
+                          />
+                        ))}
                       <Pressable
                         accessibilityLabel={
                           n.favorite ? "즐겨찾기 해제" : "즐겨찾기"

@@ -34,4 +34,9 @@ const paintRemote=note([{...page('paint','same-ink','2026-03-02'),backgroundColo
 const paintMerge=mergeCloudRestore([paintLocal],[paintRemote]);
 assert(paintMerge.find(item=>item.id==='n1')?.pages[0]?.backgroundColor==='#B8DDD8','newer page paint must win merge');
 assert(paintMerge.some(item=>item.conflictOf==='n1'&&item.pages[0]?.backgroundColor==='#FFF1A8'),'different page paint must create a recoverable conflict');
+const coverLocal={...note([page('cover','same','2026-04-01')],'2026-04-01'),coverColor:'#E8F2ED',coverUri:'file:///local/1-cover.png'};
+const coverRemote={...note([page('cover','same','2026-04-01')],'2026-04-02'),coverColor:'#EAF0FA',coverUri:'file:///remote/2-cover.png'};
+const coverMerge=mergeCloudRestore([coverLocal],[coverRemote]).find(item=>item.id==='n1');
+assert(coverMerge?.coverColor==='#EAF0FA','newer notebook cover color must win merge');
+assert(coverMerge?.coverUri==='file:///remote/2-cover.png','newer notebook cover asset must win merge');
 console.log('cloud merge verification passed');
