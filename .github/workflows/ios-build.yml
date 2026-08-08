@@ -47,9 +47,9 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build | tee xcodebuild.log
-          APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
-          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP_PATH/Info.plist")"
-          strings "$APP_PATH/$EXECUTABLE" | grep -q 'HanjiVision'
+          HANJI_LIBRARY="$(find build/Build/Products/Release-iphoneos/HanjiCanvas -name 'libHanjiCanvas.a' -print -quit)"
+          test -n "$HANJI_LIBRARY"
+          nm "$HANJI_LIBRARY" | grep -q 'HanjiVisionModule'
       - name: Package unsigned IPA
         working-directory: ios
         run: |
