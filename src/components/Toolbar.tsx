@@ -55,7 +55,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
     <Pressable accessibilityLabel="플래시카드" onPress={onFlashcards} style={s.tool}><Ionicons name="albums-outline" size={20} color={C.accent}/>{dueCards>0&&<View style={s.badge}><Text style={s.badgeText}>{Math.min(99,dueCards)}</Text></View>}</Pressable>
     <Pressable accessibilityLabel="현재 문서 안 검색" onPress={onSearch} style={s.tool}><Ionicons name="search-outline" size={20} color={C.accent}/></Pressable>
     {onPdfOutline&&<Pressable accessibilityLabel={`PDF 목차 ${outlineCount}개`} disabled={!outlineCount} onPress={onPdfOutline} style={[s.tool,!outlineCount&&{opacity:.35}]}><Ionicons name="list-outline" size={20} color={C.accent}/></Pressable>}
-    <Pressable accessibilityLabel="PDF 내보내기" onPress={onExportPdf} style={s.tool}><Ionicons name="share-outline" size={20} color={C.accent}/></Pressable>
+    <Pressable accessibilityLabel="PDF PNG 원본 내보내기" onPress={onExportPdf} style={s.tool}><Ionicons name="share-outline" size={20} color={C.accent}/></Pressable>
     <Pressable accessibilityLabel="실행 취소" onPress={onUndo} style={s.tool}><Ionicons name="arrow-undo" size={20} color={C.muted}/></Pressable>
     <Pressable accessibilityLabel="다시 실행" onPress={onRedo} style={s.tool}><Ionicons name="arrow-redo" size={20} color={C.muted}/></Pressable>
     <Pressable accessibilityLabel="손가락 필기" onPress={onToggleFingerDrawing} style={[s.tool,fingerDrawingEnabled&&s.selected]}><Ionicons name="hand-left-outline" size={20} color={fingerDrawingEnabled?C.accent:C.muted}/></Pressable>

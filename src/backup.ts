@@ -9,7 +9,7 @@ type ArchiveManifest={format:'hanji-archive';version:2;createdAt:string;assets:R
 const clean=(value:string)=>value.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-90)||'asset';
 const bytes=async(uri:string)=>new File(uri).bytes();
 
-export async function exportLibrary(items:Notebook[]){
+async function exportArchive(items:Notebook[],prefix:string,dialogTitle:string){
   const zip=new JSZip(); const assets:Record<string,string>={}; let assetIndex=0;
   const addAsset=async(uri:string,folder:string)=>{if(!uri||assets[uri])return;try{const path=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(path,await bytes(uri));assets[uri]=path}catch{}};
   for(const note of items){
@@ -24,9 +24,11 @@ export async function exportLibrary(items:Notebook[]){
   const manifest:ArchiveManifest={format:'hanji-archive',version:2,createdAt:new Date().toISOString(),assets};
   zip.file('manifest.json',JSON.stringify(manifest,null,2));zip.file('library.json',JSON.stringify(items,null,2));
   const output=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
-  const file=new File(Paths.cache,`hanji-backup-${new Date().toISOString().replace(/[:.]/g,'-')}.hanji`);if(file.exists)file.delete();file.create();file.write(output);
-  await Sharing.shareAsync(file.uri,{mimeType:'application/zip',dialogTitle:'Hanji 원본 백업 내보내기'});return file.uri;
+  const file=new File(Paths.cache,`${prefix}-${new Date().toISOString().replace(/[:.]/g,'-')}.hanji`);if(file.exists)file.delete();file.create();file.write(output);
+  await Sharing.shareAsync(file.uri,{mimeType:'application/zip',dialogTitle});return file.uri;
 }
+export const exportLibrary=(items:Notebook[])=>exportArchive(items,'hanji-backup','Hanji 전체 원본 백업 내보내기');
+export const exportNotebookArchive=(note:Notebook)=>exportArchive([note],`hanji-${clean(note.title)}`,`${note.title} 원본 .hanji 내보내기`);
 
 export async function writeAutomaticBackup(items:Notebook[],keep=5,minIntervalMs=30*60*1000){
   if(!items.length)return null;

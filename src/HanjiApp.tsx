@@ -10,7 +10,7 @@ import { Toolbar } from './components/Toolbar';
 import { blankPage, loadCategories, loadLibrary, makeId, newNotebook, pdfNotebook, saveCategories, saveLibrary } from './storage';
 import { C } from './theme';
 import type { AudioSession, ImageElement, Notebook, Sticker, TextElement, ToolSpec } from './types';
-import { exportLibrary, importLibraryBackup, writeAutomaticBackup } from './backup';
+import { exportLibrary,exportNotebookArchive, importLibraryBackup, writeAutomaticBackup } from './backup';
 import { recognizeDrawing } from './vision';
 import { exportNotebookPdf, exportPagePng } from './export';
 import { uploadArchiveIfEnabled } from './cloudSync';
@@ -44,6 +44,7 @@ import {DocumentSearchPanel} from './components/DocumentSearchPanel';
 import {PagePaintPanel} from './components/PagePaintPanel';
 import {insertPage} from './pageInsert';
 import {backupIntervalMs} from './backupPolicy';
+import {ExportPanel} from './components/ExportPanel';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -104,6 +105,7 @@ export function HanjiApp() {
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [documentSearchOpen,setDocumentSearchOpen]=useState(false);
   const [pagePaintOpen,setPagePaintOpen]=useState(false);
+  const [exportOpen,setExportOpen]=useState(false);
   const [indexStatus,setIndexStatus]=useState<'idle'|'running'|'success'|'error'>('idle');
   const {leftHanded,fingerDrawingEnabled}=uiPreferences;
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
@@ -606,7 +608,7 @@ export function HanjiApp() {
           onFocusMode={() => setFocusMode(true)}
           onSettings={() => setSettingsOpen(true)}
           onSearch={() => setDocumentSearchOpen(true)}
-          onExportPdf={() => exportNotebookPdf(current)}
+          onExportPdf={() => setExportOpen(true)}
           onFlashcards={() => setFlashcardsOpen(true)}
           dueCards={dueFlashcards(current.flashcards ?? []).length}
           onPdfOutline={page.pdfUri ? () => setOutlineOpen(true) : undefined}
@@ -846,6 +848,7 @@ export function HanjiApp() {
       <SettingsPanel visible={settingsOpen} value={uiPreferences} indexStatus={indexStatus} onRebuildIndex={rebuildIndex} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
       <DocumentSearchPanel visible={documentSearchOpen} notebook={current} activePageIndex={pageIndex} onSelect={navigateDocumentSearch} onClose={()=>setDocumentSearchOpen(false)}/>
       <PagePaintPanel visible={pagePaintOpen} color={page.backgroundColor} opacity={page.backgroundOpacity??0} onChange={(backgroundColor,backgroundOpacity)=>update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(item=>item.id===page.id?{...item,backgroundColor,backgroundOpacity,updatedAt:new Date().toISOString()}:item)}))} onClose={()=>setPagePaintOpen(false)}/>
+      <ExportPanel visible={exportOpen} onClose={()=>setExportOpen(false)} onPdf={()=>exportNotebookPdf(current)} onPng={()=>exportPagePng(current,page,pageIndex)} onHanji={()=>exportNotebookArchive(current)}/>
       <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>
