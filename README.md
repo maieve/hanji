@@ -24,4 +24,4 @@ iOS 네이티브 빌드는 macOS 러너에서 `npx expo prebuild --platform ios`
 
 자동 검증과 unsigned iPad 빌드는 GitHub Actions에서 수행한다. 실제 Apple Pencil 감각·OCR 정확도·PDF 좌표는 `docs/NATIVE_VERIFICATION.md`의 실기기 게이트로 최종 확인한다.
 
-현재 설치용 빌드는 [v0.1.3 PDF coordinates](https://github.com/maieve/hanji/releases/tag/v0.1.3)다. v0.1.0은 로컬 iOS 모듈이 IPA에 연결되지 않아 시작 시 흰 화면이 발생하므로 사용하지 않는다. 자세한 설치·갱신 절차는 `docs/IPAD_INSTALL.md`를 따른다.
+현재 설치용 빌드는 [v0.1.4 responsive ink](https://github.com/maieve/hanji/releases/tag/v0.1.4)다. v0.1.0은 로컬 iOS 모듈이 IPA에 연결되지 않아 시작 시 흰 화면이 발생하므로 사용하지 않는다. 자세한 설치·갱신 절차는 `docs/IPAD_INSTALL.md`를 따른다.
