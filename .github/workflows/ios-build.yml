@@ -49,7 +49,8 @@ jobs:
             build | tee xcodebuild.log
           HANJI_LIBRARY="$(find build/Build/Products/Release-iphoneos/HanjiCanvas -name 'libHanjiCanvas.a' -print -quit)"
           test -n "$HANJI_LIBRARY"
-          nm "$HANJI_LIBRARY" | grep -q 'HanjiVisionModule'
+          nm "$HANJI_LIBRARY" > hanji-native-symbols.txt
+          grep -q 'HanjiVisionModule' hanji-native-symbols.txt
       - name: Package unsigned IPA
         working-directory: ios
         run: |
