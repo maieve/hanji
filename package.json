@@ -9,6 +9,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
+    "test:cloud-merge": "node --no-warnings --experimental-strip-types scripts/verifyCloudMerge.mts",
     "postinstall": "patch-package"
   },
   "dependencies": {
