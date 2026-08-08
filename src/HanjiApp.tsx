@@ -93,6 +93,7 @@ import { defaultUiPreferences, type UiPreferences } from "./uiPreferences";
 import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
 import { PagePaintPanel } from "./components/PagePaintPanel";
 import { selectionTextToQuestion } from "./flashcardDraft";
+import {normalizeCanvasExtent,resizePageCanvas} from './canvasExtent';
 import { insertPage } from "./pageInsert";
 import type { PencilAction } from "./pencilActions";
 import { resolvePencilPreferredAction } from "./pencilPreferredAction";
@@ -622,6 +623,7 @@ export function HanjiApp() {
     );
   const page = current.pages[pageIndex] ?? current.pages[0];
   if (!page) return null;
+  const canvasExtent = normalizeCanvasExtent(page.canvasExtent);
   const selectTab = async (id: string) => {
     const note = items.find((item) => item.id === id);
     if (!note || !(await unlockNotebook(note))) return;
@@ -1192,6 +1194,7 @@ export function HanjiApp() {
           : p,
       ),
     }));
+  const resizeCanvas=(columns:number,rows:number)=>update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===page.id?resizePageCanvas(p,{columns,rows}):p)}));
   const reorderPages = (ids: string[]) => {
     const map = new Map(current.pages.map((p) => [p.id, p]));
     const pages = ids
@@ -1384,6 +1387,8 @@ export function HanjiApp() {
           ) : (
             <ZoomablePage
               rotation={page.rotation}
+              canvasExtent={page.canvasExtent}
+              fingerDrawingEnabled={fingerDrawingEnabled}
               style={[
                 s.paper,
                 (page.rotation === 90 || page.rotation === 270) && {
@@ -1545,6 +1550,7 @@ export function HanjiApp() {
         </View>
         <View style={[s.rail, leftHanded && s.railLeft]}>
           <Text style={s.railTitle}>페이지</Text>
+          {(canvasExtent.columns>1||canvasExtent.rows>1)&&<Text style={s.railTitle}>{canvasExtent.columns}×{canvasExtent.rows} 보드</Text>}
           <View style={s.railActions}>
             <Pressable
               accessibilityLabel={
@@ -1577,6 +1583,8 @@ export function HanjiApp() {
                 color={(page.backgroundOpacity ?? 0) > 0 ? C.white : C.accent}
               />
             </Pressable>
+            <Pressable accessibilityLabel={`캔버스 오른쪽 확장, 현재 ${canvasExtent.columns}칸`} disabled={Boolean(page.pdfUri)||canvasExtent.columns>=4} onPress={()=>resizeCanvas(canvasExtent.columns+1,canvasExtent.rows)} style={s.railAction}><Ionicons name="arrow-forward-circle-outline" size={16} color={page.pdfUri||canvasExtent.columns>=4?C.line:C.accent}/></Pressable>
+            <Pressable accessibilityLabel={`캔버스 아래쪽 확장, 현재 ${canvasExtent.rows}칸`} disabled={Boolean(page.pdfUri)||canvasExtent.rows>=4} onPress={()=>resizeCanvas(canvasExtent.columns,canvasExtent.rows+1)} style={s.railAction}><Ionicons name="arrow-down-circle-outline" size={16} color={page.pdfUri||canvasExtent.rows>=4?C.line:C.accent}/></Pressable>
             <Pressable
               accessibilityLabel="PNG 내보내기"
               onPress={() => exportPagePng(current, page, pageIndex)}

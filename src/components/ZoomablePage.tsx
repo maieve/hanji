@@ -8,21 +8,27 @@ import {
   type ViewStyle,
 } from "react-native";
 import type { PageRotation } from "../types";
+import {normalizeCanvasExtent} from '../canvasExtent';
 import { CANVAS_MAX_ZOOM, CANVAS_MIN_ZOOM, zoomNeedsPan } from "../zoomPolicy";
 import { RotatedPage } from "./RotatedPage";
 
 export function ZoomablePage({
   rotation = 0,
   style,
+  canvasExtent,
+  fingerDrawingEnabled=false,
   children,
 }: {
   rotation?: PageRotation;
   style?: StyleProp<ViewStyle>;
+  canvasExtent?: {columns:number;rows:number};
+  fingerDrawingEnabled?:boolean;
   children: ReactNode;
 }) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
   const [multiTouch, setMultiTouch] = useState(false);
+  const extent=normalizeCanvasExtent(canvasExtent),extended=extent.columns>1||extent.rows>1;
   const layout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     if (width !== size.width || height !== size.height)
@@ -38,9 +44,9 @@ export function ZoomablePage({
         bouncesZoom
         centerContent
         pinchGestureEnabled
-        scrollEnabled={multiTouch || zoomNeedsPan(zoom)}
-        showsHorizontalScrollIndicator={zoomNeedsPan(zoom)}
-        showsVerticalScrollIndicator={zoomNeedsPan(zoom)}
+        scrollEnabled={(extended&&!fingerDrawingEnabled) || multiTouch || zoomNeedsPan(zoom)}
+        showsHorizontalScrollIndicator={extended || zoomNeedsPan(zoom)}
+        showsVerticalScrollIndicator={extended || zoomNeedsPan(zoom)}
         scrollEventThrottle={32}
         onScroll={(event) => setZoom(event.nativeEvent.zoomScale ?? 1)}
         onTouchStart={(event) => {
@@ -50,7 +56,7 @@ export function ZoomablePage({
           if (event.nativeEvent.touches.length < 2) setMultiTouch(false);
         }}
       >
-        <View style={{ width: size.width, height: size.height }}>
+        <View style={{ width: size.width*extent.columns, height: size.height*extent.rows }}>
           {size.width > 0 && (
             <RotatedPage rotation={rotation} style={s.page}>
               {children}

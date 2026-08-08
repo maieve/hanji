@@ -1,24 +1,25 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { C } from '../theme';
 import type { ImageElement, PageElement, TextElement } from '../types';
 
 export function ElementsLayer({ elements, editable, onChange, onSaveImage,onNavigateSource }: { elements: PageElement[]; editable: boolean; onChange: (v: PageElement[]) => void; onSaveImage?: (image: ImageElement) => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
+  const [size,setSize]=useState({width:900,height:636});
   const replace = (next: PageElement) => onChange(elements.map((x) => (x.id === next.id ? next : x)));
   return (
-    <View pointerEvents={editable||onNavigateSource ? 'box-none' : 'none'} style={StyleSheet.absoluteFill}>
+    <View onLayout={event=>setSize({width:event.nativeEvent.layout.width||900,height:event.nativeEvent.layout.height||636})} pointerEvents={editable||onNavigateSource ? 'box-none' : 'none'} style={StyleSheet.absoluteFill}>
       {elements.map((element) =>
         element.kind === 'text' ? (
-          <TextBox key={element.id} element={element} editable={editable} onChange={replace} onNavigateSource={onNavigateSource} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
+          <TextBox key={element.id} element={element} canvasSize={size} editable={editable} onChange={replace} onNavigateSource={onNavigateSource} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
         ) : (
-          <ImageBox key={element.id} element={element} editable={editable} onChange={replace} onSave={onSaveImage ? () => onSaveImage(element) : undefined} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
+          <ImageBox key={element.id} element={element} canvasSize={size} editable={editable} onChange={replace} onSave={onSaveImage ? () => onSaveImage(element) : undefined} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
         ),
       )}
     </View>
   );
 }
 
-function ImageBox({ element, editable, onChange, onDelete, onSave }: { element: ImageElement; editable: boolean; onChange: (v: ImageElement) => void; onDelete: () => void; onSave?: () => void }) {
+function ImageBox({ element, canvasSize, editable, onChange, onDelete, onSave }: { element: ImageElement;canvasSize:{width:number;height:number}; editable: boolean; onChange: (v: ImageElement) => void; onDelete: () => void; onSave?: () => void }) {
   const start = useRef({ x: element.x, y: element.y }),
     latest = useRef(element);
   latest.current = element;
@@ -33,11 +34,11 @@ function ImageBox({ element, editable, onChange, onDelete, onSave }: { element: 
         onPanResponderMove: (_, g) =>
           onChange({
             ...latest.current,
-            x: Math.max(0, Math.min(1 - latest.current.width, start.current.x + g.dx / 900)),
-            y: Math.max(0, Math.min(1 - latest.current.height, start.current.y + g.dy / 636)),
+            x: Math.max(0, Math.min(1 - latest.current.width, start.current.x + g.dx / canvasSize.width)),
+            y: Math.max(0, Math.min(1 - latest.current.height, start.current.y + g.dy / canvasSize.height)),
           }),
       }),
-    [editable, onChange],
+    [canvasSize.height,canvasSize.width,editable, onChange],
   );
   return (
     <View
@@ -87,7 +88,7 @@ function ImageBox({ element, editable, onChange, onDelete, onSave }: { element: 
   );
 }
 
-function TextBox({ element, editable, onChange, onDelete,onNavigateSource }: { element: TextElement; editable: boolean; onChange: (v: TextElement) => void; onDelete: () => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
+function TextBox({ element,canvasSize, editable, onChange, onDelete,onNavigateSource }: { element: TextElement;canvasSize:{width:number;height:number}; editable: boolean; onChange: (v: TextElement) => void; onDelete: () => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
   const start = useRef({ x: element.x, y: element.y });
   const latest = useRef(element);
   latest.current = element;
@@ -100,14 +101,14 @@ function TextBox({ element, editable, onChange, onDelete,onNavigateSource }: { e
           start.current = { x: latest.current.x, y: latest.current.y };
         },
         onPanResponderMove: (_, g) =>
-          onChange({ ...latest.current, x: Math.max(0, Math.min(0.82, start.current.x + g.dx / 900)), y: Math.max(0, Math.min(0.85, start.current.y + g.dy / 636)) }),
+          onChange({ ...latest.current, x: Math.max(0, Math.min(1-latest.current.width, start.current.x + g.dx / canvasSize.width)), y: Math.max(0, Math.min(1-latest.current.height, start.current.y + g.dy / canvasSize.height)) }),
       }),
-    [editable, onChange],
+    [canvasSize.height,canvasSize.width,editable, onChange],
   );
   return (
     <View
       {...pan.panHandlers}
-      style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, minHeight: element.height * 636 }, editable && s.editable]}
+      style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, minHeight: element.height * canvasSize.height }, editable && s.editable]}
     >
       {editable ? (
         <TextInput multiline value={element.text} onChangeText={(text) => onChange({ ...element, text })} style={[s.input, { fontSize: element.fontSize, color: element.color }]} />

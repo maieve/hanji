@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {normalizeCanvasExtent,resizePageCanvas} from '../src/canvasExtent.ts';
+import type {Page} from '../src/types.ts';
+const page:Page={id:'p',drawingData:'ink-absolute',template:'plain',updatedAt:'2026-01-01',elements:[{id:'e',kind:'text',text:'x',x:.5,y:.25,width:.2,height:.1,fontSize:20,color:'#000'}],ocrWords:[{text:'x',confidence:1,x:.5,y:.25,width:.2,height:.1}]};
+const wide=resizePageCanvas(page,{columns:2,rows:1});
+assert.equal(wide.drawingData,'ink-absolute');assert.deepEqual(wide.canvasExtent,{columns:2,rows:1});
+assert.equal(wide.elements?.[0]?.x,.25);assert.equal(wide.elements?.[0]?.width,.1);assert.equal(wide.ocrWords?.[0]?.x,.5);
+const large=resizePageCanvas(wide,{columns:2,rows:2});assert.equal(large.elements?.[0]?.y,.125);assert.equal(large.elements?.[0]?.height,.05);
+assert.deepEqual(normalizeCanvasExtent({columns:99,rows:-2}),{columns:4,rows:1});
+const pdfPage={...page,pdfUri:'file.pdf'};assert.equal(resizePageCanvas(pdfPage,{columns:2}),pdfPage);
+console.log('canvas extent verification passed');

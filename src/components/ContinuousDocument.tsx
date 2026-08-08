@@ -146,7 +146,7 @@ export function ContinuousDocument(props: Props) {
     const size = dimensions(item);
     return (
       <View style={[s.item, { height: itemHeight(item) }]}>
-        <ZoomablePage rotation={item.rotation} style={[s.paper, size]}>
+        <ZoomablePage rotation={item.rotation} canvasExtent={item.canvasExtent} fingerDrawingEnabled={props.fingerDrawingEnabled} style={[s.paper, size]}>
           <Paper
             template={item.template}
             templateSpacing={item.templateSpacing}
