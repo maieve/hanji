@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {latestOpenedAt,markNotebookOpened,sortNotebooks} from '../src/libraryView.ts';
+import {latestOpenedAt,libraryTagFromSelection,libraryTagSelectionKey,libraryTags,markNotebookOpened,sortNotebooks} from '../src/libraryView.ts';
 import type {Notebook} from '../src/types.ts';
 const note=(id:string,title:string,createdAt:string,updatedAt:string,pages:number,lastOpenedAt?:string):Notebook=>({id,title,folder:'내 노트',tags:[],favorite:false,createdAt,updatedAt,lastOpenedAt,pages:Array.from({length:pages},(_,i)=>({id:`${id}-${i}`,drawingData:'',template:'plain',updatedAt}))});
 const items=[note('a','노트 10','2026-01-01','2026-02-01',2,'2026-02-03'),note('b','노트 2','2026-03-01','2026-01-01',9,'2026-02-01'),note('c','가나다','2026-02-01','2026-04-01',4)];
@@ -12,4 +12,9 @@ const opened=markNotebookOpened(items,'b','2026-04-01');assert.equal(opened[1]?.
 assert.equal(markNotebookOpened(items,'missing','2026-04-01'),items);
 assert.equal(latestOpenedAt('2026-03-01','2026-04-01'),'2026-04-01');assert.equal(latestOpenedAt(undefined,'2026-04-01'),'2026-04-01');
 assert.deepEqual(items.map(x=>x.id),['a','b','c']);
+items[0]!.tags=['강의','중요'];items[1]!.tags=['중요','  복습  '];
+assert.deepEqual(libraryTags(items),['강의','복습','중요']);
+assert.equal(libraryTagSelectionKey('업무'),'__tag__:업무');
+assert.equal(libraryTagFromSelection('__tag__:업무'),'업무');
+assert.equal(libraryTagFromSelection('업무'),undefined);
 console.log('library view verification passed');

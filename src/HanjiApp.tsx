@@ -126,6 +126,9 @@ import Constants from "expo-constants";
 import {
   sortNotebooks,
   markNotebookOpened,
+  libraryTagFromSelection,
+  libraryTagSelectionKey,
+  libraryTags,
   type LibrarySort,
   type LibraryViewMode,
 } from "./libraryView";
@@ -2374,6 +2377,8 @@ function Library({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [moveSelectionOpen, setMoveSelectionOpen] = useState(false);
+  const tags = useMemo(() => libraryTags(items), [items]);
+  const selectedTag = libraryTagFromSelection(selected);
   const hitMap = useMemo(
     () => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []),
     [searchHits],
@@ -2386,6 +2391,7 @@ function Library({
             (selected === "전체" ||
               (selected === "즐겨찾기" && x.favorite) ||
               (selected === "최근 문서" && x.lastOpenedAt) ||
+              (selectedTag !== undefined && x.tags.some((tag) => tag.trim() === selectedTag)) ||
               folderContains(selected, x.folder)) &&
             librarySearchMatches(
               x,
@@ -2396,12 +2402,12 @@ function Library({
         librarySort,
         selected === "최근 문서",
       ),
-    [items, query, selected, searchHits, hitMap, librarySort],
+    [items, query, selected, selectedTag, searchHits, hitMap, librarySort],
   );
   const addCategory = () => {
     const name = draft.trim();
     if (!name) return;
-    const parent = ["전체", "즐겨찾기", "최근 문서"].includes(selected)
+    const parent = ["전체", "즐겨찾기", "최근 문서"].includes(selected) || selectedTag !== undefined
       ? ""
       : selected;
     onAddCategory(childFolder(parent, name));
@@ -2434,7 +2440,7 @@ function Library({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ gap: 7 }}
     >
-      {["전체", "즐겨찾기", "최근 문서", ...categories].map((category) => (
+      {["전체", "즐겨찾기", "최근 문서", ...tags.map(libraryTagSelectionKey), ...categories].map((category) => (
         <Pressable
           key={category}
           onPress={() => setSelected(category)}
@@ -2443,7 +2449,9 @@ function Library({
           }
           delayLongPress={450}
           accessibilityLabel={
-            categories.includes(category)
+            libraryTagFromSelection(category) !== undefined
+              ? `태그 ${libraryTagFromSelection(category)}`
+              : categories.includes(category)
               ? `${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`
               : category
           }
@@ -2458,7 +2466,9 @@ function Library({
               selected === category && { color: C.white },
             ]}
           >
-            {categories.includes(category)
+            {libraryTagFromSelection(category) !== undefined
+              ? `#${libraryTagFromSelection(category)}`
+              : categories.includes(category)
               ? folderBreadcrumb(category)
               : category}
           </Text>
@@ -2558,6 +2568,26 @@ function Library({
                 <Ionicons name="add-circle" size={22} color={C.accent} />
               </Pressable>
             </View>
+            {!!tags.length && <>
+              <Text style={s.section}>태그</Text>
+              <ScrollView style={s.tagNav} contentContainerStyle={s.tagNavContent}>
+                {tags.map((tag) => {
+                  const key = libraryTagSelectionKey(tag);
+                  const count = items.filter((note) => note.tags.some((value) => value.trim() === tag)).length;
+                  return <Pressable
+                    accessibilityLabel={`태그 ${tag}, 노트 ${count}권`}
+                    accessibilityState={{ selected: selected === key }}
+                    key={tag}
+                    onPress={() => setSelected(key)}
+                    style={[s.sideItem, selected === key && s.sideActive]}
+                  >
+                    <Ionicons name="pricetag-outline" size={17} color={selected === key ? C.accent : C.muted}/>
+                    <Text numberOfLines={1} style={[{ flex: 1 }, selected === key ? s.sideActiveText : s.sideText]}>#{tag}</Text>
+                    <Text style={s.sideCount}>{count}</Text>
+                  </Pressable>;
+                })}
+              </ScrollView>
+            </>}
             <Pressable
               accessibilityRole={saveStatus === "error" ? "button" : undefined}
               accessibilityLabel={
@@ -2646,6 +2676,8 @@ function Library({
               <Text style={s.heading}>
                 {selected === "전체"
                   ? "모든 노트"
+                  : selectedTag !== undefined
+                    ? `#${selectedTag}`
                   : categories.includes(selected)
                     ? folderBreadcrumb(selected)
                     : selected}
@@ -3296,6 +3328,9 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
   },
+  tagNav: { maxHeight: 150 },
+  tagNavContent: { paddingBottom: 4 },
+  sideCount: { fontSize: 10, color: C.muted },
   secondaryButton: {
     backgroundColor: C.white,
     borderWidth: 1,
