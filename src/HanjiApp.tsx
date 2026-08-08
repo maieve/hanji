@@ -92,6 +92,7 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { defaultUiPreferences, type UiPreferences } from "./uiPreferences";
 import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
 import { PagePaintPanel } from "./components/PagePaintPanel";
+import { selectionTextToQuestion } from "./flashcardDraft";
 import { insertPage } from "./pageInsert";
 import type { PencilAction } from "./pencilActions";
 import { resolvePencilPreferredAction } from "./pencilPreferredAction";
@@ -194,6 +195,7 @@ export function HanjiApp() {
       | "delete"
       | "recolor"
       | "text"
+      | "flashcard"
       | "clip"
       | "clear"
       | "copy"
@@ -214,6 +216,7 @@ export function HanjiApp() {
     element: TextElement;
   } | null>(null);
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
+  const [flashcardDraft, setFlashcardDraft] = useState<string>();
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [undoSignal, setUndoSignal] = useState(0);
@@ -967,6 +970,16 @@ export function HanjiApp() {
       height: number;
     },
   ) => {
+    if (selectionAction?.type === "flashcard") {
+      const question = selectionTextToQuestion(result.text);
+      if (question) {
+        setFlashcardDraft(question);
+        setFlashcardsOpen(true);
+      }
+      setSelection({ pageId: "", count: 0 });
+      actOnSelection("clear");
+      return;
+    }
     const element: TextElement = {
       id: makeId(),
       kind: "text",
@@ -1026,6 +1039,7 @@ export function HanjiApp() {
       | "delete"
       | "recolor"
       | "text"
+      | "flashcard"
       | "clip"
       | "clear"
       | "copy"
@@ -1524,6 +1538,7 @@ export function HanjiApp() {
             onGrow={() => actOnSelection("grow")}
             onRotate={() => actOnSelection("rotate")}
             onText={() => actOnSelection("text")}
+            onFlashcard={() => actOnSelection("flashcard")}
             onDelete={() => actOnSelection("delete")}
             onClose={() => actOnSelection("clear")}
           />
@@ -1830,8 +1845,9 @@ export function HanjiApp() {
       )}
       <FlashcardPanel
         visible={flashcardsOpen}
+        initialQuestion={flashcardDraft}
         cards={current.flashcards ?? []}
-        onClose={() => setFlashcardsOpen(false)}
+        onClose={() => { setFlashcardsOpen(false); setFlashcardDraft(undefined); }}
         onChange={(flashcards) =>
           update(current.id, (n) => ({
             ...n,

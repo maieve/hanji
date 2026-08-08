@@ -2,11 +2,11 @@ import {Ionicons} from '@expo/vector-icons';
 import {Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {C} from '../theme';
 
-type Props={count:number;color:string;availableWidth:number;onRecolor:()=>void;onCopy:()=>void;onClip:()=>void;onCut:()=>void;onDuplicate:()=>void;onShrink:()=>void;onGrow:()=>void;onRotate:()=>void;onText:()=>void;onDelete:()=>void;onClose:()=>void};
+type Props={count:number;color:string;availableWidth:number;onRecolor:()=>void;onCopy:()=>void;onClip:()=>void;onCut:()=>void;onDuplicate:()=>void;onShrink:()=>void;onGrow:()=>void;onRotate:()=>void;onText:()=>void;onFlashcard:()=>void;onDelete:()=>void;onClose:()=>void};
 
 const Action=({label,icon,color=C.accent,onPress}:{label:string;icon:keyof typeof Ionicons.glyphMap;color?:string;onPress:()=>void})=><Pressable accessibilityLabel={label} onPress={onPress} style={s.action}><Ionicons name={icon} size={16} color={color}/></Pressable>;
 
-export function SelectionBar({count,color,availableWidth,onRecolor,onCopy,onClip,onCut,onDuplicate,onShrink,onGrow,onRotate,onText,onDelete,onClose}:Props){
+export function SelectionBar({count,color,availableWidth,onRecolor,onCopy,onClip,onCut,onDuplicate,onShrink,onGrow,onRotate,onText,onFlashcard,onDelete,onClose}:Props){
  if(!count)return null;
  const width=Math.max(128,Math.min(390,availableWidth));
  return <View accessibilityLabel={`${count}개 획 선택됨`} style={[s.bar,{width,transform:[{translateX:-width/2}]}]}>
@@ -24,6 +24,7 @@ export function SelectionBar({count,color,availableWidth,onRecolor,onCopy,onClip
    <Action label="선택 획 잘라내기" icon="cut-outline" onPress={onCut}/>
    <Action label="선택 획 복제" icon="copy-outline" onPress={onDuplicate}/>
    <Action label="선택 필기를 텍스트로 변환" icon="text-outline" onPress={onText}/>
+   <Action label="선택 필기를 플래시카드 질문으로 만들기" icon="albums-outline" onPress={onFlashcard}/>
    <Action label="선택 획 삭제" icon="trash-outline" color={C.danger} onPress={onDelete}/>
   </ScrollView>
  </View>;

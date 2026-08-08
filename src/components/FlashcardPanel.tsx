@@ -1,12 +1,13 @@
 import {Ionicons} from '@expo/vector-icons';
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import {dueFlashcards,createFlashcard,reviewFlashcard,type ReviewGrade} from '../srs';
 import {C} from '../theme';
 import type {Flashcard} from '../types';
 
-export function FlashcardPanel({visible,cards,onChange,onClose}:{visible:boolean;cards:Flashcard[];onChange:(v:Flashcard[])=>void;onClose:()=>void}){
+export function FlashcardPanel({visible,cards,initialQuestion,onChange,onClose}:{visible:boolean;cards:Flashcard[];initialQuestion?:string;onChange:(v:Flashcard[])=>void;onClose:()=>void}){
  const [question,setQuestion]=useState(''),[answer,setAnswer]=useState(''),[reviewing,setReviewing]=useState(false),[revealed,setRevealed]=useState(false);
+ useEffect(()=>{if(visible&&initialQuestion){setQuestion(initialQuestion);setAnswer('');setReviewing(false);setRevealed(false)}},[visible,initialQuestion]);
  const due=useMemo(()=>dueFlashcards(cards),[cards]),current=due[0];
  const add=()=>{if(!question.trim()||!answer.trim())return;onChange([...cards,createFlashcard(question,answer)]);setQuestion('');setAnswer('')};
  const grade=(g:ReviewGrade)=>{if(current)onChange(cards.map(c=>c.id===current.id?reviewFlashcard(c,g):c));setRevealed(false)};

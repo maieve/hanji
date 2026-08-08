@@ -452,7 +452,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       emitSelection(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
       return
     }
-    if action == "text" { recognizeSelection(); return }
+    if action == "text" || action == "flashcard" { recognizeSelection(); return }
     let original = canvas.drawing, selected = Set(selectedStrokeIndexes), strokes = original.strokes
     if action == "shrink" || action == "grow" || action == "rotate" {
       let center = CGPoint(x: selectionBounds.midX, y: selectionBounds.midY)

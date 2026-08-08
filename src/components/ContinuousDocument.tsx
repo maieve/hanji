@@ -33,6 +33,7 @@ type Props = {
       | "delete"
       | "recolor"
       | "text"
+      | "flashcard"
       | "clip"
       | "clear"
       | "copy"

@@ -8,7 +8,7 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:pencil-actions && npm run test:touch-gestures && npm run test:template-spacing && npm run test:notebook-cover && npm run test:canvas-zoom && npm run test:brush-controls && npm run test:device-checklist",
+    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:pencil-actions && npm run test:touch-gestures && npm run test:template-spacing && npm run test:notebook-cover && npm run test:canvas-zoom && npm run test:brush-controls && npm run test:flashcard-draft && npm run test:device-checklist",
     "test:cloud-merge": "node --no-warnings --experimental-strip-types scripts/verifyCloudMerge.mts",
     "test:document-search": "node --no-warnings --experimental-strip-types scripts/verifyDocumentSearch.mts",
     "test:page-insert": "node --no-warnings --experimental-strip-types scripts/verifyPageInsert.mts",
@@ -25,6 +25,7 @@
     "test:notebook-cover": "node --no-warnings --experimental-strip-types scripts/verifyNotebookCover.mts",
     "test:canvas-zoom": "node --no-warnings --experimental-strip-types scripts/verifyZoomPolicy.mts",
     "test:brush-controls": "node --no-warnings --experimental-strip-types scripts/verifyBrushControls.mts",
+    "test:flashcard-draft": "node --no-warnings --experimental-strip-types scripts/verifyFlashcardDraft.mts",
     "test:device-checklist": "node scripts/createDeviceChecklist.mjs docs/NATIVE_VERIFICATION.md --check",
     "postinstall": "patch-package"
   },
