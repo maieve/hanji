@@ -52,16 +52,57 @@ const signature = (value: string) => {
 const newer = <T extends { updatedAt: string }>(a: T, b: T) =>
   b.updatedAt > a.updatedAt ? b : a;
 
+const mergeEqualPage = (a: Page, b: Page) => {
+  const base = newer(a, b);
+  const ocr = [a, b]
+    .filter((page) => Boolean(page.ocrText || page.ocrWords?.length))
+    .sort((left, right) => (left.ocrRecognizedAt ?? "").localeCompare(right.ocrRecognizedAt ?? ""))
+    .at(-1);
+  return ocr ? {
+    ...base,
+    ocrText: ocr.ocrText,
+    ocrWords: ocr.ocrWords,
+    ocrLineCount: ocr.ocrLineCount,
+    ocrAverageConfidence: ocr.ocrAverageConfidence,
+    ocrRecognizedAt: ocr.ocrRecognizedAt,
+  } : base;
+};
+
+const mergeAudioStrokes = (a: AudioSession["strokes"], b: AudioSession["strokes"]) => {
+  const result = [...a];
+  for (const stroke of b) {
+    const index = result.findIndex((item) => item.pageId === stroke.pageId && (item.strokeId && stroke.strokeId ? item.strokeId === stroke.strokeId : item.createdAt === stroke.createdAt));
+    if (index < 0) result.push(stroke);
+    else if (!result[index]?.strokeId && stroke.strokeId) result[index] = stroke;
+  }
+  return result;
+};
+
 const mergeAudio = (a: AudioSession[] = [], b: AudioSession[] = []) => {
   const result = new Map(a.map((session) => [session.createdAt, session]));
   for (const session of b) {
     const current = result.get(session.createdAt);
-    if (
-      !current ||
-      session.durationMs > current.durationMs ||
-      (!current.transcript && session.transcript)
-    )
-      result.set(session.createdAt, session);
+    if (!current) { result.set(session.createdAt, session); continue; }
+    const base = session.durationMs > current.durationMs ? session : current;
+    const transcript = [current, session]
+      .filter((item) => Boolean(item.transcript))
+      .sort((left, right) => (left.transcribedAt ?? "").localeCompare(right.transcribedAt ?? ""))
+      .at(-1);
+    const strokes = mergeAudioStrokes(current.strokes, session.strokes);
+    result.set(session.createdAt, {
+      ...base,
+      durationMs: Math.max(current.durationMs, session.durationMs),
+      strokes,
+      ...(transcript ? {
+        transcript: transcript.transcript,
+        transcriptSegments: transcript.transcriptSegments,
+        transcribedAt: transcript.transcribedAt,
+        transcriptAverageConfidence: transcript.transcriptAverageConfidence,
+        transcriptRecognizedDuration: transcript.transcriptRecognizedDuration,
+        transcriptLocale: transcript.transcriptLocale,
+        transcriptOnDevice: transcript.transcriptOnDevice,
+      } : {}),
+    });
   }
   return [...result.values()].sort((x, y) =>
     x.createdAt.localeCompare(y.createdAt),
@@ -125,7 +166,7 @@ function mergeNotebook(
     }
     if (!left) return right ? [right] : [];
     if (!right) return [left];
-    if (pageContent(left) === pageContent(right)) return [newer(left, right)];
+    if (pageContent(left) === pageContent(right)) return [mergeEqualPage(left, right)];
     const remoteWins =
       right.updatedAt > left.updatedAt ||
       (right.updatedAt === left.updatedAt &&

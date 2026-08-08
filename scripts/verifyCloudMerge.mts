@@ -50,4 +50,15 @@ const orderRemote={...note([orderedPages[2]!,orderedPages[0]!,orderedPages[1]!],
 assert(mergeCloudRestore([orderLocal],[orderRemote]).find(item=>item.id==='n1')?.pages.map(item=>item.id).join(',')==='o3,o1,o2','newest explicit page order must win independently of notebook edits');
 const legacyRemote={...note([orderedPages[1]!,orderedPages[2]!,orderedPages[0]!],'2026-07-01')};
 assert(mergeCloudRestore([orderLocal],[legacyRemote]).find(item=>item.id==='n1')?.pages.map(item=>item.id).join(',')==='o1,o2,o3','legacy notebook updatedAt must not overwrite an explicit local page order');
+const audioBase={uri:'file:///audio.m4a',createdAt:'2026-08-01',startedAt:10,durationMs:60000,strokes:[{pageId:'o1',createdAt:11,strokeId:'s1'}]};
+const audioLocal={...orderLocal,audioSessions:[{...audioBase,transcript:'이전 전사',transcribedAt:'2026-08-02',transcriptAverageConfidence:.5,transcriptOnDevice:true}]};
+const audioRemote={...orderRemote,audioSessions:[{...audioBase,durationMs:61000,strokes:[{pageId:'o1',createdAt:11},{pageId:'o2',createdAt:12,strokeId:'s2'}],transcript:'최신 전사',transcribedAt:'2026-08-03',transcriptAverageConfidence:.9,transcriptRecognizedDuration:60,transcriptLocale:'ko-KR',transcriptOnDevice:true}]};
+const mergedAudio=mergeCloudRestore([audioLocal],[audioRemote]).find(item=>item.id==='n1')?.audioSessions?.[0];
+assert(mergedAudio?.strokes.length===2,'same recording must union stable stroke references from both backups');
+assert(mergedAudio?.strokes.find(stroke=>stroke.createdAt===11)?.strokeId==='s1','stable stroke id must win over the matching legacy timestamp reference');
+assert(mergedAudio?.durationMs===61000&&mergedAudio.transcript==='최신 전사'&&mergedAudio.transcriptAverageConfidence===.9,'same recording must preserve longest media and newest complete transcript metadata');
+const ocrLocal={...orderLocal,pages:[{...orderedPages[0]!,ocrText:'검색 가능',ocrLineCount:1,ocrAverageConfidence:.8,ocrRecognizedAt:'2026-08-04'}]};
+const ocrRemote={...orderRemote,pages:[{...orderedPages[0]!,updatedAt:'2026-08-05'}]};
+const mergedOcr=mergeCloudRestore([ocrLocal],[ocrRemote]).find(item=>item.id==='n1')?.pages[0];
+assert(mergedOcr?.ocrText==='검색 가능'&&mergedOcr.ocrAverageConfidence===.8,'identical page content must retain the newest available OCR cache and quality metadata');
 console.log('cloud merge verification passed');
