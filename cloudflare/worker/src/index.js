@@ -1,5 +1,5 @@
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json;charset=utf-8','cache-control':'no-store'}});
-const cors={'access-control-allow-origin':'*','access-control-allow-methods':'GET,PUT,DELETE,OPTIONS','access-control-allow-headers':'authorization,content-type'};
+const cors={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,DELETE,OPTIONS','access-control-allow-headers':'authorization,content-type,x-hanji-device'};
 const withCors=response=>{const next=new Response(response.body,response);for(const [key,value] of Object.entries(cors))next.headers.set(key,value);return next};
 const authorized=(request,env)=>{
   const value=request.headers.get('authorization')||'';
@@ -19,7 +19,7 @@ export default {
       if(action==='start'&&request.method==='POST'){const upload=await env.HANJI_BACKUPS.createMultipartUpload(key,{httpMetadata:{contentType:'application/zip'},customMetadata:{device:request.headers.get('x-hanji-device')||'ipad'}});return withCors(json({key:upload.key,uploadId:upload.uploadId}));}
       const uploadId=decodeURIComponent(parts[4]||'');if(!uploadId)return withCors(json({error:'missing_upload_id'},400));const upload=env.HANJI_BACKUPS.resumeMultipartUpload(key,uploadId);
       if(action==='part'&&request.method==='PUT'){const partNumber=Number(parts[5]);if(!Number.isInteger(partNumber)||partNumber<1||partNumber>10000)return withCors(json({error:'invalid_part'},400));const part=await upload.uploadPart(partNumber,request.body);return withCors(json({partNumber:part.partNumber,etag:part.etag}));}
-      if(action==='complete'&&request.method==='POST'){const body=await request.json();const object=await upload.complete(body.parts);return withCors(json({ok:true,key:object.key,etag:object.httpEtag}));}
+      if(action==='complete'&&request.method==='POST'){const body=await request.json();const object=await upload.complete(body.parts);const listed=await env.HANJI_BACKUPS.list({prefix:'backups/',limit:100});const old=listed.objects.sort((a,b)=>b.uploaded-a.uploaded).slice(10);await Promise.all(old.map(x=>env.HANJI_BACKUPS.delete(x.key)));return withCors(json({ok:true,key:object.key,etag:object.httpEtag}));}
       if(action==='abort'&&request.method==='DELETE'){await upload.abort();return withCors(json({ok:true}));}
       return withCors(json({error:'invalid_multipart_request'},400));
     }
