@@ -130,6 +130,7 @@ import { FOCUS_TOOLBAR_IDLE_MS } from "./focusPolicy";
 import { configurePageHaptics, playPageHaptic } from "./pageHaptics";
 import { OCR_LOW_POWER_RETRY_MS, ocrJobDisposition } from "./ocrPolicy";
 import { findAudioStroke } from "./audioSync";
+import { persistImportedPdf } from "./pdfAssets";
 
 const buildIdentity = `${Constants.expoConfig?.version ?? "0.1.0"} (${Constants.nativeBuildVersion ?? "dev"}) · ${String(Constants.expoConfig?.extra?.hanjiBuild ?? "dev")}`;
 
@@ -410,10 +411,18 @@ export function HanjiApp() {
     if (result.canceled) return;
     const asset = result.assets[0];
     if (!asset) return;
-    const note = pdfNotebook(asset.name, asset.uri);
-    setItems((all) => [note, ...all]);
-    setOpenId(note.id);
-    setPageIndex(0);
+    try {
+      const persistentUri = persistImportedPdf(asset.uri, asset.name);
+      const note = pdfNotebook(asset.name, persistentUri);
+      setItems((all) => [note, ...all]);
+      setOpenId(note.id);
+      setPageIndex(0);
+    } catch (error) {
+      Alert.alert(
+        "PDF 가져오기 실패",
+        error instanceof Error ? error.message : "PDF 원본을 영구 저장하지 못했습니다.",
+      );
+    }
   };
   const drainOcr = () => {
     while (ocrRunning.current < 2 && ocrJobs.current.length) {
