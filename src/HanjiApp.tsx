@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Appearance,
   Image,
   Linking,
   Platform,
@@ -31,7 +32,7 @@ import {
   saveCategories,
   saveLibrary,
 } from "./storage";
-import { C } from "./theme";
+import { C, DOCUMENT_INK, DOCUMENT_LIGHT_INK } from "./theme";
 import type {
   AudioSession,
   ImageElement,
@@ -82,6 +83,7 @@ import {
 import { PageTransferPanel } from "./components/PageTransferPanel";
 import { transferPage as transferNotebookPage } from "./pageTransfer";
 import { loadUiPreferences, saveUiPreferences } from "./uiPreferences";
+import { appearanceOverride } from "./themePolicy";
 import { ZoomablePage } from "./components/ZoomablePage";
 import { PageGridPanel } from "./components/PageGridPanel";
 import { StickerPanel } from "./components/StickerPanel";
@@ -162,7 +164,7 @@ export function HanjiApp() {
   >([]);
   const [tool, setToolState] = useState<ToolSpec>({
     kind: "pen",
-    color: C.ink,
+    color: DOCUMENT_INK,
     width: 2,
     opacity: 1,
     scratchEnabled: true,
@@ -276,6 +278,9 @@ export function HanjiApp() {
     () => configurePageHaptics(uiPreferences.pageTurnHaptics),
     [uiPreferences.pageTurnHaptics],
   );
+  useEffect(() => {
+    Appearance.setColorScheme(appearanceOverride(uiPreferences.colorScheme) as never);
+  }, [uiPreferences.colorScheme]);
   useEffect(() => {
     if (ready) saveCategories(categories);
   }, [categories, ready]);
@@ -829,7 +834,7 @@ export function HanjiApp() {
     )
       setTool({ ...tool, color: "#F4F1E8" });
     if (template !== "dark" && tool.color.toUpperCase() === "#F4F1E8")
-      setTool({ ...tool, color: C.ink });
+      setTool({ ...tool, color: DOCUMENT_INK });
   };
   const addPage = (placement?: "end") => {
     const targetPlacement =
@@ -907,7 +912,7 @@ export function HanjiApp() {
       width: 0.34,
       height: 0.18,
       fontSize: 16,
-      color: C.ink,
+      color: DOCUMENT_INK,
       source: pendingExcerpt.source,
     };
     changeElements(page, [...(page.elements ?? []), element]);
@@ -1028,7 +1033,7 @@ export function HanjiApp() {
       width: Math.max(0.18, Math.min(0.8, result.width)),
       height: Math.max(0.08, Math.min(0.4, result.height)),
       fontSize: 20,
-      color: target.template === "dark" ? "#F4F1E8" : C.ink,
+      color: target.template === "dark" ? DOCUMENT_LIGHT_INK : DOCUMENT_INK,
     };
     update(current.id, (n) => ({
       ...n,
@@ -1339,7 +1344,7 @@ export function HanjiApp() {
                           width: 0.42,
                           height: 0.12,
                           fontSize: 20,
-                          color: page.template === "dark" ? "#F4F1E8" : C.ink,
+                          color: page.template === "dark" ? DOCUMENT_LIGHT_INK : DOCUMENT_INK,
                         },
                       ],
                     }

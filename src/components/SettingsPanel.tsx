@@ -15,6 +15,7 @@ import { C } from "../theme";
 import type { PageTemplate } from "../types";
 import type { UiPreferences } from "../uiPreferences";
 import { templateSpacings } from "../templateSpacing";
+import { appColorSchemes } from "../themePolicy";
 
 const templates: { value: PageTemplate; label: string }[] = [
   { value: "plain", label: "백지" },
@@ -76,6 +77,29 @@ export function SettingsPanel({
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={s.body}>
+          <Text style={s.section}>화면</Text>
+          <View style={s.placement}>
+            {appColorSchemes.map((colorScheme) => (
+              <Pressable
+                key={colorScheme}
+                accessibilityLabel={`화면 테마 ${colorScheme}`}
+                accessibilityState={{ selected: value.colorScheme === colorScheme }}
+                onPress={() => onChange({ ...value, colorScheme })}
+                style={[
+                  s.placementButton,
+                  value.colorScheme === colorScheme && s.retentionSelected,
+                ]}
+              >
+                <Text style={[
+                  s.retentionText,
+                  value.colorScheme === colorScheme && s.white,
+                ]}>
+                  {{ system: "시스템", light: "라이트", dark: "다크" }[colorScheme]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={s.note}>앱 화면만 전환되며 종이, PDF, 저장된 펜 색상은 그대로 유지됩니다.</Text>
           <Text style={s.section}>입력과 배치</Text>
           <SettingRow
             label="손가락으로 필기"

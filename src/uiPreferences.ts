@@ -12,9 +12,11 @@ import {
   type PencilAction,
 } from "./pencilActions";
 import { normalizeEnabledPreference } from "./touchGestures";
+import { normalizeAppColorScheme, type AppColorScheme } from "./themePolicy";
 
 const KEY = "hanji.ui.preferences.v1";
 export type UiPreferences = {
+  colorScheme: AppColorScheme;
   leftHanded: boolean;
   fingerDrawingEnabled: boolean;
   pageTurnHaptics: boolean;
@@ -32,6 +34,7 @@ export type UiPreferences = {
   libraryView: LibraryViewMode;
 };
 export const defaultUiPreferences: UiPreferences = {
+  colorScheme: "system",
   leftHanded: false,
   fingerDrawingEnabled: false,
   pageTurnHaptics: true,
@@ -59,6 +62,7 @@ export async function loadUiPreferences(): Promise<UiPreferences> {
     } as UiPreferences;
     return {
       ...parsed,
+      colorScheme: normalizeAppColorScheme(parsed.colorScheme),
       backupRetention: normalizeBackupRetention(parsed.backupRetention),
       backupIntervalMinutes: normalizeBackupInterval(
         parsed.backupIntervalMinutes,

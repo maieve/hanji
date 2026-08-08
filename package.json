@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo/AppEntry.js",
   "scripts": {
+    "test:theme-policy": "node --no-warnings --experimental-strip-types scripts/verifyThemePolicy.mts",
     "start": "expo start",
     "web": "expo start --web",
     "ios": "expo run:ios",

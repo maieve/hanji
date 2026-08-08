@@ -5,7 +5,7 @@ import { HanjiApp } from './src/HanjiApp';
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <HanjiApp />
     </SafeAreaProvider>
   );
