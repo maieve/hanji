@@ -67,6 +67,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private let selectionLayer = CAShapeLayer()
   private var selectionStart = CGPoint.zero
   private var selectedStrokeIndexes: [Int] = []
+  private var lassoMode = "freeform"
+  private var selectionPoints: [CGPoint] = []
   private var selectionBounds = CGRect.zero
   private var selectionMoveDrawing: PKDrawing?
   private var selectionMoveBounds = CGRect.zero
@@ -262,6 +264,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     if kind != "lasso" { clearSelection() }
     scratchEnabled = value["scratchEnabled"] as? Bool ?? true
     circleToLasso = value["circleToLasso"] as? Bool ?? true
+    lassoMode = value["lassoMode"] as? String ?? "freeform"
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     shapeLineStyle = value["shapeLineStyle"] as? String ?? "solid"
@@ -356,6 +359,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         return
       }
       selectionStart = point
+      selectionPoints = [point]
       selectedStrokeIndexes = []
     case .changed:
       if let original = selectionMoveDrawing {
@@ -368,8 +372,15 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         emitSelection()
         return
       }
-      selectionBounds = CGRect(x: min(selectionStart.x, point.x), y: min(selectionStart.y, point.y), width: abs(point.x - selectionStart.x), height: abs(point.y - selectionStart.y))
-      selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+      if lassoMode == "rectangle" {
+        selectionBounds = CGRect(x: min(selectionStart.x, point.x), y: min(selectionStart.y, point.y), width: abs(point.x - selectionStart.x), height: abs(point.y - selectionStart.y))
+        selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+      } else if selectionPoints.last.map({ hypot($0.x-point.x,$0.y-point.y)>2 }) ?? true {
+        selectionPoints.append(point)
+        let path = freeformSelectionPath()
+        selectionBounds = path.bounds
+        selectionLayer.path = path.cgPath
+      }
     case .ended:
       if let original = selectionMoveDrawing {
         let finalDrawing = canvas.drawing
@@ -380,10 +391,14 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         emitSelection(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
         return
       }
+      let freeformPath = lassoMode == "freeform" ? freeformSelectionPath() : nil
       selectedStrokeIndexes = canvas.drawing.strokes.enumerated().compactMap { index, stroke in
-        selectionBounds.intersects(stroke.renderBounds) ? index : nil
+        guard selectionBounds.intersects(stroke.renderBounds) else { return nil }
+        if let freeformPath { return strokeIntersectsSelection(stroke, path: freeformPath) ? index : nil }
+        return index
       }
       if selectedStrokeIndexes.isEmpty { clearSelection(); return }
+      selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
       emitSelection()
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
     case .cancelled, .failed:
@@ -399,6 +414,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     }
   }
 
+  private func freeformSelectionPath() -> UIBezierPath {
+    let path = UIBezierPath(); guard let first = selectionPoints.first else { return path }
+    path.move(to:first); for point in selectionPoints.dropFirst(){path.addLine(to:point)}; path.close(); return path
+  }
+
+  private func strokeIntersectsSelection(_ stroke:PKStroke,path:UIBezierPath)->Bool {
+    if path.contains(CGPoint(x:stroke.renderBounds.midX,y:stroke.renderBounds.midY)){return true}
+    for index in 0..<stroke.path.count where path.contains(stroke.path[index].location){return true}
+    let corners=[CGPoint(x:stroke.renderBounds.minX,y:stroke.renderBounds.minY),CGPoint(x:stroke.renderBounds.maxX,y:stroke.renderBounds.minY),CGPoint(x:stroke.renderBounds.maxX,y:stroke.renderBounds.maxY),CGPoint(x:stroke.renderBounds.minX,y:stroke.renderBounds.maxY)]
+    return corners.contains(where:path.contains)
+  }
+
   private func emitSelection() {
     let width = max(canvas.bounds.width, 1), height = max(canvas.bounds.height, 1)
     onSelectionChange(["count": selectedStrokeIndexes.count, "x": selectionBounds.minX / width, "y": selectionBounds.minY / height, "width": selectionBounds.width / width, "height": selectionBounds.height / height])
@@ -408,6 +435,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     selectionMoveDrawing = nil
     selectedStrokeIndexes = []
     selectionBounds = .zero
+    selectionPoints = []
     selectionLayer.path = nil
     onSelectionChange(["count": 0])
   }
