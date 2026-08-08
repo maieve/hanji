@@ -1,84 +1,153 @@
-import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { DocumentCanvas } from './components/DocumentCanvas';
-import { Paper } from './components/Paper';
-import { AudioPanel } from './components/AudioPanel';
-import { CloudSyncPanel } from './components/CloudSyncPanel';
-import { Toolbar } from './components/Toolbar';
-import { blankPage, loadCategories, loadLibrary, makeId, newNotebook, pdfNotebook, saveCategories, saveLibrary } from './storage';
-import { C } from './theme';
-import type { AudioSession, ImageElement, Notebook, Sticker, TextElement, ToolSpec } from './types';
-import { exportLibrary,exportNotebookArchive, importLibraryBackup, writeAutomaticBackup } from './backup';
-import { recognizeDrawing } from './vision';
-import { exportNotebookPdf, exportPagePng } from './export';
-import { uploadArchiveIfEnabled } from './cloudSync';
-import { rebuildSearchIndex, searchLibrary, type SearchHit } from './searchIndex';
-import { FlashcardPanel } from './components/FlashcardPanel';
-import { dueFlashcards } from './srs';
-import { NotebookOrganizer } from './components/NotebookOrganizer';
-import { PdfOutlinePanel } from './components/PdfOutlinePanel';
-import type { PdfOutlineItem } from './components/DocumentCanvas';
-import { DocumentTabs } from './components/DocumentTabs';
-import { ElementsLayer } from './components/ElementsLayer';
-import { pickPersistentImage } from './imageAssets';
-import { usePrivacyLock } from './privacyLock';
-import { LockScreen } from './components/LockScreen';
-import { ContinuousDocument } from './components/ContinuousDocument';
-import { childFolder, deleteFolderPaths, expandFolderPaths, folderBreadcrumb, folderContains, folderDepth, folderLabel, parentFolder, renameFolderPaths, replaceFolderRoot } from './folders';
-import { PageTransferPanel } from './components/PageTransferPanel';
-import { transferPage as transferNotebookPage } from './pageTransfer';
-import {loadUiPreferences,saveUiPreferences} from './uiPreferences';
-import { RotatedPage } from './components/RotatedPage';
-import { PageGridPanel } from './components/PageGridPanel';
-import { StickerPanel } from './components/StickerPanel';
-import { loadStickers, saveStickers, stickerFromImage } from './stickers';
-import { mergeCloudRestore } from './cloudMerge';
-import { transcribeAudio } from './speech';
-import { SelectionBar } from './components/SelectionBar';
-import {SearchHighlight} from './components/SearchHighlight';
-import {SettingsPanel} from './components/SettingsPanel';
-import {defaultUiPreferences,type UiPreferences} from './uiPreferences';
-import {DocumentSearchPanel} from './components/DocumentSearchPanel';
-import {PagePaintPanel} from './components/PagePaintPanel';
-import {insertPage} from './pageInsert';
-import {backupIntervalMs} from './backupPolicy';
-import {ExportPanel} from './components/ExportPanel';
-import {FolderManager} from './components/FolderManager';
-import {librarySearchMatches,mayRevealNotebookSnippet} from './notebookPrivacy';
-import Constants from 'expo-constants';
-import {sortNotebooks,type LibrarySort,type LibraryViewMode} from './libraryView';
-import {FOCUS_TOOLBAR_IDLE_MS} from './focusPolicy';
-import {configurePageHaptics,playPageHaptic} from './pageHaptics';
+import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { DocumentCanvas } from "./components/DocumentCanvas";
+import { Paper } from "./components/Paper";
+import { AudioPanel } from "./components/AudioPanel";
+import { CloudSyncPanel } from "./components/CloudSyncPanel";
+import { Toolbar } from "./components/Toolbar";
+import {
+  blankPage,
+  loadCategories,
+  loadLibrary,
+  makeId,
+  newNotebook,
+  pdfNotebook,
+  saveCategories,
+  saveLibrary,
+} from "./storage";
+import { C } from "./theme";
+import type {
+  AudioSession,
+  ImageElement,
+  Notebook,
+  Sticker,
+  TextElement,
+  ToolSpec,
+} from "./types";
+import {
+  exportLibrary,
+  exportNotebookArchive,
+  importLibraryBackup,
+  writeAutomaticBackup,
+} from "./backup";
+import { recognizeDrawing } from "./vision";
+import { exportNotebookPdf, exportPagePng } from "./export";
+import { uploadArchiveIfEnabled } from "./cloudSync";
+import {
+  rebuildSearchIndex,
+  searchLibrary,
+  type SearchHit,
+} from "./searchIndex";
+import { FlashcardPanel } from "./components/FlashcardPanel";
+import { dueFlashcards } from "./srs";
+import { NotebookOrganizer } from "./components/NotebookOrganizer";
+import { PdfOutlinePanel } from "./components/PdfOutlinePanel";
+import type { PdfOutlineItem } from "./components/DocumentCanvas";
+import { DocumentTabs } from "./components/DocumentTabs";
+import { ElementsLayer } from "./components/ElementsLayer";
+import { pickPersistentImage } from "./imageAssets";
+import { usePrivacyLock } from "./privacyLock";
+import { LockScreen } from "./components/LockScreen";
+import { ContinuousDocument } from "./components/ContinuousDocument";
+import {
+  childFolder,
+  deleteFolderPaths,
+  expandFolderPaths,
+  folderBreadcrumb,
+  folderContains,
+  folderDepth,
+  folderLabel,
+  parentFolder,
+  renameFolderPaths,
+  replaceFolderRoot,
+} from "./folders";
+import { PageTransferPanel } from "./components/PageTransferPanel";
+import { transferPage as transferNotebookPage } from "./pageTransfer";
+import { loadUiPreferences, saveUiPreferences } from "./uiPreferences";
+import { RotatedPage } from "./components/RotatedPage";
+import { PageGridPanel } from "./components/PageGridPanel";
+import { StickerPanel } from "./components/StickerPanel";
+import { loadStickers, saveStickers, stickerFromImage } from "./stickers";
+import { mergeCloudRestore } from "./cloudMerge";
+import { transcribeAudio } from "./speech";
+import { SelectionBar } from "./components/SelectionBar";
+import { SearchHighlight } from "./components/SearchHighlight";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { defaultUiPreferences, type UiPreferences } from "./uiPreferences";
+import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
+import { PagePaintPanel } from "./components/PagePaintPanel";
+import { insertPage } from "./pageInsert";
+import type { PencilAction } from "./pencilActions";
+import { backupIntervalMs } from "./backupPolicy";
+import { ExportPanel } from "./components/ExportPanel";
+import { FolderManager } from "./components/FolderManager";
+import {
+  librarySearchMatches,
+  mayRevealNotebookSnippet,
+} from "./notebookPrivacy";
+import Constants from "expo-constants";
+import {
+  sortNotebooks,
+  type LibrarySort,
+  type LibraryViewMode,
+} from "./libraryView";
+import { FOCUS_TOOLBAR_IDLE_MS } from "./focusPolicy";
+import { configurePageHaptics, playPageHaptic } from "./pageHaptics";
 
-const buildIdentity=`${Constants.expoConfig?.version??'0.1.0'} (${Constants.nativeBuildVersion??'dev'}) · ${String(Constants.expoConfig?.extra?.hanjiBuild??'dev')}`;
+const buildIdentity = `${Constants.expoConfig?.version ?? "0.1.0"} (${Constants.nativeBuildVersion ?? "dev"}) · ${String(Constants.expoConfig?.extra?.hanjiBuild ?? "dev")}`;
 
 export function HanjiApp() {
-  const { height: windowHeight,width:windowWidth } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const privacy = usePrivacyLock();
   const [items, setItems] = useState<Notebook[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [unlockedNotes,setUnlockedNotes]=useState<Set<string>>(()=>new Set());
+  const [unlockedNotes, setUnlockedNotes] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [pageIndex, setPageIndex] = useState(0);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const tabPages = useRef<Record<string, number>>({});
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[] | null>(null);
-  const [searchFocus,setSearchFocus]=useState<{pageId:string;query:string;nonce:number}>();
-  const [pendingExcerpt,setPendingExcerpt]=useState<{text:string;source:NonNullable<TextElement['source']>}>();
+  const [searchFocus, setSearchFocus] = useState<{
+    pageId: string;
+    query: string;
+    nonce: number;
+  }>();
+  const [pendingExcerpt, setPendingExcerpt] = useState<{
+    text: string;
+    source: NonNullable<TextElement["source"]>;
+  }>();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ocrTimers=useRef(new Map<string,ReturnType<typeof setTimeout>>());
-  const ocrRevisions=useRef(new Map<string,number>());
-  const ocrJobs=useRef<Array<()=>Promise<void>>>([]);const ocrRunning=useRef(0);
+  const ocrTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const ocrRevisions = useRef(new Map<string, number>());
+  const ocrJobs = useRef<Array<() => Promise<void>>>([]);
+  const ocrRunning = useRef(0);
   const audioStartRef = useRef<number | null>(null);
-  const audioStrokesRef = useRef<{ pageId: string; createdAt: number; seekSec: number }[]>([]);
+  const audioStrokesRef = useRef<
+    { pageId: string; createdAt: number; seekSec: number }[]
+  >([]);
   const [tool, setToolState] = useState<ToolSpec>({
-    kind: 'pen',
+    kind: "pen",
     color: C.ink,
     width: 2,
     opacity: 1,
@@ -88,9 +157,18 @@ export function HanjiApp() {
   const previousPencilTool = useRef<ToolSpec>(tool);
   const setTool = (value: ToolSpec | ((active: ToolSpec) => ToolSpec)) =>
     setToolState((active) => {
-      const next = typeof value === 'function' ? value(active) : value;
-      const inks = ['pen', 'fountainPen', 'monoline', 'pencil', 'crayon', 'watercolor', 'marker'];
-      if (next.kind === 'eraser' && inks.includes(active.kind)) previousPencilTool.current = active;
+      const next = typeof value === "function" ? value(active) : value;
+      const inks = [
+        "pen",
+        "fountainPen",
+        "monoline",
+        "pencil",
+        "crayon",
+        "watercolor",
+        "marker",
+      ];
+      if (next.kind === "eraser" && inks.includes(active.kind))
+        previousPencilTool.current = active;
       else if (inks.includes(next.kind)) previousPencilTool.current = next;
       return next;
     });
@@ -99,9 +177,34 @@ export function HanjiApp() {
     nonce: number;
   }>();
   const [replayCutoff, setReplayCutoff] = useState<number>();
-  const [selection,setSelection]=useState<{pageId:string;count:number}>({pageId:'',count:0});
-  const [selectionAction,setSelectionAction]=useState<{nonce:number;type:'delete'|'recolor'|'text'|'clip'|'clear'|'copy'|'cut'|'paste'|'duplicate'|'shrink'|'grow'|'rotate';color?:string}>();
-  const selectionUndoRef=useRef<{pageId:string;element:TextElement}|null>(null);const selectionRedoRef=useRef<{pageId:string;element:TextElement}|null>(null);
+  const [selection, setSelection] = useState<{ pageId: string; count: number }>(
+    { pageId: "", count: 0 },
+  );
+  const [selectionAction, setSelectionAction] = useState<{
+    nonce: number;
+    type:
+      | "delete"
+      | "recolor"
+      | "text"
+      | "clip"
+      | "clear"
+      | "copy"
+      | "cut"
+      | "paste"
+      | "duplicate"
+      | "shrink"
+      | "grow"
+      | "rotate";
+    color?: string;
+  }>();
+  const selectionUndoRef = useRef<{
+    pageId: string;
+    element: TextElement;
+  } | null>(null);
+  const selectionRedoRef = useRef<{
+    pageId: string;
+    element: TextElement;
+  } | null>(null);
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [outlineOpen, setOutlineOpen] = useState(false);
@@ -110,15 +213,18 @@ export function HanjiApp() {
   const [zoomWindowEnabled, setZoomWindowEnabled] = useState(false);
   const [elementMode, setElementMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [focusToolbarVisible,setFocusToolbarVisible]=useState(false);
-  const focusHideTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
-  const [uiPreferences,setUiPreferences]=useState<UiPreferences>(defaultUiPreferences);
-  const [settingsOpen,setSettingsOpen]=useState(false);
-  const [documentSearchOpen,setDocumentSearchOpen]=useState(false);
-  const [pagePaintOpen,setPagePaintOpen]=useState(false);
-  const [exportOpen,setExportOpen]=useState(false);
-  const [indexStatus,setIndexStatus]=useState<'idle'|'running'|'success'|'error'>('idle');
-  const {leftHanded,fingerDrawingEnabled}=uiPreferences;
+  const [focusToolbarVisible, setFocusToolbarVisible] = useState(false);
+  const focusHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [uiPreferences, setUiPreferences] =
+    useState<UiPreferences>(defaultUiPreferences);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [documentSearchOpen, setDocumentSearchOpen] = useState(false);
+  const [pagePaintOpen, setPagePaintOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [indexStatus, setIndexStatus] = useState<
+    "idle" | "running" | "success" | "error"
+  >("idle");
+  const { leftHanded, fingerDrawingEnabled } = uiPreferences;
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
   const [pageGridOpen, setPageGridOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
@@ -126,14 +232,26 @@ export function HanjiApp() {
   useEffect(() => {
     Promise.all([loadLibrary(), loadCategories()]).then(([notes, cats]) => {
       setItems(notes);
-      setCategories(expandFolderPaths([...cats, ...notes.map((n) => n.folder)]));
+      setCategories(
+        expandFolderPaths([...cats, ...notes.map((n) => n.folder)]),
+      );
       setReady(true);
     });
     void loadStickers().then(setStickers);
     void loadUiPreferences().then(setUiPreferences);
   }, []);
-  useEffect(()=>()=>{for(const timer of ocrTimers.current.values())clearTimeout(timer);ocrTimers.current.clear();ocrJobs.current=[]},[]);
-  useEffect(()=>configurePageHaptics(uiPreferences.pageTurnHaptics),[uiPreferences.pageTurnHaptics]);
+  useEffect(
+    () => () => {
+      for (const timer of ocrTimers.current.values()) clearTimeout(timer);
+      ocrTimers.current.clear();
+      ocrJobs.current = [];
+    },
+    [],
+  );
+  useEffect(
+    () => configurePageHaptics(uiPreferences.pageTurnHaptics),
+    [uiPreferences.pageTurnHaptics],
+  );
   useEffect(() => {
     if (ready) saveCategories(categories);
   }, [categories, ready]);
@@ -149,19 +267,28 @@ export function HanjiApp() {
     if (!ready) return;
     if (backupTimer.current) clearTimeout(backupTimer.current);
     backupTimer.current = setTimeout(() => {
-      void writeAutomaticBackup(items,uiPreferences.backupRetention,backupIntervalMs(uiPreferences.backupIntervalMinutes))
+      void writeAutomaticBackup(
+        items,
+        uiPreferences.backupRetention,
+        backupIntervalMs(uiPreferences.backupIntervalMinutes),
+      )
         .then((uri) => uri && uploadArchiveIfEnabled(uri))
         .catch(() => undefined);
     }, 15000);
     return () => {
       if (backupTimer.current) clearTimeout(backupTimer.current);
     };
-  }, [items, ready,uiPreferences.backupRetention,uiPreferences.backupIntervalMinutes]);
+  }, [
+    items,
+    ready,
+    uiPreferences.backupRetention,
+    uiPreferences.backupIntervalMinutes,
+  ]);
   useEffect(() => {
     if (!ready) return;
     if (indexTimer.current) clearTimeout(indexTimer.current);
     indexTimer.current = setTimeout(() => {
-      void rebuildSearchIndex(items).catch(()=>undefined);
+      void rebuildSearchIndex(items).catch(() => undefined);
     }, 800);
     return () => {
       if (indexTimer.current) clearTimeout(indexTimer.current);
@@ -177,19 +304,47 @@ export function HanjiApp() {
     }, 180);
     return () => clearTimeout(timer);
   }, [query]);
-  useEffect(()=>{if(!searchFocus)return;const timer=setTimeout(()=>setSearchFocus(undefined),5000);return()=>clearTimeout(timer)},[searchFocus?.nonce]);
-  const showFocusToolbar=()=>{if(!focusMode)return;setFocusToolbarVisible(true);if(focusHideTimer.current)clearTimeout(focusHideTimer.current);focusHideTimer.current=setTimeout(()=>setFocusToolbarVisible(false),FOCUS_TOOLBAR_IDLE_MS)};
-  useEffect(()=>{if(!focusMode){if(focusHideTimer.current)clearTimeout(focusHideTimer.current);focusHideTimer.current=null;setFocusToolbarVisible(false);return}setFocusToolbarVisible(true);focusHideTimer.current=setTimeout(()=>setFocusToolbarVisible(false),FOCUS_TOOLBAR_IDLE_MS);return()=>{if(focusHideTimer.current)clearTimeout(focusHideTimer.current)}},[focusMode]);
+  useEffect(() => {
+    if (!searchFocus) return;
+    const timer = setTimeout(() => setSearchFocus(undefined), 5000);
+    return () => clearTimeout(timer);
+  }, [searchFocus?.nonce]);
+  const showFocusToolbar = () => {
+    if (!focusMode) return;
+    setFocusToolbarVisible(true);
+    if (focusHideTimer.current) clearTimeout(focusHideTimer.current);
+    focusHideTimer.current = setTimeout(
+      () => setFocusToolbarVisible(false),
+      FOCUS_TOOLBAR_IDLE_MS,
+    );
+  };
+  useEffect(() => {
+    if (!focusMode) {
+      if (focusHideTimer.current) clearTimeout(focusHideTimer.current);
+      focusHideTimer.current = null;
+      setFocusToolbarVisible(false);
+      return;
+    }
+    setFocusToolbarVisible(true);
+    focusHideTimer.current = setTimeout(
+      () => setFocusToolbarVisible(false),
+      FOCUS_TOOLBAR_IDLE_MS,
+    );
+    return () => {
+      if (focusHideTimer.current) clearTimeout(focusHideTimer.current);
+    };
+  }, [focusMode]);
   useEffect(() => {
     if (openId) tabPages.current[openId] = pageIndex;
   }, [openId, pageIndex]);
   useEffect(() => {
-    if (openId) setOpenTabs((tabs) => (tabs.includes(openId) ? tabs : [...tabs, openId]));
+    if (openId)
+      setOpenTabs((tabs) => (tabs.includes(openId) ? tabs : [...tabs, openId]));
   }, [openId]);
-  useEffect(()=>setUnlockedNotes(new Set()),[privacy.sessionRevision]);
+  useEffect(() => setUnlockedNotes(new Set()), [privacy.sessionRevision]);
   const importPdf = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
+      type: "application/pdf",
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
@@ -200,34 +355,77 @@ export function HanjiApp() {
     setOpenId(note.id);
     setPageIndex(0);
   };
-  const drainOcr=()=>{while(ocrRunning.current<2&&ocrJobs.current.length){const job=ocrJobs.current.shift();if(!job)break;ocrRunning.current+=1;void job().finally(()=>{ocrRunning.current-=1;drainOcr()})}};
-  const queueOcr = (notebookId: string, pageId: string, drawingData: string) => {
-    const key=`${notebookId}:${pageId}`,previous=ocrTimers.current.get(key);if(previous)clearTimeout(previous);
-    const revision=(ocrRevisions.current.get(key)??0)+1;ocrRevisions.current.set(key,revision);
-    if(!drawingData){update(notebookId,n=>({...n,pages:n.pages.map(p=>p.id===pageId?{...p,ocrText:undefined,ocrWords:undefined}:p)}));return}
-    const timer=setTimeout(()=>{
+  const drainOcr = () => {
+    while (ocrRunning.current < 2 && ocrJobs.current.length) {
+      const job = ocrJobs.current.shift();
+      if (!job) break;
+      ocrRunning.current += 1;
+      void job().finally(() => {
+        ocrRunning.current -= 1;
+        drainOcr();
+      });
+    }
+  };
+  const queueOcr = (
+    notebookId: string,
+    pageId: string,
+    drawingData: string,
+  ) => {
+    const key = `${notebookId}:${pageId}`,
+      previous = ocrTimers.current.get(key);
+    if (previous) clearTimeout(previous);
+    const revision = (ocrRevisions.current.get(key) ?? 0) + 1;
+    ocrRevisions.current.set(key, revision);
+    if (!drawingData) {
+      update(notebookId, (n) => ({
+        ...n,
+        pages: n.pages.map((p) =>
+          p.id === pageId
+            ? { ...p, ocrText: undefined, ocrWords: undefined }
+            : p,
+        ),
+      }));
+      return;
+    }
+    const timer = setTimeout(() => {
       ocrTimers.current.delete(key);
-      ocrJobs.current.push(async()=>{
-       if(ocrRevisions.current.get(key)!==revision)return;
-       try{
-        const result=await recognizeDrawing(drawingData);
-        if(ocrRevisions.current.get(key)!==revision)return;
-        update(notebookId,n=>({...n,pages:n.pages.map(p=>p.id===pageId&&p.drawingData===drawingData?{...p,ocrText:result.text||undefined,ocrWords:result.words.length?result.words:undefined}:p)}));
-       }catch{}
+      ocrJobs.current.push(async () => {
+        if (ocrRevisions.current.get(key) !== revision) return;
+        try {
+          const result = await recognizeDrawing(drawingData);
+          if (ocrRevisions.current.get(key) !== revision) return;
+          update(notebookId, (n) => ({
+            ...n,
+            pages: n.pages.map((p) =>
+              p.id === pageId && p.drawingData === drawingData
+                ? {
+                    ...p,
+                    ocrText: result.text || undefined,
+                    ocrWords: result.words.length ? result.words : undefined,
+                  }
+                : p,
+            ),
+          }));
+        } catch {}
       });
       drainOcr();
-    },1400);
-    ocrTimers.current.set(key,timer);
+    }, 1400);
+    ocrTimers.current.set(key, timer);
   };
   const current = items.find((x) => x.id === openId);
-  const navigatePage=(index:number)=>{playPageHaptic(uiPreferences.pageTurnHaptics,pageIndex,index);setPageIndex(index)};
-  const unlockNotebook=async(note:Notebook)=>{
-    if(!note.locked||unlockedNotes.has(note.id))return true;
-    const success=await privacy.authenticate(`${note.title} 잠금 해제`);
-    if(success)setUnlockedNotes(currentSet=>new Set(currentSet).add(note.id));
+  const navigatePage = (index: number) => {
+    playPageHaptic(uiPreferences.pageTurnHaptics, pageIndex, index);
+    setPageIndex(index);
+  };
+  const unlockNotebook = async (note: Notebook) => {
+    if (!note.locked || unlockedNotes.has(note.id)) return true;
+    const success = await privacy.authenticate(`${note.title} 잠금 해제`);
+    if (success)
+      setUnlockedNotes((currentSet) => new Set(currentSet).add(note.id));
     return success;
   };
-  const update = (id: string, fn: (n: Notebook) => Notebook) => setItems((all) => all.map((n) => (n.id === id ? fn(n) : n)));
+  const update = (id: string, fn: (n: Notebook) => Notebook) =>
+    setItems((all) => all.map((n) => (n.id === id ? fn(n) : n)));
   if (!ready)
     return (
       <View style={s.loading}>
@@ -235,8 +433,10 @@ export function HanjiApp() {
         <Text style={s.muted}>서재를 여는 중…</Text>
       </View>
     );
-  if (privacy.locked) return <LockScreen onUnlock={() => void privacy.authenticate()} />;
-  if(current?.locked&&!unlockedNotes.has(current.id))return <LockScreen onUnlock={()=>void unlockNotebook(current)} />;
+  if (privacy.locked)
+    return <LockScreen onUnlock={() => void privacy.authenticate()} />;
+  if (current?.locked && !unlockedNotes.has(current.id))
+    return <LockScreen onUnlock={() => void unlockNotebook(current)} />;
   if (!current)
     return (
       <Library
@@ -247,33 +447,106 @@ export function HanjiApp() {
         backupRetention={uiPreferences.backupRetention}
         librarySort={uiPreferences.librarySort}
         libraryView={uiPreferences.libraryView}
-        onLibraryDisplayChange={(patch)=>{const next={...uiPreferences,...patch};setUiPreferences(next);void saveUiPreferences(next)}}
+        onLibraryDisplayChange={(patch) => {
+          const next = { ...uiPreferences, ...patch };
+          setUiPreferences(next);
+          void saveUiPreferences(next);
+        }}
         setQuery={setQuery}
-        onOpen={async(id, index = 0, searchQuery) => {
-          const opening=items.find(note=>note.id===id);if(!opening||!await unlockNotebook(opening))return;
+        onOpen={async (id, index = 0, searchQuery) => {
+          const opening = items.find((note) => note.id === id);
+          if (!opening || !(await unlockNotebook(opening))) return;
           update(id, (n) => ({ ...n, lastOpenedAt: new Date().toISOString() }));
-          const target=items.find(note=>note.id===id)?.pages[index];setSearchFocus(searchQuery&&target?{pageId:target.id,query:searchQuery,nonce:Date.now()}:undefined);if(searchQuery&&target?.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(id,target.id,target.drawingData);
+          const target = items.find((note) => note.id === id)?.pages[index];
+          setSearchFocus(
+            searchQuery && target
+              ? { pageId: target.id, query: searchQuery, nonce: Date.now() }
+              : undefined,
+          );
+          if (
+            searchQuery &&
+            target?.drawingData &&
+            !target.ocrWords?.some((word) => word.coordinateSpace === "canvas")
+          )
+            queueOcr(id, target.id, target.drawingData);
           setOpenId(id);
           setPageIndex(index);
         }}
-        onUpdate={(changed) => setItems((all) => all.map((n) => (n.id === changed.id ? changed : n)))}
-        onToggleNotebookLock={async(note)=>{const success=await privacy.authenticate(note.locked?`${note.title} 잠금 끄기`:`${note.title} 잠금 켜기`);if(!success)return false;const changed={...note,locked:!note.locked,updatedAt:new Date().toISOString()};setItems(all=>all.map(item=>item.id===note.id?changed:item));setUnlockedNotes(currentSet=>{const next=new Set(currentSet);if(changed.locked)next.add(note.id);else next.delete(note.id);return next});return true}}
+        onUpdate={(changed) =>
+          setItems((all) => all.map((n) => (n.id === changed.id ? changed : n)))
+        }
+        onToggleNotebookLock={async (note) => {
+          const success = await privacy.authenticate(
+            note.locked ? `${note.title} 잠금 끄기` : `${note.title} 잠금 켜기`,
+          );
+          if (!success) return false;
+          const changed = {
+            ...note,
+            locked: !note.locked,
+            updatedAt: new Date().toISOString(),
+          };
+          setItems((all) =>
+            all.map((item) => (item.id === note.id ? changed : item)),
+          );
+          setUnlockedNotes((currentSet) => {
+            const next = new Set(currentSet);
+            if (changed.locked) next.add(note.id);
+            else next.delete(note.id);
+            return next;
+          });
+          return true;
+        }}
         onCloudRestore={(restored) => {
-          setCategories((all) => expandFolderPaths([...all, ...restored.map((n) => n.folder)]));
+          setCategories((all) =>
+            expandFolderPaths([...all, ...restored.map((n) => n.folder)]),
+          );
           setItems((existing) => mergeCloudRestore(existing, restored));
         }}
-        onAddCategory={(name) => setCategories((all) => expandFolderPaths([...all, name]))}
-        onRenameCategory={(folder,name) => {
-          const target=childFolder(parentFolder(folder),name);
-          if(target!==folder&&categories.includes(target)){Alert.alert('이름 변경 불가','같은 위치에 같은 이름의 폴더가 있습니다.');return false}
-          setCategories((all)=>renameFolderPaths(all,folder,name));
-          setItems((all)=>all.map(note=>folderContains(folder,note.folder)?{...note,folder:replaceFolderRoot(note.folder,folder,target),updatedAt:new Date().toISOString()}:note));
+        onAddCategory={(name) =>
+          setCategories((all) => expandFolderPaths([...all, name]))
+        }
+        onRenameCategory={(folder, name) => {
+          const target = childFolder(parentFolder(folder), name);
+          if (target !== folder && categories.includes(target)) {
+            Alert.alert(
+              "이름 변경 불가",
+              "같은 위치에 같은 이름의 폴더가 있습니다.",
+            );
+            return false;
+          }
+          setCategories((all) => renameFolderPaths(all, folder, name));
+          setItems((all) =>
+            all.map((note) =>
+              folderContains(folder, note.folder)
+                ? {
+                    ...note,
+                    folder: replaceFolderRoot(note.folder, folder, target),
+                    updatedAt: new Date().toISOString(),
+                  }
+                : note,
+            ),
+          );
           return true;
         }}
         onDeleteCategory={(folder) => {
-          const destination=parentFolder(folder)||'내 노트';
-          setCategories((all)=>expandFolderPaths([...deleteFolderPaths(all,folder,'내 노트'),destination]));
-          setItems((all)=>all.map(note=>folderContains(folder,note.folder)?{...note,folder:replaceFolderRoot(note.folder,folder,destination),updatedAt:new Date().toISOString()}:note));
+          const destination = parentFolder(folder) || "내 노트";
+          setCategories((all) =>
+            expandFolderPaths([
+              ...deleteFolderPaths(all, folder, "내 노트"),
+              destination,
+            ]),
+          );
+          setItems((all) =>
+            all.map((note) =>
+              folderContains(folder, note.folder)
+                ? {
+                    ...note,
+                    folder: replaceFolderRoot(note.folder, folder, destination),
+                    updatedAt: new Date().toISOString(),
+                  }
+                : note,
+            ),
+          );
         }}
         onMoveCategory={(id, folder) =>
           update(id, (n) => ({
@@ -287,31 +560,45 @@ export function HanjiApp() {
           try {
             const restored = await importLibraryBackup();
             if (restored) {
-              setCategories((all) => expandFolderPaths([...all, ...restored.map((n) => n.folder)]));
+              setCategories((all) =>
+                expandFolderPaths([...all, ...restored.map((n) => n.folder)]),
+              );
               setItems((existing) => {
                 const merged = new Map(existing.map((n) => [n.id, n]));
                 restored.forEach((n) => merged.set(n.id, n));
-                return [...merged.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+                return [...merged.values()].sort((a, b) =>
+                  b.updatedAt.localeCompare(a.updatedAt),
+                );
               });
             }
           } catch (error) {
-            Alert.alert('복원 실패', error instanceof Error ? error.message : '백업 파일을 읽을 수 없습니다.');
+            Alert.alert(
+              "복원 실패",
+              error instanceof Error
+                ? error.message
+                : "백업 파일을 읽을 수 없습니다.",
+            );
           }
         }}
         onImport={importPdf}
         onCreate={(folder) => {
-          const n = newNotebook(undefined,uiPreferences.defaultTemplate);
+          const n = newNotebook(undefined, uiPreferences.defaultTemplate);
           if (folder) n.folder = folder;
           setItems((x) => [n, ...x]);
           setOpenId(n.id);
-          if(uiPreferences.autoDarkInk&&uiPreferences.defaultTemplate==='dark'&&['#20201E','#000000'].includes(tool.color.toUpperCase()))setTool({...tool,color:'#F4F1E8'});
+          if (
+            uiPreferences.autoDarkInk &&
+            uiPreferences.defaultTemplate === "dark" &&
+            ["#20201E", "#000000"].includes(tool.color.toUpperCase())
+          )
+            setTool({ ...tool, color: "#F4F1E8" });
         }}
         onDelete={(id) =>
-          Alert.alert('노트 삭제', '이 노트를 삭제할까요?', [
-            { text: '취소' },
+          Alert.alert("노트 삭제", "이 노트를 삭제할까요?", [
+            { text: "취소" },
             {
-              text: '삭제',
-              style: 'destructive',
+              text: "삭제",
+              style: "destructive",
               onPress: () => setItems((x) => x.filter((n) => n.id !== id)),
             },
           ])
@@ -320,8 +607,9 @@ export function HanjiApp() {
     );
   const page = current.pages[pageIndex] ?? current.pages[0];
   if (!page) return null;
-  const selectTab = async(id: string) => {
-    const note=items.find(item=>item.id===id);if(!note||!await unlockNotebook(note))return;
+  const selectTab = async (id: string) => {
+    const note = items.find((item) => item.id === id);
+    if (!note || !(await unlockNotebook(note))) return;
     setOpenId(id);
     setPageIndex(tabPages.current[id] ?? 0);
   };
@@ -330,7 +618,8 @@ export function HanjiApp() {
       remaining = openTabs.filter((x) => x !== id);
     setOpenTabs(remaining);
     if (openId === id) {
-      const next = remaining[Math.min(Math.max(index, 0), remaining.length - 1)];
+      const next =
+        remaining[Math.min(Math.max(index, 0), remaining.length - 1)];
       setOpenId(next ?? null);
       setPageIndex(next ? (tabPages.current[next] ?? 0) : 0);
     }
@@ -350,7 +639,7 @@ export function HanjiApp() {
                 ...(p.elements ?? []),
                 {
                   id: `image-${Date.now()}`,
-                  kind: 'image',
+                  kind: "image",
                   uri,
                   x: 0.2,
                   y: 0.18,
@@ -368,19 +657,59 @@ export function HanjiApp() {
     void saveStickers(next);
   };
   const saveImageSticker = (image: ImageElement) => {
-    const existing = stickers.find((item) => item.uri === image.uri && item.fit === image.fit && item.rotation === image.rotation);
-    const next = existing ? [existing, ...stickers.filter((item) => item.id !== existing.id)] : [stickerFromImage(image), ...stickers];
+    const existing = stickers.find(
+      (item) =>
+        item.uri === image.uri &&
+        item.fit === image.fit &&
+        item.rotation === image.rotation,
+    );
+    const next = existing
+      ? [existing, ...stickers.filter((item) => item.id !== existing.id)]
+      : [stickerFromImage(image), ...stickers];
     updateStickers(next);
   };
   const importSticker = async () => {
     const uri = await pickPersistentImage();
     if (!uri) return;
-    updateStickers([stickerFromImage({ id: makeId(), kind: 'image', uri, x: 0.2, y: 0.2, width: 0.34, height: 0.34 }), ...stickers]);
+    updateStickers([
+      stickerFromImage({
+        id: makeId(),
+        kind: "image",
+        uri,
+        x: 0.2,
+        y: 0.2,
+        width: 0.34,
+        height: 0.34,
+      }),
+      ...stickers,
+    ]);
   };
   const insertSticker = (sticker: Sticker) => {
     setElementMode(true);
-    const element: ImageElement = { id: makeId(), kind: 'image', uri: sticker.uri, x: Math.max(0.02, (1 - sticker.width) / 2), y: Math.max(0.02, (1 - sticker.height) / 2), width: sticker.width, height: sticker.height, fit: sticker.fit, rotation: sticker.rotation };
-    update(current.id, (n) => ({ ...n, updatedAt: new Date().toISOString(), pages: n.pages.map((p) => (p.id === page.id ? { ...p, elements: [...(p.elements ?? []), element], updatedAt: new Date().toISOString() } : p)) }));
+    const element: ImageElement = {
+      id: makeId(),
+      kind: "image",
+      uri: sticker.uri,
+      x: Math.max(0.02, (1 - sticker.width) / 2),
+      y: Math.max(0.02, (1 - sticker.height) / 2),
+      width: sticker.width,
+      height: sticker.height,
+      fit: sticker.fit,
+      rotation: sticker.rotation,
+    };
+    update(current.id, (n) => ({
+      ...n,
+      updatedAt: new Date().toISOString(),
+      pages: n.pages.map((p) =>
+        p.id === page.id
+          ? {
+              ...p,
+              elements: [...(p.elements ?? []), element],
+              updatedAt: new Date().toISOString(),
+            }
+          : p,
+      ),
+    }));
     setStickerOpen(false);
   };
   const applyCustomTemplate = async () => {
@@ -394,7 +723,7 @@ export function HanjiApp() {
           ? {
               ...p,
               customTemplateUri: uri,
-              template: 'plain',
+              template: "plain",
               updatedAt: new Date().toISOString(),
             }
           : p,
@@ -406,34 +735,38 @@ export function HanjiApp() {
       void applyCustomTemplate();
       return;
     }
-    Alert.alert('커스텀 템플릿', '이 페이지의 배경을 변경하거나 제거할 수 있습니다.', [
-      { text: '취소' },
-      {
-        text: '제거',
-        style: 'destructive',
-        onPress: () =>
-          update(current.id, (n) => ({
-            ...n,
-            updatedAt: new Date().toISOString(),
-            pages: n.pages.map((p) =>
-              p.id === page.id
-                ? {
-                    ...p,
-                    customTemplateUri: undefined,
-                    updatedAt: new Date().toISOString(),
-                  }
-                : p,
-            ),
-          })),
-      },
-      { text: '교체', onPress: () => void applyCustomTemplate() },
-    ]);
+    Alert.alert(
+      "커스텀 템플릿",
+      "이 페이지의 배경을 변경하거나 제거할 수 있습니다.",
+      [
+        { text: "취소" },
+        {
+          text: "제거",
+          style: "destructive",
+          onPress: () =>
+            update(current.id, (n) => ({
+              ...n,
+              updatedAt: new Date().toISOString(),
+              pages: n.pages.map((p) =>
+                p.id === page.id
+                  ? {
+                      ...p,
+                      customTemplateUri: undefined,
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : p,
+              ),
+            })),
+        },
+        { text: "교체", onPress: () => void applyCustomTemplate() },
+      ],
+    );
   };
   const togglePencilEraser = () =>
     setTool((active) => {
-      if (active.kind === 'eraser') return previousPencilTool.current;
+      if (active.kind === "eraser") return previousPencilTool.current;
       previousPencilTool.current = active;
-      return { ...active, kind: 'eraser', eraserMode: 'vector' };
+      return { ...active, kind: "eraser", eraserMode: "vector" };
     });
   const movePage = (direction: -1 | 1) => {
     const target = pageIndex + direction;
@@ -448,12 +781,31 @@ export function HanjiApp() {
     });
     setPageIndex(target);
   };
-  const applyTemplateInk=(template:import('./types').PageTemplate)=>{if(!uiPreferences.autoDarkInk)return;if(template==='dark'&&['#20201E','#000000'].includes(tool.color.toUpperCase()))setTool({...tool,color:'#F4F1E8'});if(template!=='dark'&&tool.color.toUpperCase()==='#F4F1E8')setTool({...tool,color:C.ink})};
-  const addPage = (placement?:'end') => {
-    const targetPlacement=placement==='end'?'end':uiPreferences.newPagePlacement;
-    const created=blankPage(uiPreferences.defaultTemplate);
-    const inserted=insertPage(current.pages,created,pageIndex,targetPlacement);
-    update(current.id, (n) => ({...n,pages:inserted.pages,updatedAt: new Date().toISOString()}));
+  const applyTemplateInk = (template: import("./types").PageTemplate) => {
+    if (!uiPreferences.autoDarkInk) return;
+    if (
+      template === "dark" &&
+      ["#20201E", "#000000"].includes(tool.color.toUpperCase())
+    )
+      setTool({ ...tool, color: "#F4F1E8" });
+    if (template !== "dark" && tool.color.toUpperCase() === "#F4F1E8")
+      setTool({ ...tool, color: C.ink });
+  };
+  const addPage = (placement?: "end") => {
+    const targetPlacement =
+      placement === "end" ? "end" : uiPreferences.newPagePlacement;
+    const created = blankPage(uiPreferences.defaultTemplate);
+    const inserted = insertPage(
+      current.pages,
+      created,
+      pageIndex,
+      targetPlacement,
+    );
+    update(current.id, (n) => ({
+      ...n,
+      pages: inserted.pages,
+      updatedAt: new Date().toISOString(),
+    }));
     setPageIndex(inserted.index);
     applyTemplateInk(uiPreferences.defaultTemplate);
   };
@@ -462,24 +814,90 @@ export function HanjiApp() {
     update(current.id, (n) => ({
       ...n,
       updatedAt: new Date().toISOString(),
-      pages: n.pages.map((p) => (p.id === target.id ? { ...p, drawingData, updatedAt: new Date().toISOString() } : p)),
+      pages: n.pages.map((p) =>
+        p.id === target.id
+          ? { ...p, drawingData, updatedAt: new Date().toISOString() }
+          : p,
+      ),
     }));
     queueOcr(current.id, target.id, drawingData);
   };
-  const changeElements = (target: typeof page, elements: NonNullable<typeof page.elements>) =>
+  const changeElements = (
+    target: typeof page,
+    elements: NonNullable<typeof page.elements>,
+  ) =>
     update(current.id, (n) => ({
       ...n,
       updatedAt: new Date().toISOString(),
-      pages: n.pages.map((p) => (p.id === target.id ? { ...p, elements, updatedAt: new Date().toISOString() } : p)),
+      pages: n.pages.map((p) =>
+        p.id === target.id
+          ? { ...p, elements, updatedAt: new Date().toISOString() }
+          : p,
+      ),
     }));
   const handlePdfLink = (link: { pageIndex?: number; url?: string }) => {
     if (link.pageIndex !== undefined) navigatePage(link.pageIndex);
     else if (link.url) void Linking.openURL(link.url);
   };
-  const capturePdfExcerpt=(sourcePage:typeof page,excerpt:{text:string;pageIndex:number})=>setPendingExcerpt({text:excerpt.text,source:{notebookId:current.id,pageId:sourcePage.id,pageIndex:excerpt.pageIndex,pdfName:sourcePage.pdfName}});
-  const pastePdfExcerpt=()=>{if(!pendingExcerpt)return;const element:TextElement={id:makeId(),kind:'text',text:pendingExcerpt.text,x:.58,y:.12,width:.34,height:.18,fontSize:16,color:C.ink,source:pendingExcerpt.source};changeElements(page,[...(page.elements??[]),element]);setPendingExcerpt(undefined);setElementMode(true)};
-  const navigateExcerptSource=(source:NonNullable<TextElement['source']>)=>{const note=items.find(item=>item.id===source.notebookId);if(!note)return;const index=note.pages.findIndex(item=>item.id===source.pageId);setOpenId(note.id);navigatePage(index>=0?index:Math.max(0,Math.min(source.pageIndex,note.pages.length-1)))};
-  const navigateDocumentSearch=(index:number,searchQuery:string)=>{const target=current.pages[index];if(!target)return;navigatePage(index);setSearchFocus({pageId:target.id,query:searchQuery,nonce:Date.now()});if(target.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(current.id,target.id,target.drawingData)};
+  const capturePdfExcerpt = (
+    sourcePage: typeof page,
+    excerpt: { text: string; pageIndex: number },
+  ) =>
+    setPendingExcerpt({
+      text: excerpt.text,
+      source: {
+        notebookId: current.id,
+        pageId: sourcePage.id,
+        pageIndex: excerpt.pageIndex,
+        pdfName: sourcePage.pdfName,
+      },
+    });
+  const pastePdfExcerpt = () => {
+    if (!pendingExcerpt) return;
+    const element: TextElement = {
+      id: makeId(),
+      kind: "text",
+      text: pendingExcerpt.text,
+      x: 0.58,
+      y: 0.12,
+      width: 0.34,
+      height: 0.18,
+      fontSize: 16,
+      color: C.ink,
+      source: pendingExcerpt.source,
+    };
+    changeElements(page, [...(page.elements ?? []), element]);
+    setPendingExcerpt(undefined);
+    setElementMode(true);
+  };
+  const navigateExcerptSource = (
+    source: NonNullable<TextElement["source"]>,
+  ) => {
+    const note = items.find((item) => item.id === source.notebookId);
+    if (!note) return;
+    const index = note.pages.findIndex((item) => item.id === source.pageId);
+    setOpenId(note.id);
+    navigatePage(
+      index >= 0
+        ? index
+        : Math.max(0, Math.min(source.pageIndex, note.pages.length - 1)),
+    );
+  };
+  const navigateDocumentSearch = (index: number, searchQuery: string) => {
+    const target = current.pages[index];
+    if (!target) return;
+    navigatePage(index);
+    setSearchFocus({
+      pageId: target.id,
+      query: searchQuery,
+      nonce: Date.now(),
+    });
+    if (
+      target.drawingData &&
+      !target.ocrWords?.some((word) => word.coordinateSpace === "canvas")
+    )
+      queueOcr(current.id, target.id, target.drawingData);
+  };
   const handleStrokeAdded = (target: typeof page, createdAt: number) => {
     const started = audioStartRef.current;
     if (started === null) return;
@@ -490,8 +908,15 @@ export function HanjiApp() {
     });
   };
   const handleStrokeTapped = (target: typeof page, createdAt: number) => {
-    const session = [...(current.audioSessions ?? [])].reverse().find((x) => x.strokes.some((stroke) => stroke.pageId === target.id));
-    const stroke = session?.strokes.filter((x) => x.pageId === target.id).sort((a, b) => Math.abs(a.createdAt - createdAt) - Math.abs(b.createdAt - createdAt))[0];
+    const session = [...(current.audioSessions ?? [])]
+      .reverse()
+      .find((x) => x.strokes.some((stroke) => stroke.pageId === target.id));
+    const stroke = session?.strokes
+      .filter((x) => x.pageId === target.id)
+      .sort(
+        (a, b) =>
+          Math.abs(a.createdAt - createdAt) - Math.abs(b.createdAt - createdAt),
+      )[0];
     if (stroke) setAudioSeek({ seconds: stroke.seekSec, nonce: Date.now() });
   };
   const transcribeSession = async (session: AudioSession) => {
@@ -499,23 +924,166 @@ export function HanjiApp() {
     update(current.id, (n) => ({
       ...n,
       updatedAt: new Date().toISOString(),
-      audioSessions: n.audioSessions?.map((item) => item.createdAt === session.createdAt ? { ...item, transcript: result.text, transcriptSegments: result.segments, transcribedAt: new Date().toISOString() } : item),
+      audioSessions: n.audioSessions?.map((item) =>
+        item.createdAt === session.createdAt
+          ? {
+              ...item,
+              transcript: result.text,
+              transcriptSegments: result.segments,
+              transcribedAt: new Date().toISOString(),
+            }
+          : item,
+      ),
     }));
   };
-  const handleSelection=(target:typeof page,value:{count:number})=>setSelection({pageId:target.id,count:value.count});
-  const handleSelectionText=(target:typeof page,result:{text:string;x:number;y:number;width:number;height:number})=>{
-    const element:TextElement={id:makeId(),kind:'text',text:result.text,x:Math.max(0,Math.min(.82,result.x)),y:Math.max(0,Math.min(.85,result.y)),width:Math.max(.18,Math.min(.8,result.width)),height:Math.max(.08,Math.min(.4,result.height)),fontSize:20,color:target.template==='dark'?'#F4F1E8':C.ink};
-    update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===target.id?{...p,elements:[...(p.elements??[]),element],updatedAt:new Date().toISOString()}:p)}));setElementMode(true);setSelection({pageId:'',count:0});
-    selectionUndoRef.current={pageId:target.id,element};selectionRedoRef.current=null;
+  const handleSelection = (target: typeof page, value: { count: number }) =>
+    setSelection({ pageId: target.id, count: value.count });
+  const handleSelectionText = (
+    target: typeof page,
+    result: {
+      text: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    },
+  ) => {
+    const element: TextElement = {
+      id: makeId(),
+      kind: "text",
+      text: result.text,
+      x: Math.max(0, Math.min(0.82, result.x)),
+      y: Math.max(0, Math.min(0.85, result.y)),
+      width: Math.max(0.18, Math.min(0.8, result.width)),
+      height: Math.max(0.08, Math.min(0.4, result.height)),
+      fontSize: 20,
+      color: target.template === "dark" ? "#F4F1E8" : C.ink,
+    };
+    update(current.id, (n) => ({
+      ...n,
+      updatedAt: new Date().toISOString(),
+      pages: n.pages.map((p) =>
+        p.id === target.id
+          ? {
+              ...p,
+              elements: [...(p.elements ?? []), element],
+              updatedAt: new Date().toISOString(),
+            }
+          : p,
+      ),
+    }));
+    setElementMode(true);
+    setSelection({ pageId: "", count: 0 });
+    selectionUndoRef.current = { pageId: target.id, element };
+    selectionRedoRef.current = null;
   };
-  const handleSelectionClip=(target:typeof page,result:{uri:string;x:number;y:number;width:number;height:number})=>{const element:ImageElement={id:makeId(),kind:'image',uri:result.uri,x:Math.max(0,Math.min(.94,result.x)),y:Math.max(0,Math.min(.94,result.y)),width:Math.max(.04,Math.min(1,result.width)),height:Math.max(.04,Math.min(1,result.height)),fit:'contain',rotation:0};changeElements(target,[...(target.elements??[]),element]);setElementMode(true);actOnSelection('clear')};
-  const actOnSelection=(type:'delete'|'recolor'|'text'|'clip'|'clear'|'copy'|'cut'|'paste'|'duplicate'|'shrink'|'grow'|'rotate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
-  const changeUiPreferences=(value:UiPreferences)=>{setUiPreferences(value);void saveUiPreferences(value)};
-  const rebuildIndex=()=>{if(indexStatus==='running')return;setIndexStatus('running');void rebuildSearchIndex(items).then(()=>setIndexStatus('success')).catch(()=>setIndexStatus('error'))};
-  const toggleLeftHanded=()=>changeUiPreferences({...uiPreferences,leftHanded:!leftHanded});
-  const activateLasso=()=>setTool(active=>({...active,kind:'lasso'}));
-  const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
-  const performRedo=()=>{const conversion=selectionRedoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:[...(p.elements??[]),conversion.element]}:p)}));selectionUndoRef.current=conversion;selectionRedoRef.current=null}setRedoSignal(v=>v+1)};
+  const handleSelectionClip = (
+    target: typeof page,
+    result: {
+      uri: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    },
+  ) => {
+    const element: ImageElement = {
+      id: makeId(),
+      kind: "image",
+      uri: result.uri,
+      x: Math.max(0, Math.min(0.94, result.x)),
+      y: Math.max(0, Math.min(0.94, result.y)),
+      width: Math.max(0.04, Math.min(1, result.width)),
+      height: Math.max(0.04, Math.min(1, result.height)),
+      fit: "contain",
+      rotation: 0,
+    };
+    changeElements(target, [...(target.elements ?? []), element]);
+    setElementMode(true);
+    actOnSelection("clear");
+  };
+  const actOnSelection = (
+    type:
+      | "delete"
+      | "recolor"
+      | "text"
+      | "clip"
+      | "clear"
+      | "copy"
+      | "cut"
+      | "paste"
+      | "duplicate"
+      | "shrink"
+      | "grow"
+      | "rotate",
+  ) =>
+    setSelectionAction({
+      nonce: Date.now(),
+      type,
+      color: type === "recolor" ? tool.color : undefined,
+    });
+  const changeUiPreferences = (value: UiPreferences) => {
+    setUiPreferences(value);
+    void saveUiPreferences(value);
+  };
+  const rebuildIndex = () => {
+    if (indexStatus === "running") return;
+    setIndexStatus("running");
+    void rebuildSearchIndex(items)
+      .then(() => setIndexStatus("success"))
+      .catch(() => setIndexStatus("error"));
+  };
+  const toggleLeftHanded = () =>
+    changeUiPreferences({ ...uiPreferences, leftHanded: !leftHanded });
+  const activateLasso = () =>
+    setTool((active) => ({ ...active, kind: "lasso" }));
+  const performUndo = () => {
+    const conversion = selectionUndoRef.current;
+    if (conversion) {
+      update(current.id, (n) => ({
+        ...n,
+        pages: n.pages.map((p) =>
+          p.id === conversion.pageId
+            ? {
+                ...p,
+                elements: p.elements?.filter(
+                  (element) => element.id !== conversion.element.id,
+                ),
+              }
+            : p,
+        ),
+      }));
+      selectionRedoRef.current = conversion;
+      selectionUndoRef.current = null;
+    }
+    setUndoSignal((v) => v + 1);
+  };
+  const performRedo = () => {
+    const conversion = selectionRedoRef.current;
+    if (conversion) {
+      update(current.id, (n) => ({
+        ...n,
+        pages: n.pages.map((p) =>
+          p.id === conversion.pageId
+            ? { ...p, elements: [...(p.elements ?? []), conversion.element] }
+            : p,
+        ),
+      }));
+      selectionUndoRef.current = conversion;
+      selectionRedoRef.current = null;
+    }
+    setRedoSignal((v) => v + 1);
+  };
+  const performPencilAction = (action: PencilAction) => {
+    if (action === "eraser") togglePencilEraser();
+    else if (action === "undo") performUndo();
+    else if (action === "redo") performRedo();
+    else if (action === "toolbar") showFocusToolbar();
+  };
+  const handlePencilDoubleTap = () =>
+    performPencilAction(uiPreferences.pencilDoubleTapAction);
+  const handlePencilSqueeze = () =>
+    performPencilAction(uiPreferences.pencilSqueezeAction);
   const handlePageCount = (count: number, source: typeof page) => {
     if (count <= current.pages.length) return;
     update(current.id, (n) => ({
@@ -524,7 +1092,7 @@ export function HanjiApp() {
         { length: count },
         (_, i) =>
           n.pages[i] ?? {
-            ...blankPage('plain'),
+            ...blankPage("plain"),
             pdfUri: source.pdfUri,
             pdfName: source.pdfName,
             pdfPageIndex: i,
@@ -532,9 +1100,12 @@ export function HanjiApp() {
       ),
     }));
   };
-  const transferCurrentPage = (targetId: string, mode: 'copy' | 'move') => {
-    setItems((all) => transferNotebookPage(all, current.id, page.id, targetId, mode));
-    if (mode === 'move') setPageIndex(Math.max(0, Math.min(pageIndex, current.pages.length - 2)));
+  const transferCurrentPage = (targetId: string, mode: "copy" | "move") => {
+    setItems((all) =>
+      transferNotebookPage(all, current.id, page.id, targetId, mode),
+    );
+    if (mode === "move")
+      setPageIndex(Math.max(0, Math.min(pageIndex, current.pages.length - 2)));
     setPageTransferOpen(false);
   };
   const rotatePage = () =>
@@ -553,7 +1124,9 @@ export function HanjiApp() {
     }));
   const reorderPages = (ids: string[]) => {
     const map = new Map(current.pages.map((p) => [p.id, p]));
-    const pages = ids.map((id) => map.get(id)).filter((p): p is typeof page => Boolean(p));
+    const pages = ids
+      .map((id) => map.get(id))
+      .filter((p): p is typeof page => Boolean(p));
     const active = pages.findIndex((p) => p.id === page.id);
     update(current.id, (n) => ({
       ...n,
@@ -578,7 +1151,11 @@ export function HanjiApp() {
       };
       return {
         ...n,
-        pages: [...n.pages.slice(0, index + 1), copy, ...n.pages.slice(index + 1)],
+        pages: [
+          ...n.pages.slice(0, index + 1),
+          copy,
+          ...n.pages.slice(index + 1),
+        ],
         updatedAt: new Date().toISOString(),
       };
     });
@@ -586,14 +1163,19 @@ export function HanjiApp() {
     if (current.pages.length === 1) return;
     const index = current.pages.findIndex((p) => p.id === id);
     update(current.id, (n) => {
-      const timestamp=new Date().toISOString();
-      return {...n,pages:n.pages.filter((p)=>p.id!==id),deletedPages:{...(n.deletedPages??{}),[id]:timestamp},updatedAt:timestamp};
+      const timestamp = new Date().toISOString();
+      return {
+        ...n,
+        pages: n.pages.filter((p) => p.id !== id),
+        deletedPages: { ...(n.deletedPages ?? {}), [id]: timestamp },
+        updatedAt: timestamp,
+      };
     });
     if (index <= pageIndex) setPageIndex(Math.max(0, pageIndex - 1));
   };
   return (
     <SafeAreaView style={s.root}>
-      {(!focusMode||focusToolbarVisible) && (
+      {(!focusMode || focusToolbarVisible) && (
         <Toolbar
           focusMode={focusMode}
           focusOverlay={focusMode}
@@ -603,14 +1185,20 @@ export function HanjiApp() {
           onUndo={performUndo}
           onRedo={performRedo}
           fingerDrawingEnabled={fingerDrawingEnabled}
-          onToggleFingerDrawing={() => changeUiPreferences({...uiPreferences,fingerDrawingEnabled:!fingerDrawingEnabled})}
+          onToggleFingerDrawing={() =>
+            changeUiPreferences({
+              ...uiPreferences,
+              fingerDrawingEnabled: !fingerDrawingEnabled,
+            })
+          }
           zoomWindowEnabled={zoomWindowEnabled}
           onToggleZoomWindow={() => setZoomWindowEnabled((v) => !v)}
-          viewMode={current.viewMode ?? 'page'}
+          viewMode={current.viewMode ?? "page"}
           onToggleViewMode={() =>
             update(current.id, (n) => ({
               ...n,
-              viewMode: (n.viewMode ?? 'page') === 'page' ? 'continuous' : 'page',
+              viewMode:
+                (n.viewMode ?? "page") === "page" ? "continuous" : "page",
               updatedAt: new Date().toISOString(),
             }))
           }
@@ -631,14 +1219,14 @@ export function HanjiApp() {
                         ...(p.elements ?? []),
                         {
                           id: `text-${Date.now()}`,
-                          kind: 'text',
-                          text: '텍스트를 입력하세요',
+                          kind: "text",
+                          text: "텍스트를 입력하세요",
                           x: 0.18,
                           y: 0.2,
                           width: 0.42,
                           height: 0.12,
                           fontSize: 20,
-                          color: page.template === 'dark' ? '#F4F1E8' : C.ink,
+                          color: page.template === "dark" ? "#F4F1E8" : C.ink,
                         },
                       ],
                     }
@@ -670,11 +1258,56 @@ export function HanjiApp() {
           onAddPage={addPage}
         />
       )}
-      {!focusMode && <DocumentTabs ids={openTabs} items={items} activeId={current.id} onSelect={selectTab} onClose={closeTab} />}
-      <View style={[s.editor,leftHanded&&s.editorLeftHanded,focusMode&&(leftHanded?{marginLeft:-112}:{marginRight:-112})]}>
+      {!focusMode && (
+        <DocumentTabs
+          ids={openTabs}
+          items={items}
+          activeId={current.id}
+          onSelect={selectTab}
+          onClose={closeTab}
+        />
+      )}
+      <View
+        style={[
+          s.editor,
+          leftHanded && s.editorLeftHanded,
+          focusMode &&
+            (leftHanded ? { marginLeft: -112 } : { marginRight: -112 }),
+        ]}
+      >
         <View style={s.canvasArea}>
-          {(current.viewMode ?? 'page') === 'continuous' ? (
-            <ContinuousDocument pages={current.pages} searchFocus={searchFocus} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onSelectionClip={handleSelectionClip} onCircleLasso={activateLasso} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPdfExcerpt={capturePdfExcerpt} onNavigateSource={navigateExcerptSource} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
+          {(current.viewMode ?? "page") === "continuous" ? (
+            <ContinuousDocument
+              pages={current.pages}
+              searchFocus={searchFocus}
+              activeIndex={pageIndex}
+              tool={tool}
+              fingerDrawingEnabled={fingerDrawingEnabled}
+              zoomWindowEnabled={zoomWindowEnabled}
+              elementMode={elementMode}
+              replayCutoff={replayCutoff}
+              selectionAction={selectionAction}
+              undoSignal={undoSignal}
+              redoSignal={redoSignal}
+              onActiveIndexChange={setPageIndex}
+              onDrawingChange={changeDrawing}
+              onElementsChange={changeElements}
+              onSaveSticker={saveImageSticker}
+              onSelectionChange={handleSelection}
+              onSelectionText={handleSelectionText}
+              onSelectionClip={handleSelectionClip}
+              onCircleLasso={activateLasso}
+              onAddPage={addPage}
+              onPageCount={handlePageCount}
+              onPdfOutline={setPdfOutline}
+              onPdfLink={handlePdfLink}
+              onPdfExcerpt={capturePdfExcerpt}
+              onNavigateSource={navigateExcerptSource}
+              onPencilDoubleTap={handlePencilDoubleTap}
+              onPencilSqueeze={handlePencilSqueeze}
+              onStrokeAdded={handleStrokeAdded}
+              onStrokeTapped={handleStrokeTapped}
+            />
           ) : (
             <RotatedPage
               rotation={page.rotation}
@@ -685,10 +1318,58 @@ export function HanjiApp() {
                 },
               ]}
             >
-              <Paper template={page.template} customTemplateUri={page.customTemplateUri} backgroundColor={page.backgroundColor} backgroundOpacity={page.backgroundOpacity} />
-              <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPdfExcerpt={excerpt=>capturePdfExcerpt(page,excerpt)} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onSelectionChange={(value)=>handleSelection(page,value)} onSelectionText={(result)=>handleSelectionText(page,result)} onSelectionClip={(result)=>handleSelectionClip(page,result)} onCircleLasso={activateLasso} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
-              <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} onNavigateSource={navigateExcerptSource}/>
-              {searchFocus?.pageId===page.id&&<SearchHighlight words={page.ocrWords??[]} query={searchFocus.query}/>}
+              <Paper
+                template={page.template}
+                customTemplateUri={page.customTemplateUri}
+                backgroundColor={page.backgroundColor}
+                backgroundOpacity={page.backgroundOpacity}
+              />
+              <DocumentCanvas
+                key={page.id}
+                pdfUri={page.pdfUri}
+                pageIndex={page.pdfPageIndex ?? pageIndex}
+                drawingData={page.drawingData}
+                tool={tool}
+                fingerDrawingEnabled={fingerDrawingEnabled}
+                zoomWindowEnabled={zoomWindowEnabled}
+                interactionEnabled={!elementMode && replayCutoff === undefined}
+                replayCutoff={replayCutoff}
+                selectionAction={selectionAction}
+                undoSignal={undoSignal}
+                redoSignal={redoSignal}
+                onPdfOutline={setPdfOutline}
+                onPdfLink={handlePdfLink}
+                onPdfExcerpt={(excerpt) => capturePdfExcerpt(page, excerpt)}
+                onPencilDoubleTap={handlePencilDoubleTap}
+                onPencilSqueeze={handlePencilSqueeze}
+                onStrokeAdded={(createdAt) =>
+                  handleStrokeAdded(page, createdAt)
+                }
+                onStrokeTapped={(createdAt) =>
+                  handleStrokeTapped(page, createdAt)
+                }
+                onSelectionChange={(value) => handleSelection(page, value)}
+                onSelectionText={(result) => handleSelectionText(page, result)}
+                onSelectionClip={(result) => handleSelectionClip(page, result)}
+                onCircleLasso={activateLasso}
+                onPageCount={(count) => handlePageCount(count, page)}
+                onDrawingChange={(drawingData) =>
+                  changeDrawing(page, drawingData)
+                }
+              />
+              <ElementsLayer
+                editable={elementMode}
+                elements={page.elements ?? []}
+                onChange={(elements) => changeElements(page, elements)}
+                onSaveImage={saveImageSticker}
+                onNavigateSource={navigateExcerptSource}
+              />
+              {searchFocus?.pageId === page.id && (
+                <SearchHighlight
+                  words={page.ocrWords ?? []}
+                  query={searchFocus.query}
+                />
+              )}
             </RotatedPage>
           )}
           <AudioPanel
@@ -702,7 +1383,10 @@ export function HanjiApp() {
               const strokes = audioStrokesRef.current;
               update(current.id, (n) => ({
                 ...n,
-                audioSessions: [...(n.audioSessions ?? []), { ...audio, strokes }],
+                audioSessions: [
+                  ...(n.audioSessions ?? []),
+                  { ...audio, strokes },
+                ],
                 updatedAt: new Date().toISOString(),
               }));
               audioStartRef.current = null;
@@ -712,16 +1396,114 @@ export function HanjiApp() {
             onTranscribe={transcribeSession}
             leftHanded={leftHanded}
           />
-          {pendingExcerpt&&<View style={[s.excerptTray,{width:Math.max(140,Math.min(360,windowWidth-(focusMode?48:160)))},leftHanded&&s.excerptTrayLeft]}><View style={{flex:1}}><Text style={s.excerptLabel}>PDF 발췌 · {pendingExcerpt.source.pageIndex+1}쪽</Text><Text numberOfLines={2} style={s.excerptText}>{pendingExcerpt.text}</Text></View><Pressable accessibilityLabel="현재 페이지에 발췌 붙여넣기" onPress={pastePdfExcerpt} style={s.excerptPaste}><Ionicons name="return-down-forward" size={17} color={C.white}/><Text style={s.excerptPasteText}>붙이기</Text></Pressable><Pressable accessibilityLabel="발췌 취소" onPress={()=>setPendingExcerpt(undefined)} style={s.excerptClose}><Ionicons name="close" size={18} color={C.muted}/></Pressable></View>}
-          {tool.kind==='lasso'&&Platform.OS==='ios'&&<Pressable accessibilityLabel="원본 필기 붙여넣기" onPress={()=>actOnSelection('paste')} style={[s.lassoPaste,leftHanded&&s.lassoPasteLeft]}><Ionicons name="clipboard" size={18} color={C.accent}/><Text style={s.lassoPasteText}>붙여넣기</Text></Pressable>}
-          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} availableWidth={windowWidth-(focusMode?48:160)} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onClip={()=>actOnSelection('clip')} onCut={()=>actOnSelection('cut')} onDuplicate={()=>actOnSelection('duplicate')} onShrink={()=>actOnSelection('shrink')} onGrow={()=>actOnSelection('grow')} onRotate={()=>actOnSelection('rotate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
+          {pendingExcerpt && (
+            <View
+              style={[
+                s.excerptTray,
+                {
+                  width: Math.max(
+                    140,
+                    Math.min(360, windowWidth - (focusMode ? 48 : 160)),
+                  ),
+                },
+                leftHanded && s.excerptTrayLeft,
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={s.excerptLabel}>
+                  PDF 발췌 · {pendingExcerpt.source.pageIndex + 1}쪽
+                </Text>
+                <Text numberOfLines={2} style={s.excerptText}>
+                  {pendingExcerpt.text}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel="현재 페이지에 발췌 붙여넣기"
+                onPress={pastePdfExcerpt}
+                style={s.excerptPaste}
+              >
+                <Ionicons
+                  name="return-down-forward"
+                  size={17}
+                  color={C.white}
+                />
+                <Text style={s.excerptPasteText}>붙이기</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="발췌 취소"
+                onPress={() => setPendingExcerpt(undefined)}
+                style={s.excerptClose}
+              >
+                <Ionicons name="close" size={18} color={C.muted} />
+              </Pressable>
+            </View>
+          )}
+          {tool.kind === "lasso" && Platform.OS === "ios" && (
+            <Pressable
+              accessibilityLabel="원본 필기 붙여넣기"
+              onPress={() => actOnSelection("paste")}
+              style={[s.lassoPaste, leftHanded && s.lassoPasteLeft]}
+            >
+              <Ionicons name="clipboard" size={18} color={C.accent} />
+              <Text style={s.lassoPasteText}>붙여넣기</Text>
+            </Pressable>
+          )}
+          <SelectionBar
+            count={selection.pageId === page.id ? selection.count : 0}
+            color={tool.color}
+            availableWidth={windowWidth - (focusMode ? 48 : 160)}
+            onRecolor={() => actOnSelection("recolor")}
+            onCopy={() => actOnSelection("copy")}
+            onClip={() => actOnSelection("clip")}
+            onCut={() => actOnSelection("cut")}
+            onDuplicate={() => actOnSelection("duplicate")}
+            onShrink={() => actOnSelection("shrink")}
+            onGrow={() => actOnSelection("grow")}
+            onRotate={() => actOnSelection("rotate")}
+            onText={() => actOnSelection("text")}
+            onDelete={() => actOnSelection("delete")}
+            onClose={() => actOnSelection("clear")}
+          />
         </View>
-        <View style={[s.rail,leftHanded&&s.railLeft]}>
+        <View style={[s.rail, leftHanded && s.railLeft]}>
           <Text style={s.railTitle}>페이지</Text>
           <View style={s.railActions}>
-            <Pressable accessibilityLabel={leftHanded?'오른손 모드로 전환':'왼손 모드로 전환'} accessibilityState={{selected:leftHanded}} onPress={toggleLeftHanded} style={[s.railAction,leftHanded&&s.templateActive]}><Ionicons name="hand-left-outline" size={16} color={leftHanded?C.white:C.accent}/></Pressable>
-            <Pressable accessibilityLabel="페이지 색상 채우기" accessibilityState={{selected:(page.backgroundOpacity??0)>0}} onPress={()=>setPagePaintOpen(true)} style={[s.railAction,(page.backgroundOpacity??0)>0&&s.templateActive]}><Ionicons name="color-fill-outline" size={16} color={(page.backgroundOpacity??0)>0?C.white:C.accent}/></Pressable>
-            <Pressable accessibilityLabel="PNG 내보내기" onPress={() => exportPagePng(current, page, pageIndex)} style={s.railAction}>
+            <Pressable
+              accessibilityLabel={
+                leftHanded ? "오른손 모드로 전환" : "왼손 모드로 전환"
+              }
+              accessibilityState={{ selected: leftHanded }}
+              onPress={toggleLeftHanded}
+              style={[s.railAction, leftHanded && s.templateActive]}
+            >
+              <Ionicons
+                name="hand-left-outline"
+                size={16}
+                color={leftHanded ? C.white : C.accent}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="페이지 색상 채우기"
+              accessibilityState={{
+                selected: (page.backgroundOpacity ?? 0) > 0,
+              }}
+              onPress={() => setPagePaintOpen(true)}
+              style={[
+                s.railAction,
+                (page.backgroundOpacity ?? 0) > 0 && s.templateActive,
+              ]}
+            >
+              <Ionicons
+                name="color-fill-outline"
+                size={16}
+                color={(page.backgroundOpacity ?? 0) > 0 ? C.white : C.accent}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="PNG 내보내기"
+              onPress={() => exportPagePng(current, page, pageIndex)}
+              style={s.railAction}
+            >
               <Ionicons name="image-outline" size={16} color={C.accent} />
             </Pressable>
             <Pressable
@@ -744,7 +1526,11 @@ export function HanjiApp() {
             >
               <Ionicons name="copy-outline" size={16} color={C.accent} />
             </Pressable>
-            <Pressable accessibilityLabel="다른 노트로 복사 또는 이동" onPress={() => setPageTransferOpen(true)} style={s.railAction}>
+            <Pressable
+              accessibilityLabel="다른 노트로 복사 또는 이동"
+              onPress={() => setPageTransferOpen(true)}
+              style={s.railAction}
+            >
               <Ionicons name="git-compare-outline" size={16} color={C.accent} />
             </Pressable>
             <Pressable
@@ -752,67 +1538,139 @@ export function HanjiApp() {
               disabled={current.pages.length === 1}
               onPress={() => {
                 update(current.id, (n) => {
-                  const timestamp=new Date().toISOString();
-                  return {...n,pages:n.pages.filter((p)=>p.id!==page.id),deletedPages:{...(n.deletedPages??{}),[page.id]:timestamp},updatedAt:timestamp};
+                  const timestamp = new Date().toISOString();
+                  return {
+                    ...n,
+                    pages: n.pages.filter((p) => p.id !== page.id),
+                    deletedPages: {
+                      ...(n.deletedPages ?? {}),
+                      [page.id]: timestamp,
+                    },
+                    updatedAt: timestamp,
+                  };
                 });
                 setPageIndex(Math.max(0, pageIndex - 1));
               }}
               style={s.railAction}
             >
-              <Ionicons name="trash-outline" size={16} color={current.pages.length === 1 ? C.line : C.danger} />
+              <Ionicons
+                name="trash-outline"
+                size={16}
+                color={current.pages.length === 1 ? C.line : C.danger}
+              />
             </Pressable>
-            <Pressable accessibilityLabel="페이지 위로 이동" disabled={pageIndex === 0} onPress={() => movePage(-1)} style={s.railAction}>
-              <Ionicons name="arrow-up" size={16} color={pageIndex === 0 ? C.line : C.accent} />
+            <Pressable
+              accessibilityLabel="페이지 위로 이동"
+              disabled={pageIndex === 0}
+              onPress={() => movePage(-1)}
+              style={s.railAction}
+            >
+              <Ionicons
+                name="arrow-up"
+                size={16}
+                color={pageIndex === 0 ? C.line : C.accent}
+              />
             </Pressable>
-            <Pressable accessibilityLabel="페이지 아래로 이동" disabled={pageIndex === current.pages.length - 1} onPress={() => movePage(1)} style={s.railAction}>
-              <Ionicons name="arrow-down" size={16} color={pageIndex === current.pages.length - 1 ? C.line : C.accent} />
+            <Pressable
+              accessibilityLabel="페이지 아래로 이동"
+              disabled={pageIndex === current.pages.length - 1}
+              onPress={() => movePage(1)}
+              style={s.railAction}
+            >
+              <Ionicons
+                name="arrow-down"
+                size={16}
+                color={
+                  pageIndex === current.pages.length - 1 ? C.line : C.accent
+                }
+              />
             </Pressable>
             <Pressable
               accessibilityLabel="페이지 북마크"
               onPress={() =>
                 update(current.id, (n) => ({
                   ...n,
-                  pages: n.pages.map((p) => (p.id === page.id ? { ...p, bookmarked: !p.bookmarked } : p)),
+                  pages: n.pages.map((p) =>
+                    p.id === page.id ? { ...p, bookmarked: !p.bookmarked } : p,
+                  ),
                 }))
               }
               style={[s.railAction, page.bookmarked && s.templateActive]}
             >
-              <Ionicons name={page.bookmarked ? 'bookmark' : 'bookmark-outline'} size={16} color={page.bookmarked ? C.white : C.accent} />
+              <Ionicons
+                name={page.bookmarked ? "bookmark" : "bookmark-outline"}
+                size={16}
+                color={page.bookmarked ? C.white : C.accent}
+              />
             </Pressable>
-            <Pressable accessibilityLabel={page.customTemplateUri ? '커스텀 템플릿 변경 또는 제거' : '커스텀 템플릿 가져오기'} onPress={manageCustomTemplate} style={[s.railAction, page.customTemplateUri && s.templateActive]}>
-              <Ionicons name="layers-outline" size={16} color={page.customTemplateUri ? C.white : C.accent} />
+            <Pressable
+              accessibilityLabel={
+                page.customTemplateUri
+                  ? "커스텀 템플릿 변경 또는 제거"
+                  : "커스텀 템플릿 가져오기"
+              }
+              onPress={manageCustomTemplate}
+              style={[s.railAction, page.customTemplateUri && s.templateActive]}
+            >
+              <Ionicons
+                name="layers-outline"
+                size={16}
+                color={page.customTemplateUri ? C.white : C.accent}
+              />
             </Pressable>
           </View>
           <View style={s.templatePicker}>
-            {(['plain', 'line', 'grid', 'dot', 'cornell', 'planner', 'dark'] as const).map((t) => (
+            {(
+              [
+                "plain",
+                "line",
+                "grid",
+                "dot",
+                "cornell",
+                "planner",
+                "dark",
+              ] as const
+            ).map((t) => (
               <Pressable
                 key={t}
                 accessibilityLabel={`${t} 템플릿`}
                 onPress={() => {
                   update(current.id, (n) => ({
                     ...n,
-                    pages: n.pages.map((p) => (p.id === page.id ? { ...p, template: t, customTemplateUri: undefined } : p)),
+                    pages: n.pages.map((p) =>
+                      p.id === page.id
+                        ? { ...p, template: t, customTemplateUri: undefined }
+                        : p,
+                    ),
                   }));
                   applyTemplateInk(t);
                 }}
-                style={[s.templateDot, !page.customTemplateUri && page.template === t && s.templateActive]}
+                style={[
+                  s.templateDot,
+                  !page.customTemplateUri &&
+                    page.template === t &&
+                    s.templateActive,
+                ]}
               >
                 <Text
                   style={{
                     fontSize: 8,
-                    color: !page.customTemplateUri && page.template === t ? C.white : C.muted,
+                    color:
+                      !page.customTemplateUri && page.template === t
+                        ? C.white
+                        : C.muted,
                   }}
                 >
                   {
                     (
                       {
-                        plain: 'P',
-                        line: 'L',
-                        grid: 'G',
-                        dot: 'D',
-                        cornell: 'C',
-                        planner: 'W',
-                        dark: 'N',
+                        plain: "P",
+                        line: "L",
+                        grid: "G",
+                        dot: "D",
+                        cornell: "C",
+                        planner: "W",
+                        dark: "N",
                       } as const
                     )[t]
                   }
@@ -822,31 +1680,42 @@ export function HanjiApp() {
           </View>
           <ScrollView contentContainerStyle={s.railList}>
             {current.pages.map((p, i) => (
-              <Pressable key={p.id} onPress={() => navigatePage(i)} style={[s.thumb, i === pageIndex && s.thumbActive]}>
+              <Pressable
+                key={p.id}
+                onPress={() => navigatePage(i)}
+                style={[s.thumb, i === pageIndex && s.thumbActive]}
+              >
                 <View style={s.thumbLines} />
-                {p.bookmarked && <Ionicons name="bookmark" size={12} color={C.accent} style={s.thumbBookmark} />}
+                {p.bookmarked && (
+                  <Ionicons
+                    name="bookmark"
+                    size={12}
+                    color={C.accent}
+                    style={s.thumbBookmark}
+                  />
+                )}
                 <Text style={s.pageNo}>{i + 1}</Text>
               </Pressable>
             ))}
           </ScrollView>
         </View>
       </View>
-      {focusMode&&!focusToolbarVisible && (
+      {focusMode && !focusToolbarVisible && (
         <Pressable
           accessibilityLabel="집중 모드 도구 열기"
           onPress={showFocusToolbar}
           style={{
-            position: 'absolute',
-            right: leftHanded?undefined:20,
-            left: leftHanded?20:undefined,
+            position: "absolute",
+            right: leftHanded ? undefined : 20,
+            left: leftHanded ? 20 : undefined,
             top: 18,
             zIndex: 30,
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: 'rgba(34,93,80,.82)',
-            alignItems: 'center',
-            justifyContent: 'center',
+            backgroundColor: "rgba(34,93,80,.82)",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Ionicons name="chevron-down" size={22} color={C.white} />
@@ -864,8 +1733,19 @@ export function HanjiApp() {
           }))
         }
       />
-      <PdfOutlinePanel visible={outlineOpen} items={pdfOutline} onClose={() => setOutlineOpen(false)} onSelect={navigatePage} />
-      <PageTransferPanel visible={pageTransferOpen} sourceId={current.id} notebooks={items} onClose={() => setPageTransferOpen(false)} onTransfer={transferCurrentPage} />
+      <PdfOutlinePanel
+        visible={outlineOpen}
+        items={pdfOutline}
+        onClose={() => setOutlineOpen(false)}
+        onSelect={navigatePage}
+      />
+      <PageTransferPanel
+        visible={pageTransferOpen}
+        sourceId={current.id}
+        notebooks={items}
+        onClose={() => setPageTransferOpen(false)}
+        onTransfer={transferCurrentPage}
+      />
       <PageGridPanel
         visible={pageGridOpen}
         pages={current.pages}
@@ -878,7 +1758,9 @@ export function HanjiApp() {
         onBookmark={(id) =>
           update(current.id, (n) => ({
             ...n,
-            pages: n.pages.map((p) => (p.id === id ? { ...p, bookmarked: !p.bookmarked } : p)),
+            pages: n.pages.map((p) =>
+              p.id === id ? { ...p, bookmarked: !p.bookmarked } : p,
+            ),
             updatedAt: new Date().toISOString(),
           }))
         }
@@ -889,45 +1771,208 @@ export function HanjiApp() {
           setTimeout(() => setPageTransferOpen(true), 0);
         }}
       />
-      <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
-      <SettingsPanel visible={settingsOpen} value={uiPreferences} indexStatus={indexStatus} onRebuildIndex={rebuildIndex} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
-      <DocumentSearchPanel visible={documentSearchOpen} notebook={current} activePageIndex={pageIndex} onSelect={navigateDocumentSearch} onClose={()=>setDocumentSearchOpen(false)}/>
-      <PagePaintPanel visible={pagePaintOpen} color={page.backgroundColor} opacity={page.backgroundOpacity??0} onChange={(backgroundColor,backgroundOpacity)=>update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(item=>item.id===page.id?{...item,backgroundColor,backgroundOpacity,updatedAt:new Date().toISOString()}:item)}))} onClose={()=>setPagePaintOpen(false)}/>
-      <ExportPanel visible={exportOpen} onClose={()=>setExportOpen(false)} onPdf={()=>exportNotebookPdf(current)} onPng={()=>exportPagePng(current,page,pageIndex)} onHanji={()=>exportNotebookArchive(current)}/>
-      <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
+      <StickerPanel
+        visible={stickerOpen}
+        stickers={stickers}
+        onClose={() => setStickerOpen(false)}
+        onInsert={insertSticker}
+        onImport={() => void importSticker()}
+        onDelete={(id) =>
+          updateStickers(stickers.filter((item) => item.id !== id))
+        }
+      />
+      <SettingsPanel
+        visible={settingsOpen}
+        value={uiPreferences}
+        indexStatus={indexStatus}
+        onRebuildIndex={rebuildIndex}
+        onChange={changeUiPreferences}
+        onClose={() => setSettingsOpen(false)}
+      />
+      <DocumentSearchPanel
+        visible={documentSearchOpen}
+        notebook={current}
+        activePageIndex={pageIndex}
+        onSelect={navigateDocumentSearch}
+        onClose={() => setDocumentSearchOpen(false)}
+      />
+      <PagePaintPanel
+        visible={pagePaintOpen}
+        color={page.backgroundColor}
+        opacity={page.backgroundOpacity ?? 0}
+        onChange={(backgroundColor, backgroundOpacity) =>
+          update(current.id, (n) => ({
+            ...n,
+            updatedAt: new Date().toISOString(),
+            pages: n.pages.map((item) =>
+              item.id === page.id
+                ? {
+                    ...item,
+                    backgroundColor,
+                    backgroundOpacity,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : item,
+            ),
+          }))
+        }
+        onClose={() => setPagePaintOpen(false)}
+      />
+      <ExportPanel
+        visible={exportOpen}
+        onClose={() => setExportOpen(false)}
+        onPdf={() => exportNotebookPdf(current)}
+        onPng={() => exportPagePng(current, page, pageIndex)}
+        onHanji={() => exportNotebookArchive(current)}
+      />
+      <Pressable
+        accessibilityLabel="전체 페이지 관리"
+        onPress={() => setPageGridOpen(true)}
+        style={[s.pageGrid, leftHanded && s.pageGridLeft]}
+      >
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>
-      <Pressable accessibilityLabel="페이지 시계 방향 90도 회전" onPress={rotatePage} style={[s.rotatePage,leftHanded&&s.rotatePageLeft]}>
+      <Pressable
+        accessibilityLabel="페이지 시계 방향 90도 회전"
+        onPress={rotatePage}
+        style={[s.rotatePage, leftHanded && s.rotatePageLeft]}
+      >
         <Ionicons name="refresh-outline" size={19} color={C.white} />
       </Pressable>
     </SafeAreaView>
   );
 }
 
-function Library({ items, categories, query, searchHits,backupRetention,librarySort,libraryView,onLibraryDisplayChange, setQuery, onOpen, onUpdate,onToggleNotebookLock, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory,onRenameCategory,onDeleteCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number;librarySort:LibrarySort;libraryView:LibraryViewMode;onLibraryDisplayChange:(patch:Partial<Pick<UiPreferences,'librarySort'|'libraryView'>>)=>void; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void|Promise<void>; onUpdate: (n: Notebook) => void;onToggleNotebookLock:(n:Notebook)=>Promise<boolean>; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void;onRenameCategory:(folder:string,name:string)=>boolean;onDeleteCategory:(folder:string)=>void; onMoveCategory: (id: string, category: string) => void }) {
+function Library({
+  items,
+  categories,
+  query,
+  searchHits,
+  backupRetention,
+  librarySort,
+  libraryView,
+  onLibraryDisplayChange,
+  setQuery,
+  onOpen,
+  onUpdate,
+  onToggleNotebookLock,
+  onCloudRestore,
+  onCreate,
+  onImport,
+  onExport,
+  onRestore,
+  onDelete,
+  onAddCategory,
+  onRenameCategory,
+  onDeleteCategory,
+  onMoveCategory,
+}: {
+  items: Notebook[];
+  categories: string[];
+  query: string;
+  searchHits: SearchHit[] | null;
+  backupRetention: number;
+  librarySort: LibrarySort;
+  libraryView: LibraryViewMode;
+  onLibraryDisplayChange: (
+    patch: Partial<Pick<UiPreferences, "librarySort" | "libraryView">>,
+  ) => void;
+  setQuery: (x: string) => void;
+  onOpen: (
+    id: string,
+    pageIndex?: number,
+    searchQuery?: string,
+  ) => void | Promise<void>;
+  onUpdate: (n: Notebook) => void;
+  onToggleNotebookLock: (n: Notebook) => Promise<boolean>;
+  onCloudRestore: (items: Notebook[]) => void;
+  onCreate: (folder?: string) => void;
+  onImport: () => void;
+  onExport: () => void;
+  onRestore: () => void;
+  onDelete: (id: string) => void;
+  onAddCategory: (name: string) => void;
+  onRenameCategory: (folder: string, name: string) => boolean;
+  onDeleteCategory: (folder: string) => void;
+  onMoveCategory: (id: string, category: string) => void;
+}) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
-  const [selected, setSelected] = useState('전체');
-  const [draft, setDraft] = useState('');
+  const [selected, setSelected] = useState("전체");
+  const [draft, setDraft] = useState("");
   const [cloudOpen, setCloudOpen] = useState(false);
   const [managing, setManaging] = useState<Notebook | null>(null);
-  const [managingFolder,setManagingFolder]=useState<string|null>(null);
-  const hitMap = useMemo(() => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []), [searchHits]);
-  const filtered = useMemo(() => sortNotebooks(items.filter((x) => (selected === '전체' || (selected === '즐겨찾기' && x.favorite) || (selected === '최근 문서' && x.lastOpenedAt) || folderContains(selected, x.folder)) && librarySearchMatches(x,query,searchHits?hitMap.has(x.id):false)),librarySort,selected==='최근 문서'), [items, query, selected, searchHits, hitMap,librarySort]);
+  const [managingFolder, setManagingFolder] = useState<string | null>(null);
+  const hitMap = useMemo(
+    () => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []),
+    [searchHits],
+  );
+  const filtered = useMemo(
+    () =>
+      sortNotebooks(
+        items.filter(
+          (x) =>
+            (selected === "전체" ||
+              (selected === "즐겨찾기" && x.favorite) ||
+              (selected === "최근 문서" && x.lastOpenedAt) ||
+              folderContains(selected, x.folder)) &&
+            librarySearchMatches(
+              x,
+              query,
+              searchHits ? hitMap.has(x.id) : false,
+            ),
+        ),
+        librarySort,
+        selected === "최근 문서",
+      ),
+    [items, query, selected, searchHits, hitMap, librarySort],
+  );
   const addCategory = () => {
     const name = draft.trim();
     if (!name) return;
-    const parent = ['전체', '즐겨찾기', '최근 문서'].includes(selected) ? '' : selected;
+    const parent = ["전체", "즐겨찾기", "최근 문서"].includes(selected)
+      ? ""
+      : selected;
     onAddCategory(childFolder(parent, name));
-    setDraft('');
+    setDraft("");
   };
-  const createHere = () => onCreate(categories.includes(selected) ? selected : undefined);
+  const createHere = () =>
+    onCreate(categories.includes(selected) ? selected : undefined);
   const manage = (n: Notebook) => setManaging(n);
   const chips = (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
-      {['전체', '즐겨찾기', '최근 문서', ...categories].map((category) => (
-        <Pressable key={category} onPress={() => setSelected(category)} onLongPress={()=>categories.includes(category)&&setManagingFolder(category)} delayLongPress={450} accessibilityLabel={categories.includes(category)?`${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`:category} style={[s.categoryChip, selected === category && s.categoryChipActive]}>
-          <Text style={[s.categoryChipText, selected === category && { color: C.white }]}>{categories.includes(category) ? folderBreadcrumb(category) : category}</Text>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 7 }}
+    >
+      {["전체", "즐겨찾기", "최근 문서", ...categories].map((category) => (
+        <Pressable
+          key={category}
+          onPress={() => setSelected(category)}
+          onLongPress={() =>
+            categories.includes(category) && setManagingFolder(category)
+          }
+          delayLongPress={450}
+          accessibilityLabel={
+            categories.includes(category)
+              ? `${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`
+              : category
+          }
+          style={[
+            s.categoryChip,
+            selected === category && s.categoryChipActive,
+          ]}
+        >
+          <Text
+            style={[
+              s.categoryChipText,
+              selected === category && { color: C.white },
+            ]}
+          >
+            {categories.includes(category)
+              ? folderBreadcrumb(category)
+              : category}
+          </Text>
         </Pressable>
       ))}
     </ScrollView>
@@ -946,28 +1991,80 @@ function Library({ items, categories, query, searchHits,backupRetention,libraryS
             <Text style={s.section}>라이브러리</Text>
             {(
               [
-                { key: '전체', label: '모든 노트', icon: 'documents-outline' },
-                { key: '즐겨찾기', label: '즐겨찾기', icon: 'star-outline' },
-                { key: '최근 문서', label: '최근 문서', icon: 'time-outline' },
+                { key: "전체", label: "모든 노트", icon: "documents-outline" },
+                { key: "즐겨찾기", label: "즐겨찾기", icon: "star-outline" },
+                { key: "최근 문서", label: "최근 문서", icon: "time-outline" },
               ] as const
             ).map((item) => (
-              <Pressable key={item.key} onPress={() => setSelected(item.key)} style={[s.sideItem, selected === item.key && s.sideActive]}>
-                <Ionicons name={item.icon} size={19} color={selected === item.key ? C.accent : C.muted} />
-                <Text style={selected === item.key ? s.sideActiveText : s.sideText}>{item.label}</Text>
+              <Pressable
+                key={item.key}
+                onPress={() => setSelected(item.key)}
+                style={[s.sideItem, selected === item.key && s.sideActive]}
+              >
+                <Ionicons
+                  name={item.icon}
+                  size={19}
+                  color={selected === item.key ? C.accent : C.muted}
+                />
+                <Text
+                  style={selected === item.key ? s.sideActiveText : s.sideText}
+                >
+                  {item.label}
+                </Text>
               </Pressable>
             ))}
             <Text style={s.section}>폴더</Text>
             {categories.map((category) => (
-              <Pressable accessibilityLabel={`${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`} key={category} onPress={() => setSelected(category)} onLongPress={()=>setManagingFolder(category)} delayLongPress={450} style={[s.sideItem, { paddingLeft: 11 + folderDepth(category) * 16 }, selected === category && s.sideActive]}>
-                <Ionicons name={selected === category ? 'folder-open-outline' : 'folder-outline'} size={18} color={selected === category ? C.accent : C.muted} />
-                <Text numberOfLines={1} style={[{ flex: 1 }, selected === category ? s.sideActiveText : s.sideText]}>
+              <Pressable
+                accessibilityLabel={`${folderBreadcrumb(category)} 폴더, 길게 눌러 관리`}
+                key={category}
+                onPress={() => setSelected(category)}
+                onLongPress={() => setManagingFolder(category)}
+                delayLongPress={450}
+                style={[
+                  s.sideItem,
+                  { paddingLeft: 11 + folderDepth(category) * 16 },
+                  selected === category && s.sideActive,
+                ]}
+              >
+                <Ionicons
+                  name={
+                    selected === category
+                      ? "folder-open-outline"
+                      : "folder-outline"
+                  }
+                  size={18}
+                  color={selected === category ? C.accent : C.muted}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    { flex: 1 },
+                    selected === category ? s.sideActiveText : s.sideText,
+                  ]}
+                >
                   {folderLabel(category)}
                 </Text>
-                <Text style={{ fontSize: 10, color: C.muted }}>{items.filter((n) => folderContains(category, n.folder)).length}</Text>
+                <Text style={{ fontSize: 10, color: C.muted }}>
+                  {
+                    items.filter((n) => folderContains(category, n.folder))
+                      .length
+                  }
+                </Text>
               </Pressable>
             ))}
             <View style={s.categoryInput}>
-              <TextInput value={draft} onChangeText={setDraft} onSubmitEditing={addCategory} placeholder={categories.includes(selected) ? `${folderLabel(selected)} 아래에 추가` : '폴더 추가'} style={{ flex: 1, fontSize: 12, color: C.ink }} />
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                onSubmitEditing={addCategory}
+                placeholder={
+                  categories.includes(selected)
+                    ? `${folderLabel(selected)} 아래에 추가`
+                    : "폴더 추가"
+                }
+                style={{ flex: 1, fontSize: 12, color: C.ink }}
+              />
               <Pressable accessibilityLabel="폴더 추가" onPress={addCategory}>
                 <Ionicons name="add-circle" size={22} color={C.accent} />
               </Pressable>
@@ -982,26 +2079,57 @@ function Library({ items, categories, query, searchHits,backupRetention,libraryS
           </View>
         )}
         <View style={s.main}>
-          <View style={[s.libraryTop,compact&&s.libraryTopCompact]}>
+          <View style={[s.libraryTop, compact && s.libraryTopCompact]}>
             <View>
               <Text style={s.eyebrow}>나의 공간</Text>
-              <Text style={s.heading}>{selected === '전체' ? '모든 노트' : categories.includes(selected) ? folderBreadcrumb(selected) : selected}</Text>
+              <Text style={s.heading}>
+                {selected === "전체"
+                  ? "모든 노트"
+                  : categories.includes(selected)
+                    ? folderBreadcrumb(selected)
+                    : selected}
+              </Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={compact?{width:'100%'}:undefined} contentContainerStyle={s.libraryActions}>
-              <Pressable onPress={() => setCloudOpen(true)} style={[s.newButton, s.secondaryButton]}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={compact ? { width: "100%" } : undefined}
+              contentContainerStyle={s.libraryActions}
+            >
+              <Pressable
+                onPress={() => setCloudOpen(true)}
+                style={[s.newButton, s.secondaryButton]}
+              >
                 <Ionicons name="cloud-outline" size={20} color={C.accent} />
                 <Text style={[s.newText, { color: C.accent }]}>Cloudflare</Text>
               </Pressable>
-              <Pressable onPress={onRestore} style={[s.newButton, s.secondaryButton]}>
-                <Ionicons name="cloud-upload-outline" size={20} color={C.accent} />
+              <Pressable
+                onPress={onRestore}
+                style={[s.newButton, s.secondaryButton]}
+              >
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={20}
+                  color={C.accent}
+                />
                 <Text style={[s.newText, { color: C.accent }]}>복원</Text>
               </Pressable>
-              <Pressable onPress={onExport} style={[s.newButton, s.secondaryButton]}>
+              <Pressable
+                onPress={onExport}
+                style={[s.newButton, s.secondaryButton]}
+              >
                 <Ionicons name="download-outline" size={20} color={C.accent} />
                 <Text style={[s.newText, { color: C.accent }]}>전체 백업</Text>
               </Pressable>
-              <Pressable onPress={onImport} style={[s.newButton, s.secondaryButton]}>
-                <Ionicons name="document-attach-outline" size={20} color={C.accent} />
+              <Pressable
+                onPress={onImport}
+                style={[s.newButton, s.secondaryButton]}
+              >
+                <Ionicons
+                  name="document-attach-outline"
+                  size={20}
+                  color={C.accent}
+                />
                 <Text style={[s.newText, { color: C.accent }]}>PDF</Text>
               </Pressable>
               <Pressable onPress={createHere} style={s.newButton}>
@@ -1011,33 +2139,201 @@ function Library({ items, categories, query, searchHits,backupRetention,libraryS
             </ScrollView>
           </View>
           {compact && <View style={{ marginTop: 18 }}>{chips}</View>}
-          <View style={s.libraryControls}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.sortOptions}>{([{value:'updated',label:'최근 수정'},{value:'title',label:'이름'},{value:'created',label:'생성일'},{value:'pages',label:'페이지 수'}] as const).map(option=><Pressable key={option.value} accessibilityLabel={`${option.label} 순 정렬`} accessibilityState={{selected:librarySort===option.value}} onPress={()=>onLibraryDisplayChange({librarySort:option.value})} style={[s.sortButton,librarySort===option.value&&s.sortActive]}><Text style={[s.sortText,librarySort===option.value&&s.sortTextActive]}>{option.label}</Text></Pressable>)}</ScrollView><View style={s.viewToggle}><Pressable accessibilityLabel="카드 보기" accessibilityState={{selected:libraryView==='grid'}} onPress={()=>onLibraryDisplayChange({libraryView:'grid'})} style={[s.viewButton,libraryView==='grid'&&s.sortActive]}><Ionicons name="grid-outline" size={17} color={libraryView==='grid'?C.white:C.muted}/></Pressable><Pressable accessibilityLabel="목록 보기" accessibilityState={{selected:libraryView==='list'}} onPress={()=>onLibraryDisplayChange({libraryView:'list'})} style={[s.viewButton,libraryView==='list'&&s.sortActive]}><Ionicons name="list-outline" size={18} color={libraryView==='list'?C.white:C.muted}/></Pressable></View></View>
+          <View style={s.libraryControls}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.sortOptions}
+            >
+              {(
+                [
+                  { value: "updated", label: "최근 수정" },
+                  { value: "title", label: "이름" },
+                  { value: "created", label: "생성일" },
+                  { value: "pages", label: "페이지 수" },
+                ] as const
+              ).map((option) => (
+                <Pressable
+                  key={option.value}
+                  accessibilityLabel={`${option.label} 순 정렬`}
+                  accessibilityState={{
+                    selected: librarySort === option.value,
+                  }}
+                  onPress={() =>
+                    onLibraryDisplayChange({ librarySort: option.value })
+                  }
+                  style={[
+                    s.sortButton,
+                    librarySort === option.value && s.sortActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      s.sortText,
+                      librarySort === option.value && s.sortTextActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <View style={s.viewToggle}>
+              <Pressable
+                accessibilityLabel="카드 보기"
+                accessibilityState={{ selected: libraryView === "grid" }}
+                onPress={() => onLibraryDisplayChange({ libraryView: "grid" })}
+                style={[s.viewButton, libraryView === "grid" && s.sortActive]}
+              >
+                <Ionicons
+                  name="grid-outline"
+                  size={17}
+                  color={libraryView === "grid" ? C.white : C.muted}
+                />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="목록 보기"
+                accessibilityState={{ selected: libraryView === "list" }}
+                onPress={() => onLibraryDisplayChange({ libraryView: "list" })}
+                style={[s.viewButton, libraryView === "list" && s.sortActive]}
+              >
+                <Ionicons
+                  name="list-outline"
+                  size={18}
+                  color={libraryView === "list" ? C.white : C.muted}
+                />
+              </Pressable>
+            </View>
+          </View>
           <View style={s.search}>
             <Ionicons name="search" size={20} color={C.muted} />
-            <TextInput value={query} onChangeText={setQuery} placeholder="제목·태그·손글씨 검색" placeholderTextColor="#99958C" style={s.searchInput} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="제목·태그·손글씨 검색"
+              placeholderTextColor="#99958C"
+              style={s.searchInput}
+            />
           </View>
           {filtered.length === 0 ? (
             <Pressable onPress={createHere} style={s.empty}>
               <View style={s.emptyIcon}>
-                <Ionicons name="document-text-outline" size={34} color={C.accent} />
+                <Ionicons
+                  name="document-text-outline"
+                  size={34}
+                  color={C.accent}
+                />
               </View>
-              <Text style={s.emptyTitle}>{query ? '검색 결과가 없어요' : '이 폴더에 노트가 없어요'}</Text>
-              <Text style={s.emptyBody}>새 노트를 만들거나 다른 폴더를 선택하세요.</Text>
+              <Text style={s.emptyTitle}>
+                {query ? "검색 결과가 없어요" : "이 폴더에 노트가 없어요"}
+              </Text>
+              <Text style={s.emptyBody}>
+                새 노트를 만들거나 다른 폴더를 선택하세요.
+              </Text>
             </Pressable>
           ) : (
-            <ScrollView contentContainerStyle={libraryView==='grid'?s.grid:s.list}>
+            <ScrollView
+              contentContainerStyle={libraryView === "grid" ? s.grid : s.list}
+            >
               {filtered.map((n) => {
-                const hit = mayRevealNotebookSnippet(n)?hitMap.get(n.id):undefined;
-                if(libraryView==='list')return <Pressable key={n.id} accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked?', 잠김':''}`} onPress={()=>onOpen(n.id,hit?.pageIndex,hit?query:undefined)} onLongPress={()=>manage(n)} style={s.listRow}><View style={s.listIcon}><Ionicons name={n.locked?'lock-closed':'document-text-outline'} size={21} color={C.accent}/></View><View style={s.listBody}><View style={s.listTitleRow}><Text numberOfLines={1} style={s.listTitle}>{n.title}</Text>{n.favorite&&<Ionicons name="star" size={14} color="#B77A18"/>}</View><Text numberOfLines={1} style={s.listMeta}>{folderBreadcrumb(n.folder)} · {n.pages.length}p · {new Date(n.updatedAt).toLocaleDateString('ko-KR')}{n.tags.length?` · ${n.tags.map(tag=>`#${tag}`).join(' ')}`:''}</Text>{hit&&<Text numberOfLines={1} style={s.hitSnippet}>{hit.snippet.replace(/<\/?b>/g,'')}</Text>}</View><Pressable accessibilityLabel={n.favorite?'즐겨찾기 해제':'즐겨찾기'} onPress={()=>onUpdate({...n,favorite:!n.favorite,updatedAt:new Date().toISOString()})} style={s.listAction}><Ionicons name={n.favorite?'star':'star-outline'} size={18} color={n.favorite?'#B77A18':C.muted}/></Pressable><Pressable accessibilityLabel={`${n.title} 설정`} onPress={()=>manage(n)} style={s.listAction}><Ionicons name="ellipsis-horizontal" size={18} color={C.muted}/></Pressable></Pressable>;
+                const hit = mayRevealNotebookSnippet(n)
+                  ? hitMap.get(n.id)
+                  : undefined;
+                if (libraryView === "list")
+                  return (
+                    <Pressable
+                      key={n.id}
+                      accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked ? ", 잠김" : ""}`}
+                      onPress={() =>
+                        onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
+                      }
+                      onLongPress={() => manage(n)}
+                      style={s.listRow}
+                    >
+                      <View style={s.listIcon}>
+                        <Ionicons
+                          name={
+                            n.locked ? "lock-closed" : "document-text-outline"
+                          }
+                          size={21}
+                          color={C.accent}
+                        />
+                      </View>
+                      <View style={s.listBody}>
+                        <View style={s.listTitleRow}>
+                          <Text numberOfLines={1} style={s.listTitle}>
+                            {n.title}
+                          </Text>
+                          {n.favorite && (
+                            <Ionicons name="star" size={14} color="#B77A18" />
+                          )}
+                        </View>
+                        <Text numberOfLines={1} style={s.listMeta}>
+                          {folderBreadcrumb(n.folder)} · {n.pages.length}p ·{" "}
+                          {new Date(n.updatedAt).toLocaleDateString("ko-KR")}
+                          {n.tags.length
+                            ? ` · ${n.tags.map((tag) => `#${tag}`).join(" ")}`
+                            : ""}
+                        </Text>
+                        {hit && (
+                          <Text numberOfLines={1} style={s.hitSnippet}>
+                            {hit.snippet.replace(/<\/?b>/g, "")}
+                          </Text>
+                        )}
+                      </View>
+                      <Pressable
+                        accessibilityLabel={
+                          n.favorite ? "즐겨찾기 해제" : "즐겨찾기"
+                        }
+                        onPress={() =>
+                          onUpdate({
+                            ...n,
+                            favorite: !n.favorite,
+                            updatedAt: new Date().toISOString(),
+                          })
+                        }
+                        style={s.listAction}
+                      >
+                        <Ionicons
+                          name={n.favorite ? "star" : "star-outline"}
+                          size={18}
+                          color={n.favorite ? "#B77A18" : C.muted}
+                        />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel={`${n.title} 설정`}
+                        onPress={() => manage(n)}
+                        style={s.listAction}
+                      >
+                        <Ionicons
+                          name="ellipsis-horizontal"
+                          size={18}
+                          color={C.muted}
+                        />
+                      </Pressable>
+                    </Pressable>
+                  );
                 return (
-                  <Pressable key={n.id} onPress={() => onOpen(n.id, hit?.pageIndex,hit?query:undefined)} onLongPress={() => manage(n)} style={s.card}>
+                  <Pressable
+                    key={n.id}
+                    onPress={() =>
+                      onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
+                    }
+                    onLongPress={() => manage(n)}
+                    style={s.card}
+                  >
                     <View style={s.cover}>
                       <View style={s.coverBand} />
                       {Array.from({ length: 6 }, (_, i) => (
-                        <View key={i} style={[s.coverLine, { top: 42 + i * 20 }]} />
+                        <View
+                          key={i}
+                          style={[s.coverLine, { top: 42 + i * 20 }]}
+                        />
                       ))}
                       <Pressable
-                        accessibilityLabel={n.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
+                        accessibilityLabel={
+                          n.favorite ? "즐겨찾기 해제" : "즐겨찾기"
+                        }
                         onPress={() =>
                           onUpdate({
                             ...n,
@@ -1047,33 +2343,52 @@ function Library({ items, categories, query, searchHits,backupRetention,libraryS
                         }
                         style={s.cardStar}
                       >
-                        <Ionicons name={n.favorite ? 'star' : 'star-outline'} size={17} color={n.favorite ? '#B77A18' : C.muted} />
+                        <Ionicons
+                          name={n.favorite ? "star" : "star-outline"}
+                          size={17}
+                          color={n.favorite ? "#B77A18" : C.muted}
+                        />
                       </Pressable>
-                      <Text style={s.coverPage}>{hit ? `p.${hit.pageIndex + 1}` : `${n.pages.length}p`}</Text>
-                      {n.locked&&<View style={s.cardLock}><Ionicons name="lock-closed" size={13} color={C.accent}/></View>}
+                      <Text style={s.coverPage}>
+                        {hit ? `p.${hit.pageIndex + 1}` : `${n.pages.length}p`}
+                      </Text>
+                      {n.locked && (
+                        <View style={s.cardLock}>
+                          <Ionicons
+                            name="lock-closed"
+                            size={13}
+                            color={C.accent}
+                          />
+                        </View>
+                      )}
                     </View>
                     <Text numberOfLines={1} style={s.cardTitle}>
                       {n.title}
                     </Text>
                     {n.tags.length > 0 && (
                       <Text numberOfLines={1} style={s.tagLine}>
-                        {n.tags.map((tag) => `#${tag}`).join(' ')}
+                        {n.tags.map((tag) => `#${tag}`).join(" ")}
                       </Text>
                     )}
                     {hit && (
                       <Text numberOfLines={2} style={s.hitSnippet}>
-                        {hit.snippet.replace(/<\/?b>/g, '')}
+                        {hit.snippet.replace(/<\/?b>/g, "")}
                       </Text>
                     )}
                     <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
                       }}
                     >
-                      <Text style={s.cardMeta}>{new Date(n.updatedAt).toLocaleDateString('ko-KR')}</Text>
-                      <Pressable onPress={() => manage(n)} style={s.folderBadge}>
+                      <Text style={s.cardMeta}>
+                        {new Date(n.updatedAt).toLocaleDateString("ko-KR")}
+                      </Text>
+                      <Pressable
+                        onPress={() => manage(n)}
+                        style={s.folderBadge}
+                      >
                         <Text numberOfLines={1} style={s.folderBadgeText}>
                           {folderBreadcrumb(n.folder)}
                         </Text>
@@ -1086,7 +2401,13 @@ function Library({ items, categories, query, searchHits,backupRetention,libraryS
           )}
         </View>
       </View>
-      <CloudSyncPanel visible={cloudOpen} onClose={() => setCloudOpen(false)} items={items} backupRetention={backupRetention} onRestore={onCloudRestore} />
+      <CloudSyncPanel
+        visible={cloudOpen}
+        onClose={() => setCloudOpen(false)}
+        items={items}
+        backupRetention={backupRetention}
+        onRestore={onCloudRestore}
+      />
       <NotebookOrganizer
         notebook={managing}
         categories={categories}
@@ -1098,71 +2419,118 @@ function Library({ items, categories, query, searchHits,backupRetention,libraryS
           setManaging(next);
         }}
       />
-      <FolderManager folder={managingFolder} noteCount={managingFolder?items.filter(note=>folderContains(managingFolder,note.folder)).length:0} onClose={()=>setManagingFolder(null)} onRename={(name)=>{if(!managingFolder)return;if(onRenameCategory(managingFolder,name)){const next=childFolder(parentFolder(managingFolder),name);if(selected===managingFolder||folderContains(managingFolder,selected))setSelected(replaceFolderRoot(selected,managingFolder,next));setManagingFolder(null)}}} onDelete={()=>{if(!managingFolder)return;const folder=managingFolder;Alert.alert('폴더 삭제',`${folderBreadcrumb(folder)} 폴더를 삭제할까요? 노트와 하위 폴더는 상위 폴더로 이동합니다.`,[{text:'취소'},{text:'삭제',style:'destructive',onPress:()=>{onDeleteCategory(folder);if(selected===folder||folderContains(folder,selected))setSelected(parentFolder(folder)||'내 노트');setManagingFolder(null)}}])}}/>
+      <FolderManager
+        folder={managingFolder}
+        noteCount={
+          managingFolder
+            ? items.filter((note) =>
+                folderContains(managingFolder, note.folder),
+              ).length
+            : 0
+        }
+        onClose={() => setManagingFolder(null)}
+        onRename={(name) => {
+          if (!managingFolder) return;
+          if (onRenameCategory(managingFolder, name)) {
+            const next = childFolder(parentFolder(managingFolder), name);
+            if (
+              selected === managingFolder ||
+              folderContains(managingFolder, selected)
+            )
+              setSelected(replaceFolderRoot(selected, managingFolder, next));
+            setManagingFolder(null);
+          }
+        }}
+        onDelete={() => {
+          if (!managingFolder) return;
+          const folder = managingFolder;
+          Alert.alert(
+            "폴더 삭제",
+            `${folderBreadcrumb(folder)} 폴더를 삭제할까요? 노트와 하위 폴더는 상위 폴더로 이동합니다.`,
+            [
+              { text: "취소" },
+              {
+                text: "삭제",
+                style: "destructive",
+                onPress: () => {
+                  onDeleteCategory(folder);
+                  if (selected === folder || folderContains(folder, selected))
+                    setSelected(parentFolder(folder) || "내 노트");
+                  setManagingFolder(null);
+                },
+              },
+            ],
+          );
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.canvas },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   muted: { color: C.muted },
-  editor: { flex: 1, flexDirection: 'row' },
-  editorLeftHanded:{flexDirection:'row-reverse'},
-  canvasArea: { flex: 1, padding: 24, alignItems: 'center' },
+  editor: { flex: 1, flexDirection: "row" },
+  editorLeftHanded: { flexDirection: "row-reverse" },
+  canvasArea: { flex: 1, padding: 24, alignItems: "center" },
   paper: {
-    width: '100%',
+    width: "100%",
     maxWidth: 900,
     aspectRatio: 1.414,
     backgroundColor: C.paper,
     borderRadius: 3,
-    overflow: 'hidden',
-    shadowColor: '#3B392F',
+    overflow: "hidden",
+    shadowColor: "#3B392F",
     shadowOpacity: 0.13,
     shadowRadius: 15,
     shadowOffset: { width: 0, height: 7 },
   },
   pageGrid: {
-    position: 'absolute',
+    position: "absolute",
     right: 178,
     bottom: 18,
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: C.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
-  pageGridLeft:{right:undefined,left:178},
+  pageGridLeft: { right: undefined, left: 178 },
   rotatePage: {
-    position: 'absolute',
+    position: "absolute",
     right: 128,
     bottom: 18,
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: C.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
-  rotatePageLeft:{right:undefined,left:128},
+  rotatePageLeft: { right: undefined, left: 128 },
   rail: {
     width: 112,
     backgroundColor: C.sidebar,
     borderLeftWidth: 1,
     borderLeftColor: C.line,
   },
-  railLeft:{borderLeftWidth:0,borderRightWidth:1,borderRightColor:C.line},
+  railLeft: {
+    borderLeftWidth: 0,
+    borderRightWidth: 1,
+    borderRightColor: C.line,
+  },
   railActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     gap: 5,
     marginBottom: 10,
   },
@@ -1171,8 +2539,8 @@ const s = StyleSheet.create({
     height: 30,
     borderRadius: 8,
     backgroundColor: C.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: C.line,
   },
@@ -1180,13 +2548,13 @@ const s = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: C.white,
   },
   templateActive: { backgroundColor: C.accent },
-  railTitle: { padding: 15, fontSize: 12, color: C.muted, fontWeight: '700' },
-  railList: { alignItems: 'center', gap: 12, paddingBottom: 24 },
+  railTitle: { padding: 15, fontSize: 12, color: C.muted, fontWeight: "700" },
+  railList: { alignItems: "center", gap: 12, paddingBottom: 24 },
   thumb: {
     width: 76,
     height: 55,
@@ -1201,20 +2569,20 @@ const s = StyleSheet.create({
     flex: 1,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#E4E8E1',
+    borderColor: "#E4E8E1",
   },
-  thumbBookmark: { position: 'absolute', right: 4, top: 0 },
+  thumbBookmark: { position: "absolute", right: 4, top: 0 },
   pageNo: {
     fontSize: 10,
     color: C.muted,
-    position: 'absolute',
+    position: "absolute",
     bottom: -15,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   templatePicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     gap: 4,
     marginBottom: 12,
     paddingHorizontal: 8,
@@ -1226,19 +2594,19 @@ const s = StyleSheet.create({
     backgroundColor: C.white,
     borderWidth: 1,
     borderColor: C.line,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   categoryChipActive: { backgroundColor: C.accent, borderColor: C.accent },
-  categoryChipText: { fontSize: 12, fontWeight: '700', color: C.muted },
+  categoryChipText: { fontSize: 12, fontWeight: "700", color: C.muted },
   categoryInput: {
     height: 38,
     marginTop: 8,
     borderWidth: 1,
     borderColor: C.line,
     borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
   },
   secondaryButton: {
@@ -1252,8 +2620,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  folderBadgeText: { fontSize: 9, color: C.accent, fontWeight: '700' },
-  library: { flex: 1, flexDirection: 'row' },
+  folderBadgeText: { fontSize: 9, color: C.accent, fontWeight: "700" },
+  library: { flex: 1, flexDirection: "row" },
   sidebar: {
     width: 238,
     backgroundColor: C.sidebar,
@@ -1262,8 +2630,8 @@ const s = StyleSheet.create({
     padding: 18,
   },
   brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     marginBottom: 30,
   },
@@ -1272,15 +2640,15 @@ const s = StyleSheet.create({
     height: 36,
     borderRadius: 11,
     backgroundColor: C.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  markText: { color: 'white', fontWeight: '800', fontSize: 17 },
-  brandText: { fontSize: 20, color: C.ink, fontWeight: '800' },
+  markText: { color: "white", fontWeight: "800", fontSize: 17 },
+  brandText: { fontSize: 20, color: C.ink, fontWeight: "800" },
   section: {
     fontSize: 11,
-    color: '#99958C',
-    fontWeight: '700',
+    color: "#99958C",
+    fontWeight: "700",
     letterSpacing: 1,
     marginTop: 14,
     marginBottom: 7,
@@ -1288,58 +2656,96 @@ const s = StyleSheet.create({
   },
   sideItem: {
     height: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 11,
     borderRadius: 11,
     paddingHorizontal: 11,
   },
   sideActive: { backgroundColor: C.accentSoft },
-  sideText: { color: C.muted, fontWeight: '600' },
-  sideActiveText: { color: C.accent, fontWeight: '700' },
+  sideText: { color: C.muted, fontWeight: "600" },
+  sideActiveText: { color: C.accent, fontWeight: "700" },
   sync: {
-    marginTop: 'auto',
+    marginTop: "auto",
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: C.line,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 9,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  syncDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#64A37C' },
-  syncTitle: { fontSize: 12, fontWeight: '700', color: C.ink },
+  syncDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#64A37C" },
+  syncTitle: { fontSize: 12, fontWeight: "700", color: C.ink },
   syncSub: { fontSize: 10, color: C.muted, marginTop: 2 },
   main: {
     flex: 1,
     paddingHorizontal: 32,
     paddingTop: 32,
-    backgroundColor: '#FBFAF7',
+    backgroundColor: "#FBFAF7",
   },
   libraryTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  libraryTopCompact:{flexDirection:'column',alignItems:'flex-start',gap:14},libraryActions:{flexDirection:'row',gap:10},
-  libraryControls:{marginTop:20,flexDirection:'row',alignItems:'center',gap:10},
-  sortOptions:{gap:6},sortButton:{height:34,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.white,paddingHorizontal:11,alignItems:'center',justifyContent:'center'},sortActive:{backgroundColor:C.accent,borderColor:C.accent},sortText:{fontSize:10,fontWeight:'800',color:C.muted},sortTextActive:{color:C.white},viewToggle:{marginLeft:'auto',height:34,flexDirection:'row',borderRadius:10,borderWidth:1,borderColor:C.line,overflow:'hidden'},viewButton:{width:38,alignItems:'center',justifyContent:'center',backgroundColor:C.white},
-  eyebrow: { color: C.muted, fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  libraryTopCompact: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 14,
+  },
+  libraryActions: { flexDirection: "row", gap: 10 },
+  libraryControls: {
+    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sortOptions: { gap: 6 },
+  sortButton: {
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    paddingHorizontal: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sortActive: { backgroundColor: C.accent, borderColor: C.accent },
+  sortText: { fontSize: 10, fontWeight: "800", color: C.muted },
+  sortTextActive: { color: C.white },
+  viewToggle: {
+    marginLeft: "auto",
+    height: 34,
+    flexDirection: "row",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.line,
+    overflow: "hidden",
+  },
+  viewButton: {
+    width: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.white,
+  },
+  eyebrow: { color: C.muted, fontSize: 12, fontWeight: "600", marginBottom: 4 },
   heading: {
     color: C.ink,
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.5,
   },
   newButton: {
     backgroundColor: C.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     height: 44,
     borderRadius: 13,
     paddingHorizontal: 16,
   },
-  newText: { color: 'white', fontWeight: '700' },
+  newText: { color: "white", fontWeight: "700" },
   search: {
     height: 46,
     borderWidth: 1,
@@ -1347,92 +2753,185 @@ const s = StyleSheet.create({
     borderRadius: 13,
     backgroundColor: C.white,
     marginTop: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 14,
     maxWidth: 600,
   },
   searchInput: {
     flex: 1,
     paddingHorizontal: 10,
-    outlineStyle: 'none',
+    outlineStyle: "none",
   } as never,
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 24,
     paddingVertical: 28,
   },
-  list:{paddingVertical:22,gap:8},listRow:{minHeight:72,borderRadius:15,borderWidth:1,borderColor:C.line,backgroundColor:C.white,padding:11,flexDirection:'row',alignItems:'center',gap:11},listIcon:{width:43,height:50,borderRadius:9,backgroundColor:C.accentSoft,alignItems:'center',justifyContent:'center'},listBody:{flex:1,minWidth:0},listTitleRow:{flexDirection:'row',alignItems:'center',gap:6},listTitle:{fontSize:14,fontWeight:'800',color:C.ink,flexShrink:1},listMeta:{fontSize:10,color:C.muted,marginTop:5},listAction:{width:36,height:36,borderRadius:10,alignItems:'center',justifyContent:'center'},
+  list: { paddingVertical: 22, gap: 8 },
+  listRow: {
+    minHeight: 72,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    padding: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+  listIcon: {
+    width: 43,
+    height: 50,
+    borderRadius: 9,
+    backgroundColor: C.accentSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listBody: { flex: 1, minWidth: 0 },
+  listTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  listTitle: { fontSize: 14, fontWeight: "800", color: C.ink, flexShrink: 1 },
+  listMeta: { fontSize: 10, color: C.muted, marginTop: 5 },
+  listAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   card: { width: 168 },
   cover: {
     width: 168,
     height: 216,
-    backgroundColor: '#FFFDF8',
+    backgroundColor: "#FFFDF8",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: C.line,
-    overflow: 'hidden',
-    shadowColor: '#4B493F',
+    overflow: "hidden",
+    shadowColor: "#4B493F",
     shadowOpacity: 0.09,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
   coverBand: {
     width: 12,
-    height: '100%',
+    height: "100%",
     backgroundColor: C.accentSoft,
     borderRightWidth: 1,
-    borderRightColor: '#C7DAD3',
+    borderRightColor: "#C7DAD3",
   },
   coverLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 31,
     right: 20,
     height: 1,
-    backgroundColor: '#E3E6E0',
+    backgroundColor: "#E3E6E0",
   },
   cardStar: {
-    position: 'absolute',
+    position: "absolute",
     right: 9,
     top: 9,
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,.88)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,.88)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   coverPage: {
-    position: 'absolute',
+    position: "absolute",
     right: 12,
     bottom: 10,
     color: C.muted,
     fontSize: 10,
   },
-  cardLock:{position:'absolute',left:22,bottom:8,width:25,height:25,borderRadius:13,backgroundColor:'rgba(255,255,255,.9)',alignItems:'center',justifyContent:'center'},
-  lassoPaste:{position:'absolute',top:110,right:18,zIndex:31,height:38,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:6,shadowColor:'#000',shadowOpacity:.12,shadowRadius:8},
-  lassoPasteLeft:{right:undefined,left:18},
-  lassoPasteText:{fontSize:11,fontWeight:'800',color:C.accent},
-  excerptTray:{position:'absolute',left:18,bottom:70,zIndex:32,minHeight:64,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',padding:10,flexDirection:'row',alignItems:'center',gap:8,shadowColor:'#000',shadowOpacity:.14,shadowRadius:10},excerptTrayLeft:{left:undefined,right:18},excerptLabel:{fontSize:9,fontWeight:'900',color:C.accent},excerptText:{fontSize:12,lineHeight:17,color:C.ink,marginTop:3},excerptPaste:{height:36,borderRadius:11,backgroundColor:C.accent,paddingHorizontal:10,flexDirection:'row',alignItems:'center',gap:4},excerptPasteText:{fontSize:10,fontWeight:'800',color:C.white},excerptClose:{width:30,height:30,alignItems:'center',justifyContent:'center'},
-  cardTitle: { marginTop: 11, fontWeight: '700', color: C.ink, fontSize: 14 },
+  cardLock: {
+    position: "absolute",
+    left: 22,
+    bottom: 8,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    backgroundColor: "rgba(255,255,255,.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lassoPaste: {
+    position: "absolute",
+    top: 110,
+    right: 18,
+    zIndex: 31,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: "rgba(255,255,255,.97)",
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  lassoPasteLeft: { right: undefined, left: 18 },
+  lassoPasteText: { fontSize: 11, fontWeight: "800", color: C.accent },
+  excerptTray: {
+    position: "absolute",
+    left: 18,
+    bottom: 70,
+    zIndex: 32,
+    minHeight: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: "rgba(255,255,255,.97)",
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+  },
+  excerptTrayLeft: { left: undefined, right: 18 },
+  excerptLabel: { fontSize: 9, fontWeight: "900", color: C.accent },
+  excerptText: { fontSize: 12, lineHeight: 17, color: C.ink, marginTop: 3 },
+  excerptPaste: {
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: C.accent,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  excerptPasteText: { fontSize: 10, fontWeight: "800", color: C.white },
+  excerptClose: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: { marginTop: 11, fontWeight: "700", color: C.ink, fontSize: 14 },
   tagLine: { fontSize: 10, color: C.accent, marginTop: 4 },
   hitSnippet: { fontSize: 10, lineHeight: 14, color: C.muted, marginTop: 4 },
   cardMeta: { marginTop: 4, color: C.muted, fontSize: 11 },
   empty: {
     flex: 1,
     minHeight: 420,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyIcon: {
     width: 68,
     height: 68,
     borderRadius: 22,
     backgroundColor: C.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  emptyTitle: { marginTop: 18, fontSize: 18, fontWeight: '800', color: C.ink },
+  emptyTitle: { marginTop: 18, fontSize: 18, fontWeight: "800", color: C.ink },
   emptyBody: { marginTop: 7, color: C.muted },
 });
