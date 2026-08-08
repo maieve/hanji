@@ -1,5 +1,5 @@
 export type ToolKind='pen'|'fountainPen'|'monoline'|'pencil'|'crayon'|'watercolor'|'marker'|'eraser'|'lasso'|'shape';
-export type ShapeKind='line'|'arrow'|'ellipse'|'rectangle'|'triangle';
+export type ShapeKind='line'|'arrow'|'ellipse'|'rectangle'|'triangle'|'polygon';
 export type PageRotation=0|90|180|270;
 export type PageTemplate='plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'flashcard'|'dark';
 export type TemplateSpacing='narrow'|'medium'|'wide';

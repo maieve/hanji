@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {SHAPE_HOLD_MS,nearestShapeAnchor,shapeEndpointSnapDistance,shouldSnapShape,supportsShapeFill} from '../src/shapePolicy.ts';
+import {closedPolygon,SHAPE_HOLD_MS,nearestShapeAnchor,shapeEndpointSnapDistance,shouldSnapShape,supportsShapeFill} from '../src/shapePolicy.ts';
 assert.equal(SHAPE_HOLD_MS,350);
 assert.equal(shouldSnapShape(true,true),true);
 assert.equal(shouldSnapShape(true,false),false);
@@ -13,6 +13,11 @@ assert.equal(nearestShapeAnchor({x:10,y:10},[{x:30,y:30}],12),undefined);
 assert.equal(supportsShapeFill('ellipse'),true);
 assert.equal(supportsShapeFill('rectangle'),true);
 assert.equal(supportsShapeFill('triangle'),true);
+assert.equal(supportsShapeFill('polygon'),true);
 assert.equal(supportsShapeFill('line'),false);
 assert.equal(supportsShapeFill('arrow'),false);
+const polygon=closedPolygon([{x:0,y:0},{x:50,y:1},{x:100,y:0},{x:101,y:50},{x:100,y:100},{x:50,y:99},{x:0,y:100},{x:1,y:50}],3);
+assert.deepEqual(polygon[0],polygon.at(-1),'polygon must close at its first vertex');
+assert.ok(polygon.length>=5&&polygon.length<=6,'RDP must reduce noisy rectangle-like input while preserving its corners');
+assert.deepEqual(closedPolygon([{x:0,y:0},{x:1,y:1}],3),[{x:0,y:0},{x:1,y:1}],'degenerate paths must remain unchanged');
 console.log('shape hold policy verification passed');

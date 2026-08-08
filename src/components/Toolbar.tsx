@@ -22,7 +22,7 @@ const tools: { kind: ToolKind; icon: keyof typeof Ionicons.glyphMap; label: stri
 ];
 const colors = ['#20201E', '#225D50', '#315E9C', '#A4493D', '#8A653E'];
 const eraserLabels = {vector:'획',bitmap:'픽셀',fixedWidthBitmap:'고정'} as const;
-const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사각',triangle:'삼각'} as const;
+const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사각',triangle:'삼각',polygon:'다각형'} as const;
 const shapeFillLabels = {none:'없음',translucent:'반투명',solid:'채움'} as const;
 
 export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, viewMode, onToggleViewMode, elementMode, onAddText, onAddImage, onStickers, privacyEnabled, onPrivacyToggle, focusMode,focusOverlay,onActivity,onFocusMode, onSettings,onSearch, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;viewMode:'page'|'continuous';onToggleViewMode:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void;onStickers:()=>void;privacyEnabled:boolean;onPrivacyToggle:()=>void;focusMode?:boolean;focusOverlay?:boolean;onActivity?:()=>void;onFocusMode:()=>void;onSettings:()=>void;onSearch:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {

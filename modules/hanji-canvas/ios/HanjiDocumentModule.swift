@@ -689,7 +689,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let angle = atan2(end.y - start.y, end.x - start.x), tolerance = CGFloat.pi / 60
     if kind == "line" && abs(sin(angle)) < sin(tolerance) { end.y = start.y }
     if kind == "line" && abs(cos(angle)) < sin(tolerance) { end.x = start.x }
-    let left = min(start.x, end.x), top = min(start.y, end.y), width = max(abs(end.x - start.x), 2), height = max(abs(end.y - start.y), 2)
+    var left = min(start.x, end.x), top = min(start.y, end.y), width = max(abs(end.x - start.x), 2), height = max(abs(end.y - start.y), 2)
     let locations: [[CGPoint]]
     switch kind {
     case "arrow":
@@ -699,6 +699,14 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       locations = [(0...64).map { index in let t = CGFloat(index) / 64 * .pi * 2; return CGPoint(x: left + width / 2 + cos(t) * width / 2, y: top + height / 2 + sin(t) * height / 2) }]
     case "rectangle": locations = [[CGPoint(x:left,y:top),CGPoint(x:left+width,y:top),CGPoint(x:left+width,y:top+height),CGPoint(x:left,y:top+height),CGPoint(x:left,y:top)]]
     case "triangle": locations = [[CGPoint(x:left+width/2,y:top),CGPoint(x:left+width,y:top+height),CGPoint(x:left,y:top+height),CGPoint(x:left+width/2,y:top)]]
+    case "polygon":
+      let raw = (0..<source.path.count).map { source.path[$0].location }
+      var polygon = simplifyShapePath(raw, epsilon: max(3, source.path[0].size.width * 0.75))
+      if polygon.count < 3 { return [source] }
+      left = polygon.map(\.x).min() ?? left; top = polygon.map(\.y).min() ?? top
+      width = max(2, (polygon.map(\.x).max() ?? left) - left); height = max(2, (polygon.map(\.y).max() ?? top) - top)
+      if let first = polygon.first { polygon.append(first) }
+      locations = [polygon]
     default: locations = [[start, end]]
     }
     let prototype = source.path[0]
@@ -707,7 +715,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       let controls = points.enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: prototype.size, opacity: prototype.opacity, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
       return PKStroke(ink: source.ink, path: PKStrokePath(controlPoints: controls, creationDate: source.path.creationDate))
     }
-    guard fill != "none", ["ellipse", "rectangle", "triangle"].contains(kind) else { return outlines }
+    guard fill != "none", ["ellipse", "rectangle", "triangle", "polygon"].contains(kind) else { return outlines }
     let fillAlpha: CGFloat = fill == "solid" ? 0.72 : 0.20
     let fillInk = PKInk(source.ink.inkType, color: source.ink.color.withAlphaComponent(source.ink.color.cgColor.alpha * fillAlpha))
     let spacing = max(CGFloat(3), min(CGFloat(10), prototype.size.height * 0.85))
@@ -716,7 +724,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     while y < top + height - spacing / 2 {
       let progress = max(CGFloat(0), min(CGFloat(1), (y - top) / height))
       var x1 = left, x2 = left + width
-      if kind == "ellipse" {
+      if kind == "polygon" {
+        let polygon = Array(locations[0].dropLast()), intersections = polygon.enumerated().compactMap { index, start -> CGFloat? in
+          let end = polygon[(index + 1) % polygon.count]
+          guard (start.y <= y && end.y > y) || (end.y <= y && start.y > y) else { return nil }
+          return start.x + (y - start.y) * (end.x - start.x) / (end.y - start.y)
+        }.sorted()
+        for pair in stride(from: 0, to: intersections.count - 1, by: 2) where intersections[pair + 1] - intersections[pair] > spacing {
+          let points = [CGPoint(x:intersections[pair],y:y),CGPoint(x:intersections[pair+1],y:y)].enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: fillSize, opacity: 1, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
+          fills.append(PKStroke(ink: fillInk, path: PKStrokePath(controlPoints: points, creationDate: source.path.creationDate)))
+        }
+        y += spacing; continue
+      } else if kind == "ellipse" {
         let normalized = (y - (top + height / 2)) / (height / 2), half = width / 2 * sqrt(max(0, 1 - normalized * normalized))
         x1 = left + width / 2 - half; x2 = left + width / 2 + half
       } else if kind == "triangle" {
@@ -729,6 +748,25 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       y += spacing
     }
     return fills + outlines
+  }
+
+  private func simplifyShapePath(_ points: [CGPoint], epsilon: CGFloat) -> [CGPoint] {
+    guard points.count > 2, let first = points.first, let last = points.last else { return points }
+    var farthest = CGFloat(0), farthestIndex = 0
+    for index in 1..<(points.count - 1) {
+      let distance = pointSegmentDistance(points[index], start: first, end: last)
+      if distance > farthest { farthest = distance; farthestIndex = index }
+    }
+    guard farthest > epsilon else { return [first, last] }
+    let left = simplifyShapePath(Array(points[0...farthestIndex]), epsilon: epsilon), right = simplifyShapePath(Array(points[farthestIndex...]), epsilon: epsilon)
+    return Array(left.dropLast()) + right
+  }
+
+  private func pointSegmentDistance(_ point: CGPoint, start: CGPoint, end: CGPoint) -> CGFloat {
+    let dx = end.x - start.x, dy = end.y - start.y, denominator = dx * dx + dy * dy
+    guard denominator > 0 else { return hypot(point.x - start.x, point.y - start.y) }
+    let t = max(CGFloat(0), min(CGFloat(1), ((point.x - start.x) * dx + (point.y - start.y) * dy) / denominator))
+    return hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy))
   }
 
   private func nearestAnchor(to point: CGPoint, in anchors: [CGPoint], threshold: CGFloat) -> CGPoint? {
