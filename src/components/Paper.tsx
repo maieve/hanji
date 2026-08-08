@@ -4,15 +4,16 @@ import type {Page} from '../types';
 const horizontal=(count:number,start=48,step=32)=><>{Array.from({length:count},(_,i)=><View key={`h${i}`} style={[s.horizontal,{top:start+i*step}]}/>)}</>;
 const vertical=(count:number,start=42,step=32)=><>{Array.from({length:count},(_,i)=><View key={`v${i}`} style={[s.vertical,{left:start+i*step}]}/>)}</>;
 
-export function Paper({template,customTemplateUri}:{template:Page['template'];customTemplateUri?:string}){
- if(customTemplateUri)return <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={{uri:customTemplateUri}} resizeMode="stretch" style={StyleSheet.absoluteFill}/></View>;
- if(template==='plain')return null;
- if(template==='line')return <View pointerEvents="none" style={StyleSheet.absoluteFill}>{horizontal(24,54)}</View>;
- if(template==='grid')return <View pointerEvents="none" style={[StyleSheet.absoluteFill,s.tint]}>{horizontal(28,0)}{vertical(30,0)}</View>;
- if(template==='dot')return <View pointerEvents="none" style={StyleSheet.absoluteFill}>{Array.from({length:22},(_,row)=><View key={row} style={[s.dotRow,{top:24+row*34}]}>{Array.from({length:26},(_,col)=><View key={col} style={s.dot}/>)}</View>)}</View>;
- if(template==='cornell')return <View pointerEvents="none" style={StyleSheet.absoluteFill}><View style={s.cornellLeft}/><View style={s.cornellBottom}/><Text style={[s.caption,{left:28,top:20}]}>CUES</Text><Text style={[s.caption,{left:'29%',top:20}]}>NOTES</Text><Text style={[s.caption,{left:28,bottom:92}]}>SUMMARY</Text>{horizontal(19,58)}</View>;
- if(template==='planner')return <View pointerEvents="none" style={StyleSheet.absoluteFill}><Text style={s.plannerTitle}>WEEKLY PLAN</Text><View style={s.plannerGrid}>{['MON','TUE','WED','THU','FRI','SAT','SUN'].map(day=><View key={day} style={s.day}><Text style={s.dayTitle}>{day}</Text>{Array.from({length:7},(_,i)=><View key={i} style={[s.plannerRule,{top:44+i*30}]}/>)}</View>)}</View></View>;
- return <View pointerEvents="none" style={[StyleSheet.absoluteFill,s.dark]}>{horizontal(24,54)}<Text style={s.darkCaption}>DARK PAPER</Text></View>;
+export function Paper({template,customTemplateUri,backgroundColor,backgroundOpacity=0}:{template:Page['template'];customTemplateUri?:string;backgroundColor?:string;backgroundOpacity?:number}){
+ let content:React.ReactNode=null;
+ if(customTemplateUri)content=<Image source={{uri:customTemplateUri}} resizeMode="stretch" style={StyleSheet.absoluteFill}/>;
+ else if(template==='line')content=horizontal(24,54);
+ else if(template==='grid')content=<View style={[StyleSheet.absoluteFill,s.tint]}>{horizontal(28,0)}{vertical(30,0)}</View>;
+ else if(template==='dot')content=Array.from({length:22},(_,row)=><View key={row} style={[s.dotRow,{top:24+row*34}]}>{Array.from({length:26},(_,col)=><View key={col} style={s.dot}/>)}</View>);
+ else if(template==='cornell')content=<><View style={s.cornellLeft}/><View style={s.cornellBottom}/><Text style={[s.caption,{left:28,top:20}]}>CUES</Text><Text style={[s.caption,{left:'29%',top:20}]}>NOTES</Text><Text style={[s.caption,{left:28,bottom:92}]}>SUMMARY</Text>{horizontal(19,58)}</>;
+ else if(template==='planner')content=<><Text style={s.plannerTitle}>WEEKLY PLAN</Text><View style={s.plannerGrid}>{['MON','TUE','WED','THU','FRI','SAT','SUN'].map(day=><View key={day} style={s.day}><Text style={s.dayTitle}>{day}</Text>{Array.from({length:7},(_,i)=><View key={i} style={[s.plannerRule,{top:44+i*30}]}/>)}</View>)}</View></>;
+ else if(template==='dark')content=<View style={[StyleSheet.absoluteFill,s.dark]}>{horizontal(24,54)}<Text style={s.darkCaption}>DARK PAPER</Text></View>;
+ return <View pointerEvents="none" style={StyleSheet.absoluteFill}>{content}{backgroundColor&&backgroundOpacity>0&&<View style={[StyleSheet.absoluteFill,{backgroundColor,opacity:backgroundOpacity}]}/>}</View>;
 }
 
 const rule='#D9E0D8';

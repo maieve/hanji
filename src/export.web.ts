@@ -21,12 +21,13 @@ export async function exportNotebookPdf(note: Notebook) {
         )
         .join('');
       const custom = page.customTemplateUri ? `<img class="template-bg" src="${esc(page.customTemplateUri)}"/>` : '';
+      const paint = page.backgroundColor && (page.backgroundOpacity ?? 0) > 0 ? `<div class="page-paint" style="background:${esc(page.backgroundColor)};opacity:${page.backgroundOpacity}"></div>` : '';
       const rotation = page.rotation ?? 0,
         portrait = rotation === 90 || rotation === 270;
-      return `<section class="page ${portrait ? 'portrait' : 'landscape'}"><div class="page-content ${page.template}" style="transform:translate(-50%,-50%) rotate(${rotation}deg)">${custom}<svg viewBox="0 0 900 636">${paths}</svg>${elements}</div></section>`;
+      return `<section class="page ${portrait ? 'portrait' : 'landscape'}"><div class="page-content ${page.template}" style="transform:translate(-50%,-50%) rotate(${rotation}deg)">${custom}${paint}<svg viewBox="0 0 900 636">${paths}</svg>${elements}</div></section>`;
     })
     .join('');
-  const html = `<!doctype html><html><head><style>@page{size:auto;margin:0}body{margin:0}.page{position:relative;page-break-after:always;background:#fff;overflow:hidden}.landscape{width:297mm;height:210mm}.portrait{width:210mm;height:297mm}.page-content{position:absolute;left:50%;top:50%;width:297mm;height:210mm;transform-origin:center}.template-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.line{background-image:repeating-linear-gradient(#fff 0,#fff 27px,#dde2dd 28px)}.grid{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:28px 28px}.dot{background-image:radial-gradient(#bdc4bd 1px,transparent 1px);background-size:22px 22px}.cornell{background-image:linear-gradient(90deg,transparent 24.8%,#bfd0c8 25%,transparent 25.2%),linear-gradient(0deg,transparent 17.8%,#bfd0c8 18%,transparent 18.2%),repeating-linear-gradient(#fff 0,#fff 27px,#dde2dd 28px)}.planner{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:100% 11.11%,14.285% 100%}.dark{background-color:#202522;background-image:repeating-linear-gradient(transparent 0,transparent 27px,#465149 28px)}svg{position:relative;width:100%;height:100%}</style></head><body>${pages}</body></html>`;
+  const html = `<!doctype html><html><head><style>@page{size:auto;margin:0}body{margin:0}.page{position:relative;page-break-after:always;background:#fff;overflow:hidden}.landscape{width:297mm;height:210mm}.portrait{width:210mm;height:297mm}.page-content{position:absolute;left:50%;top:50%;width:297mm;height:210mm;transform-origin:center}.template-bg,.page-paint{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.line{background-image:repeating-linear-gradient(#fff 0,#fff 27px,#dde2dd 28px)}.grid{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:28px 28px}.dot{background-image:radial-gradient(#bdc4bd 1px,transparent 1px);background-size:22px 22px}.cornell{background-image:linear-gradient(90deg,transparent 24.8%,#bfd0c8 25%,transparent 25.2%),linear-gradient(0deg,transparent 17.8%,#bfd0c8 18%,transparent 18.2%),repeating-linear-gradient(#fff 0,#fff 27px,#dde2dd 28px)}.planner{background-image:linear-gradient(#dde2dd 1px,transparent 1px),linear-gradient(90deg,#dde2dd 1px,transparent 1px);background-size:100% 11.11%,14.285% 100%}.dark{background-color:#202522;background-image:repeating-linear-gradient(transparent 0,transparent 27px,#465149 28px)}svg{position:relative;width:100%;height:100%}</style></head><body>${pages}</body></html>`;
   const { uri } = await Print.printToFileAsync({ html });
   await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${note.title} PDF 내보내기` });
   return uri;
@@ -63,12 +64,13 @@ export async function exportPagePng(note: Notebook, page: Page, pageIndex: numbe
               : page.template === 'dot'
                 ? `${ruled}<rect width="900" height="636" fill="url(#d)"/>`
                 : '<rect width="900" height="636" fill="white"/>';
+  const paint = page.backgroundColor && (page.backgroundOpacity ?? 0) > 0 ? `<rect width="900" height="636" fill="${esc(page.backgroundColor)}" opacity="${page.backgroundOpacity}"/>` : '';
   const rotation = page.rotation ?? 0,
     odd = rotation === 90 || rotation === 270,
     viewWidth = odd ? 636 : 900,
     viewHeight = odd ? 900 : 636,
     transform = rotation === 90 ? 'translate(636 0) rotate(90)' : rotation === 180 ? 'translate(900 636) rotate(180)' : rotation === 270 ? 'translate(0 900) rotate(-90)' : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${viewWidth * 3}" height="${viewHeight * 3}" viewBox="0 0 ${viewWidth} ${viewHeight}"><g transform="${transform}">${background}${paths}${labels}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${viewWidth * 3}" height="${viewHeight * 3}" viewBox="0 0 ${viewWidth} ${viewHeight}"><g transform="${transform}">${background}${paint}${paths}${labels}</g></svg>`;
   const image = new Image();
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   await new Promise<void>((resolve, reject) => {

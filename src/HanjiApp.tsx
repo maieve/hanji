@@ -41,6 +41,7 @@ import {SearchHighlight} from './components/SearchHighlight';
 import {SettingsPanel} from './components/SettingsPanel';
 import {defaultUiPreferences,type UiPreferences} from './uiPreferences';
 import {DocumentSearchPanel} from './components/DocumentSearchPanel';
+import {PagePaintPanel} from './components/PagePaintPanel';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -100,6 +101,7 @@ export function HanjiApp() {
   const [uiPreferences,setUiPreferences]=useState<UiPreferences>(defaultUiPreferences);
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [documentSearchOpen,setDocumentSearchOpen]=useState(false);
+  const [pagePaintOpen,setPagePaintOpen]=useState(false);
   const [indexStatus,setIndexStatus]=useState<'idle'|'running'|'success'|'error'>('idle');
   const {leftHanded,fingerDrawingEnabled}=uiPreferences;
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
@@ -634,7 +636,7 @@ export function HanjiApp() {
                 },
               ]}
             >
-              <Paper template={page.template} customTemplateUri={page.customTemplateUri} />
+              <Paper template={page.template} customTemplateUri={page.customTemplateUri} backgroundColor={page.backgroundColor} backgroundOpacity={page.backgroundOpacity} />
               <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPdfExcerpt={excerpt=>capturePdfExcerpt(page,excerpt)} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onSelectionChange={(value)=>handleSelection(page,value)} onSelectionText={(result)=>handleSelectionText(page,result)} onSelectionClip={(result)=>handleSelectionClip(page,result)} onCircleLasso={activateLasso} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
               <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} onNavigateSource={navigateExcerptSource}/>
               {searchFocus?.pageId===page.id&&<SearchHighlight words={page.ocrWords??[]} query={searchFocus.query}/>}
@@ -669,6 +671,7 @@ export function HanjiApp() {
           <Text style={s.railTitle}>페이지</Text>
           <View style={s.railActions}>
             <Pressable accessibilityLabel={leftHanded?'오른손 모드로 전환':'왼손 모드로 전환'} accessibilityState={{selected:leftHanded}} onPress={toggleLeftHanded} style={[s.railAction,leftHanded&&s.templateActive]}><Ionicons name="hand-left-outline" size={16} color={leftHanded?C.white:C.accent}/></Pressable>
+            <Pressable accessibilityLabel="페이지 색상 채우기" accessibilityState={{selected:(page.backgroundOpacity??0)>0}} onPress={()=>setPagePaintOpen(true)} style={[s.railAction,(page.backgroundOpacity??0)>0&&s.templateActive]}><Ionicons name="color-fill-outline" size={16} color={(page.backgroundOpacity??0)>0?C.white:C.accent}/></Pressable>
             <Pressable accessibilityLabel="PNG 내보내기" onPress={() => exportPagePng(current, page, pageIndex)} style={s.railAction}>
               <Ionicons name="image-outline" size={16} color={C.accent} />
             </Pressable>
@@ -840,6 +843,7 @@ export function HanjiApp() {
       <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
       <SettingsPanel visible={settingsOpen} value={uiPreferences} indexStatus={indexStatus} onRebuildIndex={rebuildIndex} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
       <DocumentSearchPanel visible={documentSearchOpen} notebook={current} activePageIndex={pageIndex} onSelect={navigateDocumentSearch} onClose={()=>setDocumentSearchOpen(false)}/>
+      <PagePaintPanel visible={pagePaintOpen} color={page.backgroundColor} opacity={page.backgroundOpacity??0} onChange={(backgroundColor,backgroundOpacity)=>update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(item=>item.id===page.id?{...item,backgroundColor,backgroundOpacity,updatedAt:new Date().toISOString()}:item)}))} onClose={()=>setPagePaintOpen(false)}/>
       <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>

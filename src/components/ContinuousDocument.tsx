@@ -77,7 +77,7 @@ export function ContinuousDocument(props: Props) {
     return (
       <View style={[s.item, { height: itemHeight(item) }]}>
         <RotatedPage rotation={item.rotation} style={[s.paper, size]}>
-          <Paper template={item.template} customTemplateUri={item.customTemplateUri} />
+          <Paper template={item.template} customTemplateUri={item.customTemplateUri} backgroundColor={item.backgroundColor} backgroundOpacity={item.backgroundOpacity} />
           <DocumentCanvas
             key={item.id}
             pdfUri={item.pdfUri}

@@ -29,4 +29,9 @@ assert(deletionMerge.some(item=>item.conflictOf==='n1'&&item.pages.some(item=>it
 const newerRemote=note([page('keep','keep','2026-02-01'),page('gone','new-after-delete','2026-02-06')],'2026-02-06');
 const recreationMerge=mergeCloudRestore([deletedLocal],[newerRemote]);
 assert(recreationMerge.find(item=>item.id==='n1')?.pages.some(item=>item.drawingData==='new-after-delete'),'page newer than tombstone must survive as intentional recreation');
+const paintLocal=note([{...page('paint','same-ink','2026-03-01'),backgroundColor:'#FFF1A8',backgroundOpacity:.25}],'2026-03-01');
+const paintRemote=note([{...page('paint','same-ink','2026-03-02'),backgroundColor:'#B8DDD8',backgroundOpacity:.5}],'2026-03-02');
+const paintMerge=mergeCloudRestore([paintLocal],[paintRemote]);
+assert(paintMerge.find(item=>item.id==='n1')?.pages[0]?.backgroundColor==='#B8DDD8','newer page paint must win merge');
+assert(paintMerge.some(item=>item.conflictOf==='n1'&&item.pages[0]?.backgroundColor==='#FFF1A8'),'different page paint must create a recoverable conflict');
 console.log('cloud merge verification passed');

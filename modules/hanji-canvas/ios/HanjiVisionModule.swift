@@ -51,6 +51,7 @@ public final class HanjiVisionModule: Module {
             sourcePage.draw(with: .mediaBox, to: context.cgContext)
             context.cgContext.restoreGState()
           } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+          drawPagePaint(item, in: bounds, context: context.cgContext)
           if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
             drawing.image(from: bounds, scale: 3).draw(in: bounds)
           }
@@ -79,6 +80,7 @@ public final class HanjiVisionModule: Module {
           sourcePage.draw(with: .mediaBox, to: context.cgContext)
           context.cgContext.restoreGState()
         } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+        drawPagePaint(item, in: bounds, context: context.cgContext)
         if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
           drawing.image(from: bounds, scale: 3).draw(in: bounds)
         }
@@ -90,6 +92,12 @@ public final class HanjiVisionModule: Module {
       return outputURL.absoluteString
     }
   }
+}
+
+private func drawPagePaint(_ item: [String: String], in bounds: CGRect, context: CGContext) {
+  let color = item["backgroundColor"] ?? "", opacity = min(1, max(0, Double(item["backgroundOpacity"] ?? "") ?? 0))
+  guard !color.isEmpty, opacity > 0 else { return }
+  context.saveGState(); UIColor(hanjiHex: color).withAlphaComponent(CGFloat(opacity)).setFill(); context.fill(bounds); context.restoreGState()
 }
 
 private func rotatedBounds(_ source: CGRect, rotation: Int) -> CGRect {

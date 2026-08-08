@@ -1,7 +1,7 @@
 import type {AudioSession,Flashcard,Notebook,Page} from './types';
 
 const assetIdentity=(uri?:string)=>{if(!uri)return undefined;try{return decodeURIComponent(uri.split('/').pop()??'').replace(/^\d+-/,'')}catch{return uri.split('/').pop()}};
-const pageContent=(page:Page)=>JSON.stringify({drawingData:page.drawingData,template:page.template,rotation:page.rotation,customTemplate:assetIdentity(page.customTemplateUri),bookmarked:page.bookmarked,elements:(page.elements??[]).map(element=>element.kind==='image'?{...element,uri:assetIdentity(element.uri)}:element),pdfName:page.pdfName,pdfPageIndex:page.pdfPageIndex});
+const pageContent=(page:Page)=>JSON.stringify({drawingData:page.drawingData,template:page.template,backgroundColor:page.backgroundColor,backgroundOpacity:page.backgroundOpacity,rotation:page.rotation,customTemplate:assetIdentity(page.customTemplateUri),bookmarked:page.bookmarked,elements:(page.elements??[]).map(element=>element.kind==='image'?{...element,uri:assetIdentity(element.uri)}:element),pdfName:page.pdfName,pdfPageIndex:page.pdfPageIndex});
 const signature=(value:string)=>{let hash=2166136261;for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619)}return(hash>>>0).toString(16).padStart(8,'0')};
 const newer=<T extends {updatedAt:string}>(a:T,b:T)=>b.updatedAt>a.updatedAt?b:a;
 
