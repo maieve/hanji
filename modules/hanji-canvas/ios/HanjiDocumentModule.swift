@@ -371,6 +371,19 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     }
     if action == "text" { recognizeSelection(); return }
     let original = canvas.drawing, selected = Set(selectedStrokeIndexes), strokes = original.strokes
+    if action == "shrink" || action == "grow" || action == "rotate" {
+      let center = CGPoint(x: selectionBounds.midX, y: selectionBounds.midY)
+      let scale = action == "shrink" ? CGFloat(0.8) : action == "grow" ? CGFloat(1.25) : CGFloat(1)
+      let angle = action == "rotate" ? CGFloat.pi / 2 : CGFloat(0)
+      let transformed = strokes.enumerated().map { selected.contains($0.offset) ? transformStroke($0.element, center: center, scale: scale, angle: angle) : $0.element }
+      registerTransformUndo(original)
+      replaceDrawing(PKDrawing(strokes: transformed))
+      let chosen = transformed.enumerated().compactMap { selected.contains($0.offset) ? $0.element : nil }
+      selectionBounds = PKDrawing(strokes: chosen).bounds
+      selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+      emitSelection(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      return
+    }
     var changed: [PKStroke]
     if action == "delete" || action == "cut" {
       if action == "cut" { copySelectionToPasteboard() }
@@ -434,6 +447,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let controls = (0..<stroke.path.count).map { index in
       let point = stroke.path[index]
       return PKStrokePoint(location: CGPoint(x: point.location.x + dx, y: point.location.y + dy), timeOffset: point.timeOffset, size: point.size, opacity: point.opacity, force: point.force, azimuth: point.azimuth, altitude: point.altitude)
+    }
+    return PKStroke(ink: stroke.ink, path: PKStrokePath(controlPoints: controls, creationDate: stroke.path.creationDate))
+  }
+
+  private func transformStroke(_ stroke: PKStroke, center: CGPoint, scale: CGFloat, angle: CGFloat) -> PKStroke {
+    let cosine = cos(angle), sine = sin(angle)
+    let controls = (0..<stroke.path.count).map { index in
+      let point = stroke.path[index]
+      let x = (point.location.x - center.x) * scale, y = (point.location.y - center.y) * scale
+      let location = CGPoint(x: center.x + x * cosine - y * sine, y: center.y + x * sine + y * cosine)
+      let size = CGSize(width: max(0.1, point.size.width * scale), height: max(0.1, point.size.height * scale))
+      return PKStrokePoint(location: location, timeOffset: point.timeOffset, size: size, opacity: point.opacity, force: point.force, azimuth: point.azimuth + angle, altitude: point.altitude)
     }
     return PKStroke(ink: stroke.ink, path: PKStrokePath(controlPoints: controls, creationDate: stroke.path.creationDate))
   }

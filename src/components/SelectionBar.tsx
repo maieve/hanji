@@ -2,20 +2,29 @@ import {Ionicons} from '@expo/vector-icons';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {C} from '../theme';
 
-type Props={count:number;color:string;onRecolor:()=>void;onCopy:()=>void;onCut:()=>void;onDuplicate:()=>void;onText:()=>void;onDelete:()=>void;onClose:()=>void};
+type Props={count:number;color:string;onRecolor:()=>void;onCopy:()=>void;onCut:()=>void;onDuplicate:()=>void;onShrink:()=>void;onGrow:()=>void;onRotate:()=>void;onText:()=>void;onDelete:()=>void;onClose:()=>void};
 
-export function SelectionBar({count,color,onRecolor,onCopy,onCut,onDuplicate,onText,onDelete,onClose}:Props){
+const Action=({label,icon,color=C.accent,onPress}:{label:string;icon:keyof typeof Ionicons.glyphMap;color?:string;onPress:()=>void})=><Pressable accessibilityLabel={label} onPress={onPress} style={s.action}><Ionicons name={icon} size={16} color={color}/></Pressable>;
+
+export function SelectionBar({count,color,onRecolor,onCopy,onCut,onDuplicate,onShrink,onGrow,onRotate,onText,onDelete,onClose}:Props){
  if(!count)return null;
- return <View style={s.bar}>
-  <Text style={s.count}>{count}획</Text>
-  <Pressable accessibilityLabel={`선택 획 색상을 ${color}로 변경`} onPress={onRecolor} style={s.action}><View style={[s.color,{backgroundColor:color}]}/></Pressable>
-  <Pressable accessibilityLabel="선택 영역 PNG와 원본 획 복사" onPress={onCopy} style={s.action}><Ionicons name="clipboard-outline" size={16} color={C.accent}/></Pressable>
-  <Pressable accessibilityLabel="선택 획 잘라내기" onPress={onCut} style={s.action}><Ionicons name="cut-outline" size={16} color={C.accent}/></Pressable>
-  <Pressable accessibilityLabel="선택 획 복제" onPress={onDuplicate} style={s.action}><Ionicons name="copy-outline" size={16} color={C.accent}/></Pressable>
-  <Pressable accessibilityLabel="선택 필기를 텍스트로 변환" onPress={onText} style={s.action}><Ionicons name="text-outline" size={16} color={C.accent}/></Pressable>
-  <Pressable accessibilityLabel="선택 획 삭제" onPress={onDelete} style={s.action}><Ionicons name="trash-outline" size={16} color={C.danger}/></Pressable>
-  <Pressable accessibilityLabel="선택 해제" onPress={onClose} style={s.close}><Ionicons name="close" size={17} color={C.muted}/></Pressable>
+ return <View accessibilityLabel={`${count}개 획 선택됨`} style={s.bar}>
+  <View style={s.row}>
+   <Text style={s.count}>{count}획 선택</Text>
+   <Action label="선택 획 20% 축소" icon="contract-outline" onPress={onShrink}/>
+   <Action label="선택 획 25% 확대" icon="expand-outline" onPress={onGrow}/>
+   <Action label="선택 획 시계 방향 90도 회전" icon="refresh-outline" onPress={onRotate}/>
+   <Pressable accessibilityLabel={`선택 획 색상을 ${color}로 변경`} onPress={onRecolor} style={s.action}><View style={[s.color,{backgroundColor:color}]}/></Pressable>
+   <Pressable accessibilityLabel="선택 해제" onPress={onClose} style={s.close}><Ionicons name="close" size={18} color={C.muted}/></Pressable>
+  </View>
+  <View style={s.row}>
+   <Action label="선택 영역 PNG와 원본 획 복사" icon="clipboard-outline" onPress={onCopy}/>
+   <Action label="선택 획 잘라내기" icon="cut-outline" onPress={onCut}/>
+   <Action label="선택 획 복제" icon="copy-outline" onPress={onDuplicate}/>
+   <Action label="선택 필기를 텍스트로 변환" icon="text-outline" onPress={onText}/>
+   <Action label="선택 획 삭제" icon="trash-outline" color={C.danger} onPress={onDelete}/>
+  </View>
  </View>;
 }
 
-const s=StyleSheet.create({bar:{position:'absolute',top:16,left:'50%',transform:[{translateX:-190}],zIndex:30,height:44,minWidth:380,borderRadius:14,backgroundColor:'rgba(255,255,255,.97)',borderWidth:1,borderColor:C.line,shadowColor:'#000',shadowOpacity:.15,shadowRadius:12,flexDirection:'row',alignItems:'center',paddingHorizontal:10,gap:5},count:{fontSize:11,fontWeight:'800',color:C.ink,marginRight:2},action:{height:32,paddingHorizontal:7,borderRadius:9,backgroundColor:C.accentSoft,flexDirection:'row',alignItems:'center'},color:{width:14,height:14,borderRadius:7,borderWidth:1,borderColor:C.white},close:{width:30,height:30,alignItems:'center',justifyContent:'center'}});
+const s=StyleSheet.create({bar:{position:'absolute',top:16,left:'50%',transform:[{translateX:-195}],zIndex:30,width:390,minHeight:82,borderRadius:16,backgroundColor:'rgba(255,255,255,.97)',borderWidth:1,borderColor:C.line,shadowColor:'#000',shadowOpacity:.15,shadowRadius:12,padding:7,gap:4},row:{height:32,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},count:{minWidth:70,fontSize:11,fontWeight:'800',color:C.ink},action:{width:42,height:32,borderRadius:9,backgroundColor:C.accentSoft,alignItems:'center',justifyContent:'center'},color:{width:16,height:16,borderRadius:8,borderWidth:1,borderColor:C.white},close:{width:32,height:32,alignItems:'center',justifyContent:'center'}});
