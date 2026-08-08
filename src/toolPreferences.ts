@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {ToolKind,ToolSpec} from './types';
 
 const KEY='hanji.tool-preferences.v1';
+export const TOOL_PREFERENCES_VERSION=2;
 export const MAX_RECENT_COLORS=8;
 type InkToolKind=Exclude<ToolKind,'eraser'|'lasso'|'shape'>;
 const inkKinds:InkToolKind[]=['pen','fountainPen','monoline','pencil','crayon','watercolor','marker'];
@@ -19,6 +20,8 @@ export const defaultToolPresets:ToolPreset[]=[
   {id:'default-fountain',name:'파랑 만년필',tool:{kind:'fountainPen',color:'#315E9C',width:2,opacity:1,scratchEnabled:true}},
   {id:'default-pencil',name:'연필',tool:{kind:'pencil',color:'#525252',width:2,opacity:.75,scratchEnabled:true}},
   {id:'default-marker',name:'형광펜',tool:{kind:'marker',color:'#F0C84B',width:12,opacity:.35,scratchEnabled:true,markerStraightLine:true}},
+  {id:'default-watercolor',name:'하늘 수채화',tool:{kind:'watercolor',color:'#5D9FC6',width:18,opacity:.3}},
+  {id:'default-crayon',name:'테라코타 크레용',tool:{kind:'crayon',color:'#B7654B',width:11,opacity:.85,scratchEnabled:true}},
 ];
 
 export const isInkTool=(kind:ToolKind):kind is InkToolKind=>inkKinds.includes(kind as InkToolKind);
@@ -71,9 +74,22 @@ export function moveToolPreset(preferences:ToolPreferences,id:string,direction:-
   const presets=[...preferences.presets];[presets[index],presets[target]]=[presets[target]!,presets[index]!];return{...preferences,presets};
 }
 
+export function normalizeToolPreferences(value:unknown):ToolPreferences{
+  if(!value||typeof value!=='object')return{presets:defaultToolPresets,recentColors:[],lastTools:{}};
+  const stored=value as Partial<ToolPreferences>&{version?:number};
+  const presets=Array.isArray(stored.presets)?stored.presets.slice(0,12):[...defaultToolPresets];
+  if((stored.version??1)<TOOL_PREFERENCES_VERSION){
+    for(const id of ['default-watercolor','default-crayon']){
+      const preset=defaultToolPresets.find(item=>item.id===id);
+      if(preset&&!presets.some(item=>item?.id===id)&&presets.length<12)presets.push(preset);
+    }
+  }
+  return{presets,recentColors:normalizeRecentColors(stored.recentColors),lastTools:stored.lastTools&&typeof stored.lastTools==='object'?stored.lastTools:{}};
+}
+
 export async function loadToolPreferences():Promise<ToolPreferences>{
-  try{const raw=await AsyncStorage.getItem(KEY);if(raw){const value=JSON.parse(raw) as Partial<ToolPreferences>;return{presets:Array.isArray(value.presets)?value.presets.slice(0,12):defaultToolPresets,recentColors:normalizeRecentColors(value.recentColors),lastTools:value.lastTools&&typeof value.lastTools==='object'?value.lastTools:{}}}}catch{}
+  try{const raw=await AsyncStorage.getItem(KEY);if(raw)return normalizeToolPreferences(JSON.parse(raw))}catch{}
   return{presets:defaultToolPresets,recentColors:[],lastTools:{}};
 }
 
-export async function saveToolPreferences(value:ToolPreferences){await AsyncStorage.setItem(KEY,JSON.stringify({...value,presets:value.presets.slice(0,12),recentColors:normalizeRecentColors(value.recentColors)}))}
+export async function saveToolPreferences(value:ToolPreferences){await AsyncStorage.setItem(KEY,JSON.stringify({...value,version:TOOL_PREFERENCES_VERSION,presets:value.presets.slice(0,12),recentColors:normalizeRecentColors(value.recentColors)}))}

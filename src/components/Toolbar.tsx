@@ -5,7 +5,7 @@ import type { ToolKind, ToolSpec } from '../types';
 import { C } from '../theme';
 import {defaultToolPresets,isInkTool,loadToolPreferences,pushRecentColor,rememberInkTool,saveToolPreferences,selectToolKind,type ToolPreferences} from '../toolPreferences';
 import {pickColor} from '../colorPicker';
-import {stepBrushOpacity} from '../brushControls';
+import {brushOpacityPresets,stepBrushOpacity} from '../brushControls';
 import {ToolPresetPanel} from './ToolPresetPanel';
 import {BrushWidthControl} from './BrushWidthControl';
 
@@ -57,6 +57,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
       <TextInput accessibilityLabel="HEX 색상" value={tool.color} autoCapitalize="characters" maxLength={7} onChangeText={color=>{if(/^#[0-9A-Fa-f]{0,6}$/.test(color)){setTool({...tool,color});if(/^#[0-9A-Fa-f]{6}$/.test(color))chooseColor(color)}}} style={s.hex} />
       {(isInkTool(tool.kind)||tool.kind==='shape')&&<BrushWidthControl kind={tool.kind} value={tool.width} onChange={width=>setTool({...tool,width})} onComplete={width=>applyTool({...tool,width})}/>}
       <View style={s.fineControl}><Pressable accessibilityLabel="브러시 불투명도 줄이기" onPress={()=>applyTool({...tool,opacity:stepBrushOpacity(tool.opacity??1,-1)})} style={s.fineButton}><Ionicons name="remove" size={14} color={C.accent}/></Pressable><Text style={s.fineValue}>{Math.round((tool.opacity??1)*100)}%</Text><Pressable accessibilityLabel="브러시 불투명도 늘리기" onPress={()=>applyTool({...tool,opacity:stepBrushOpacity(tool.opacity??1,1)})} style={s.fineButton}><Ionicons name="add" size={14} color={C.accent}/></Pressable></View>
+      {isInkTool(tool.kind)&&<View accessibilityLabel="브러시 불투명도 빠른 선택" style={s.opacityPresets}>{brushOpacityPresets(tool.kind).map(value=><Pressable key={value} accessibilityLabel={`불투명도 ${Math.round(value*100)}퍼센트`} accessibilityState={{selected:Math.abs((tool.opacity??1)-value)<.001}} onPress={()=>applyTool({...tool,opacity:value})} style={[s.opacityPreset,Math.abs((tool.opacity??1)-value)<.001&&s.opacityPresetActive]}><Text style={[s.opacityPresetText,Math.abs((tool.opacity??1)-value)<.001&&s.opacityPresetTextActive]}>{Math.round(value*100)}</Text></Pressable>)}</View>}
     </ScrollView>
     <ScrollView horizontal style={[s.trailingScroll,compact&&s.trailingCompact]} contentContainerStyle={s.trailing} showsHorizontalScrollIndicator={false}>
     {compact&&<TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={[s.title,s.compactTitle]} accessibilityLabel="노트 제목"/>}
@@ -90,4 +91,5 @@ const s = StyleSheet.create({
   colors: { flexDirection: 'row', gap: 7, paddingHorizontal: 8 }, color: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.white }, colorSelected: { outlineWidth: 2, outlineColor: C.accent, outlineOffset: 2 } as never,
   hex:{height:32,width:72,borderWidth:1,borderColor:C.line,borderRadius:8,paddingHorizontal:7,fontSize:11,color:C.ink},colorPicker:{width:32,height:32,borderRadius:9,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},opacity:{height:30,minWidth:31,borderRadius:8,alignItems:'center',justifyContent:'center',paddingHorizontal:3},opacityText:{fontSize:9,color:C.muted,fontWeight:'700'}, width: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },badge:{position:'absolute',right:0,top:0,minWidth:16,height:16,borderRadius:8,backgroundColor:C.danger,alignItems:'center',justifyContent:'center',paddingHorizontal:3},badgeText:{fontSize:9,fontWeight:'800',color:C.white}, add: { flexDirection: 'row', alignItems: 'center', justifyContent:'center', backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 12, height: 38, minWidth:40, gap: 4 }, addText: { color: 'white', fontWeight: '700' },
   fineControl:{height:34,flexDirection:'row',alignItems:'center',borderWidth:1,borderColor:C.line,borderRadius:9,overflow:'hidden'},fineButton:{width:28,height:34,alignItems:'center',justifyContent:'center',backgroundColor:C.accentSoft},fineValue:{minWidth:43,textAlign:'center',fontSize:10,fontWeight:'800',color:C.ink},
+  opacityPresets:{height:34,flexDirection:'row',alignItems:'center',gap:3,paddingHorizontal:3,borderWidth:1,borderColor:C.line,borderRadius:9},opacityPreset:{minWidth:29,height:27,paddingHorizontal:4,borderRadius:7,alignItems:'center',justifyContent:'center'},opacityPresetActive:{backgroundColor:C.accent},opacityPresetText:{fontSize:9,fontWeight:'800',color:C.muted},opacityPresetTextActive:{color:C.white},
 });

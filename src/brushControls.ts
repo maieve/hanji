@@ -28,3 +28,12 @@ export function brushPositionToWidth(position:number){
 }
 export function clampBrushOpacity(value:number){return round(Math.min(1,Math.max(MIN_BRUSH_OPACITY,value)),2)}
 export function stepBrushOpacity(value:number,direction:-1|1){return clampBrushOpacity(value+.05*direction)}
+export function brushOpacityPresets(kind:string):readonly number[]{
+  switch(kind){
+    case'watercolor':return[.15,.3,.5,.75,1];
+    case'marker':return[.15,.25,.35,.5,.7];
+    case'pencil':return[.35,.55,.75,1];
+    case'crayon':return[.4,.6,.85,1];
+    default:return[.25,.5,.75,1];
+  }
+}

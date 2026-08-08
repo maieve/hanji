@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
-import {brushPositionToWidth,brushWidthPresets,brushWidthToPosition,clampBrushOpacity,clampBrushWidth,stepBrushOpacity,stepBrushWidth} from '../src/brushControls.ts';
-import {defaultToolPresets,MAX_RECENT_COLORS,moveToolPreset,normalizeHexColor,normalizeRecentColors,pushRecentColor,removeToolPreset,renameToolPreset,rememberInkTool,replaceToolPreset,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
+import {brushOpacityPresets,brushPositionToWidth,brushWidthPresets,brushWidthToPosition,clampBrushOpacity,clampBrushWidth,stepBrushOpacity,stepBrushWidth} from '../src/brushControls.ts';
+import {defaultToolPresets,MAX_RECENT_COLORS,moveToolPreset,normalizeHexColor,normalizeRecentColors,normalizeToolPreferences,pushRecentColor,removeToolPreset,renameToolPreset,rememberInkTool,replaceToolPreset,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
 
 assert.equal(clampBrushWidth(-1),.5);assert.equal(clampBrushWidth(99),40);
 assert.equal(stepBrushWidth(2,1),2.5);assert.equal(stepBrushWidth(3,1),4);assert.equal(stepBrushWidth(12,1),14);
 assert.equal(stepBrushOpacity(.05,-1),.05);assert.equal(stepBrushOpacity(.95,1),1);
+assert.deepEqual(brushOpacityPresets('watercolor'),[.15,.3,.5,.75,1]);
+assert.deepEqual(brushOpacityPresets('marker'),[.15,.25,.35,.5,.7]);
+assert.deepEqual(brushOpacityPresets('pen'),[.25,.5,.75,1]);
 assert.deepEqual(brushWidthPresets('pen'),[1,2,4]);assert.deepEqual(brushWidthPresets('watercolor'),[8,16,28]);assert.deepEqual(brushWidthPresets('marker'),[6,12,20]);
 assert.equal(brushPositionToWidth(-1),.5);assert.equal(brushPositionToWidth(1),40);
 for(const width of [.5,1,2,5,12,28,40])assert(Math.abs(brushPositionToWidth(brushWidthToPosition(width))-width)<=.1);
@@ -28,4 +31,9 @@ let recent:string[]=[];
 for(let index=0;index<10;index++)recent=pushRecentColor(recent,`#00000${index}`);
 assert.deepEqual(recent,['#000009','#000008','#000007','#000006','#000005','#000004','#000003','#000002']);
 assert.deepEqual(pushRecentColor(recent,'#000005'),['#000005','#000009','#000008','#000007','#000006','#000004','#000003','#000002']);
+const legacy=normalizeToolPreferences({presets:[defaultToolPresets[0]],recentColors:[],lastTools:{}});
+assert(legacy.presets.some(item=>item.id==='default-watercolor'));
+assert(legacy.presets.some(item=>item.id==='default-crayon'));
+const removedInV2=normalizeToolPreferences({version:2,presets:[defaultToolPresets[0]],recentColors:[],lastTools:{}});
+assert.deepEqual(removedInV2.presets.map(item=>item.id),['default-pen']);
 console.log('brush control verification passed');
