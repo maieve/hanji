@@ -6,7 +6,7 @@ type InkToolKind=Exclude<ToolKind,'eraser'|'lasso'|'shape'>;
 const inkKinds:InkToolKind[]=['pen','fountainPen','monoline','pencil','crayon','watercolor','marker'];
 
 export type ToolPreset={id:string;name:string;tool:ToolSpec};
-export type ToolPreferences={presets:ToolPreset[];recentColors:string[]};
+export type ToolPreferences={presets:ToolPreset[];recentColors:string[];lastTools:Partial<Record<InkToolKind,ToolSpec>>};
 
 const defaults:Record<InkToolKind,Pick<ToolSpec,'width'|'opacity'>>={
   pen:{width:2,opacity:1},fountainPen:{width:2,opacity:1},monoline:{width:3,opacity:1},
@@ -22,14 +22,18 @@ export const defaultToolPresets:ToolPreset[]=[
 
 export const isInkTool=(kind:ToolKind):kind is InkToolKind=>inkKinds.includes(kind as InkToolKind);
 
-export function selectToolKind(tool:ToolSpec,kind:ToolKind):ToolSpec{
+export function selectToolKind(tool:ToolSpec,kind:ToolKind,lastTools:ToolPreferences['lastTools']={}):ToolSpec{
   if(!isInkTool(kind))return{...tool,kind,...(kind==='eraser'?{eraserMode:tool.eraserMode??'vector'}:{}),...(kind==='shape'?{shapeKind:tool.shapeKind??'line',shapeLineStyle:tool.shapeLineStyle??'solid'}:{})};
-  return{...tool,kind,...defaults[kind]};
+  return lastTools[kind] ? {...lastTools[kind]!,kind} : {...tool,kind,...defaults[kind]};
+}
+
+export function rememberInkTool(preferences:ToolPreferences,tool:ToolSpec):ToolPreferences{
+  return isInkTool(tool.kind)?{...preferences,lastTools:{...preferences.lastTools,[tool.kind]:{...tool}}}:preferences;
 }
 
 export async function loadToolPreferences():Promise<ToolPreferences>{
-  try{const raw=await AsyncStorage.getItem(KEY);if(raw){const value=JSON.parse(raw) as Partial<ToolPreferences>;return{presets:Array.isArray(value.presets)?value.presets.slice(0,12):defaultToolPresets,recentColors:Array.isArray(value.recentColors)?value.recentColors.slice(0,8):[]}}}catch{}
-  return{presets:defaultToolPresets,recentColors:[]};
+  try{const raw=await AsyncStorage.getItem(KEY);if(raw){const value=JSON.parse(raw) as Partial<ToolPreferences>;return{presets:Array.isArray(value.presets)?value.presets.slice(0,12):defaultToolPresets,recentColors:Array.isArray(value.recentColors)?value.recentColors.slice(0,8):[],lastTools:value.lastTools&&typeof value.lastTools==='object'?value.lastTools:{}}}}catch{}
+  return{presets:defaultToolPresets,recentColors:[],lastTools:{}};
 }
 
 export async function saveToolPreferences(value:ToolPreferences){await AsyncStorage.setItem(KEY,JSON.stringify({...value,presets:value.presets.slice(0,12),recentColors:value.recentColors.slice(0,8)}))}
