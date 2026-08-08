@@ -573,7 +573,7 @@ export function HanjiApp() {
         ...n,
         pages: n.pages.map((p) =>
           p.id === pageId
-            ? { ...p, ocrText: undefined, ocrWords: undefined }
+            ? { ...p, ocrText: undefined, ocrWords: undefined, ocrLineCount: undefined, ocrAverageConfidence: undefined, ocrRecognizedAt: undefined }
             : p,
         ),
       }));
@@ -610,6 +610,9 @@ export function HanjiApp() {
                     ...p,
                     ocrText: result.text || undefined,
                     ocrWords: result.words.length ? result.words : undefined,
+                    ocrLineCount: result.lineCount,
+                    ocrAverageConfidence: result.averageConfidence,
+                    ocrRecognizedAt: new Date().toISOString(),
                   }
                 : p,
             ),
@@ -2150,7 +2153,7 @@ export function HanjiApp() {
             {current.pages.map((p, i) => (
               <Pressable
                 key={p.id}
-                accessibilityLabel={`페이지 ${i + 1}${p.bookmarked ? ", 북마크됨" : ""}${p.rotation ? `, ${p.rotation}도 회전` : ""}`}
+                accessibilityLabel={`페이지 ${i + 1}${p.bookmarked ? ", 북마크됨" : ""}${p.rotation ? `, ${p.rotation}도 회전` : ""}${p.ocrAverageConfidence!==undefined?`, OCR 신뢰도 ${Math.round(p.ocrAverageConfidence*100)}퍼센트, ${p.ocrLineCount??0}줄`:""}`}
                 accessibilityHint="두 번 탭하여 이 페이지로 이동"
                 accessibilityState={{ selected: i === pageIndex }}
                 onPress={() => navigatePage(i)}
@@ -2165,6 +2168,7 @@ export function HanjiApp() {
                     style={s.thumbBookmark}
                   />
                 )}
+                {p.ocrAverageConfidence!==undefined&&<Text style={s.thumbOcr}>OCR {Math.round(p.ocrAverageConfidence*100)}%</Text>}
                 <Text style={s.pageNo}>{i + 1}</Text>
               </Pressable>
             ))}
@@ -3332,6 +3336,7 @@ const s = StyleSheet.create({
     borderColor: "#E4E8E1",
   },
   thumbBookmark: { position: "absolute", right: 4, top: 0 },
+  thumbOcr:{position:"absolute",left:3,top:2,fontSize:6,fontWeight:"800",color:C.accent,backgroundColor:C.accentSoft,borderRadius:3,paddingHorizontal:2},
   pageNo: {
     fontSize: 10,
     color: C.muted,

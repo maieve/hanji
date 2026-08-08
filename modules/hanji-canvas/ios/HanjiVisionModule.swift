@@ -21,8 +21,12 @@ public final class HanjiVisionModule: Module {
       request.recognitionLevel = .accurate
       request.usesLanguageCorrection = true
       request.recognitionLanguages = ["ko-KR", "en-US"]
-      try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
-      let observations = request.results ?? []
+      request.revision = VNRecognizeTextRequestRevision3
+      try VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:]).perform([request])
+      let observations = (request.results ?? []).sorted {
+        if abs($0.boundingBox.midY - $1.boundingBox.midY) > 0.01 { return $0.boundingBox.midY > $1.boundingBox.midY }
+        return $0.boundingBox.minX < $1.boundingBox.minX
+      }
       let lines = observations.compactMap { observation -> (VNRecognizedTextObservation, VNRecognizedText)? in
         guard let candidate = observation.topCandidates(1).first else { return nil }
         return (observation, candidate)
@@ -45,7 +49,10 @@ public final class HanjiVisionModule: Module {
         }
         return result
       }
-      return ["text": lines.map { $0.1.string }.joined(separator: "\n"), "words": words]
+      let averageConfidence = lines.isEmpty ? 0 : lines.reduce(Float(0)) { $0 + $1.1.confidence } / Float(lines.count)
+      return ["text": lines.map { $0.1.string }.joined(separator: "\n"), "words": words,
+              "lineCount": lines.count, "averageConfidence": averageConfidence,
+              "recognitionRevision": VNRecognizeTextRequestRevision3]
     }
     AsyncFunction("exportDrawingJSON") { (base64: String) throws -> String in
       guard let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data) else {
