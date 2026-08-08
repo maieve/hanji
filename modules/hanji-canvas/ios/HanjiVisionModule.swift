@@ -50,6 +50,31 @@ public final class HanjiVisionModule: Module {
       }
       return outputURL.absoluteString
     }
+    AsyncFunction("exportPNG") { (item: [String: String], outputUri: String) throws -> String in
+      let outputURL = outputUri.hasPrefix("file://") ? URL(string: outputUri)! : URL(fileURLWithPath: outputUri)
+      let defaultBounds = CGRect(x: 0, y: 0, width: 900, height: 636)
+      let pdfURI = item["pdfUri"] ?? ""
+      let sourceURL = pdfURI.isEmpty ? nil : (pdfURI.hasPrefix("file://") ? URL(string: pdfURI) : URL(fileURLWithPath: pdfURI))
+      let sourcePage = sourceURL.flatMap { PDFDocument(url: $0) }?.page(at: Int(item["pdfPageIndex"] ?? "") ?? 0)
+      let bounds = sourcePage?.bounds(for: .mediaBox) ?? defaultBounds
+      let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
+      let image = UIGraphicsImageRenderer(size: bounds.size, format: format).image { context in
+        UIColor.white.setFill(); context.cgContext.fill(bounds)
+        if let sourcePage {
+          context.cgContext.saveGState()
+          context.cgContext.translateBy(x: 0, y: bounds.height)
+          context.cgContext.scaleBy(x: 1, y: -1)
+          sourcePage.draw(with: .mediaBox, to: context.cgContext)
+          context.cgContext.restoreGState()
+        } else { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+        if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
+          drawing.image(from: bounds, scale: 3).draw(in: bounds)
+        }
+      }
+      guard let data = image.pngData() else { throw NSError(domain: "HanjiExport", code: 1, userInfo: [NSLocalizedDescriptionKey: "PNG encoding failed"]) }
+      try data.write(to: outputURL, options: .atomic)
+      return outputURL.absoluteString
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 import {File,Paths} from 'expo-file-system';
 import {requireNativeModule} from 'expo-modules-core';
 import * as Sharing from 'expo-sharing';
-import type {Notebook} from './types';
+import type {Notebook,Page} from './types';
 const native=requireNativeModule('HanjiVision');
 const safe=(value:string)=>value.replace(/[\\/:*?"<>|]/g,'-').slice(0,80)||'Hanji';
 export async function exportNotebookPdf(note:Notebook){
@@ -10,4 +10,9 @@ export async function exportNotebookPdf(note:Notebook){
   await native.exportPDF(note.pages.map((page,index)=>({drawingData:page.drawingData,pdfUri:page.pdfUri??'',pdfPageIndex:String(index),template:page.template})),file.uri);
   await Sharing.shareAsync(file.uri,{mimeType:'application/pdf',dialogTitle:`${note.title} PDF 내보내기`});
   return file.uri;
+}
+export async function exportPagePng(note:Notebook,page:Page,pageIndex:number){
+  const file=new File(Paths.cache,`${safe(note.title)}-${pageIndex+1}.png`);if(file.exists)file.delete();
+  await native.exportPNG({drawingData:page.drawingData,pdfUri:page.pdfUri??'',pdfPageIndex:String(pageIndex),template:page.template},file.uri);
+  await Sharing.shareAsync(file.uri,{mimeType:'image/png',dialogTitle:`${note.title} ${pageIndex+1}페이지 PNG 내보내기`});return file.uri;
 }

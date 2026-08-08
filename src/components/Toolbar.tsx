@@ -30,7 +30,11 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
       {[1, 2, 5, 9, 16, 28].map(width => <Pressable key={width} onPress={() => setTool({ ...tool, width })} style={[s.width, tool.width === width && s.selected]}><View style={{ width: width + 3, height: width + 3, borderRadius: 20, backgroundColor: C.ink }} /></Pressable>)}
       <View style={{flexDirection:'row',alignItems:'center',gap:3,marginLeft:4}}>{[0.25,0.5,0.75,1].map(opacity=><Pressable accessibilityLabel={`불투명도 ${opacity*100}%`} key={opacity} onPress={()=>setTool({...tool,opacity})} style={[s.opacity,tool.opacity===opacity&&s.selected]}><Text style={s.opacityText}>{opacity*100}</Text></Pressable>)}</View>
     </ScrollView>
-    <Pressable accessibilityLabel="PDF 내보내기" onPress={onExportPdf} style={s.tool}><Ionicons name="share-outline" size={20} color={C.accent}/></Pressable><Pressable accessibilityLabel="실행 취소" onPress={onUndo} style={s.tool}><Ionicons name="arrow-undo" size={20} color={C.muted}/></Pressable><Pressable accessibilityLabel="다시 실행" onPress={onRedo} style={s.tool}><Ionicons name="arrow-redo" size={20} color={C.muted}/></Pressable><Pressable accessibilityLabel="손가락 필기" onPress={onToggleFingerDrawing} style={[s.tool,fingerDrawingEnabled&&s.selected]}><Ionicons name="hand-left-outline" size={20} color={fingerDrawingEnabled?C.accent:C.muted}/></Pressable>`r`n    <Pressable onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" /><Text style={s.addText}>페이지</Text></Pressable>
+    <Pressable accessibilityLabel="PDF 내보내기" onPress={onExportPdf} style={s.tool}><Ionicons name="share-outline" size={20} color={C.accent}/></Pressable>
+    <Pressable accessibilityLabel="실행 취소" onPress={onUndo} style={s.tool}><Ionicons name="arrow-undo" size={20} color={C.muted}/></Pressable>
+    <Pressable accessibilityLabel="다시 실행" onPress={onRedo} style={s.tool}><Ionicons name="arrow-redo" size={20} color={C.muted}/></Pressable>
+    <Pressable accessibilityLabel="손가락 필기" onPress={onToggleFingerDrawing} style={[s.tool,fingerDrawingEnabled&&s.selected]}><Ionicons name="hand-left-outline" size={20} color={fingerDrawingEnabled?C.accent:C.muted}/></Pressable>
+    <Pressable onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" /><Text style={s.addText}>페이지</Text></Pressable>
   </View>;
 }
 
