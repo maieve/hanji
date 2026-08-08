@@ -47,6 +47,9 @@ import {backupIntervalMs} from './backupPolicy';
 import {ExportPanel} from './components/ExportPanel';
 import {FolderManager} from './components/FolderManager';
 import {librarySearchMatches,mayRevealNotebookSnippet} from './notebookPrivacy';
+import Constants from 'expo-constants';
+
+const buildIdentity=`${Constants.expoConfig?.version??'0.1.0'} (${Constants.nativeBuildVersion??'dev'}) · ${String(Constants.expoConfig?.extra?.hanjiBuild??'dev')}`;
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -957,7 +960,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
               <View style={s.syncDot} />
               <View>
                 <Text style={s.syncTitle}>로컬 저장 완료</Text>
-                <Text style={s.syncSub}>전체 백업으로 언제든 내보내기</Text>
+                <Text style={s.syncSub}>빌드 {buildIdentity}</Text>
               </View>
             </View>
           </View>

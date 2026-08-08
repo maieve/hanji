@@ -19,6 +19,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Stamp build identity
+        env:
+          HANJI_SHA: ${{ github.sha }}
+          HANJI_RUN_NUMBER: ${{ github.run_number }}
+        run: node scripts/stampBuild.mjs
       - run: npx expo prebuild --platform ios --clean --no-install
       - name: Install pods
         working-directory: ios
@@ -46,10 +51,24 @@ jobs:
           mkdir Payload
           ditto "$APP_PATH" "Payload/Hanji.app"
           zip -qry Hanji-unsigned.ipa Payload
+          {
+            echo "Hanji build"
+            echo "commit=${GITHUB_SHA}"
+            echo "run=${GITHUB_RUN_ID}"
+            echo "workflow_run_number=${GITHUB_RUN_NUMBER}"
+            echo "xcode=$(xcodebuild -version | tr '\n' ' ')"
+            echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | sed 's/^/version=/'
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist" | sed 's/^/build_number=/'
+          } > Hanji-build.txt
+          node ../scripts/createDeviceChecklist.mjs ../docs/NATIVE_VERIFICATION.md Hanji-device-checklist.md
       - uses: actions/upload-artifact@v4
         with:
           name: Hanji-unsigned-ipa
-          path: ios/Hanji-unsigned.ipa
+          path: |
+            ios/Hanji-unsigned.ipa
+            ios/Hanji-build.txt
+            ios/Hanji-device-checklist.md
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4

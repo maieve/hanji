@@ -8,13 +8,14 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy",
+    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:device-checklist",
     "test:cloud-merge": "node --no-warnings --experimental-strip-types scripts/verifyCloudMerge.mts",
     "test:document-search": "node --no-warnings --experimental-strip-types scripts/verifyDocumentSearch.mts",
     "test:page-insert": "node --no-warnings --experimental-strip-types scripts/verifyPageInsert.mts",
     "test:backup-policy": "node --no-warnings --experimental-strip-types scripts/verifyBackupPolicy.mts",
     "test:folders": "node --no-warnings --experimental-strip-types scripts/verifyFolders.mts",
     "test:notebook-privacy": "node --no-warnings --experimental-strip-types scripts/verifyNotebookPrivacy.mts",
+    "test:device-checklist": "node scripts/createDeviceChecklist.mjs docs/NATIVE_VERIFICATION.md --check",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "expo": "~57.0.11",
     "expo-asset": "~57.0.9",
     "expo-audio": "~57.0.3",
+    "expo-constants": "~57.0.9",
     "expo-document-picker": "~57.0.1",
     "expo-file-system": "~57.0.2",
     "expo-font": "~57.0.1",

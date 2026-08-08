@@ -54,10 +54,10 @@ Windows에서는 iOS 프로젝트 생성과 Swift 컴파일이 지원되지 않�
 
 ## Device test procedure
 
-1. `main`의 최신 `iOS Native Build`가 성공했는지 확인하고 unsigned IPA artifact를 내려받는다.
+1. `main`의 최신 `iOS Native Build`가 성공했는지 확인하고 unsigned IPA artifact를 내려받는다. 함께 들어 있는 `Hanji-build.txt`와 `Hanji-device-checklist.md`를 보존한다.
 2. [IPAD_INSTALL.md](./IPAD_INSTALL.md)에 따라 AltServer/SideStore로 동일 빌드를 설치한다.
 3. iPadOS 17 이상 실제 iPad와 Apple Pencil로 G1–G16을 순서대로 수행한다.
-4. 각 게이트의 기기 모델, iPadOS 버전, Pencil 모델, 성공 횟수/전체 횟수, 화면 녹화 또는 샘플 파일을 기록한다.
+4. 생성된 체크리스트에 기기 모델, iPadOS 버전, Pencil 모델, 성공 횟수/전체 횟수, 화면 녹화 또는 샘플 파일을 기록한다.
 5. G1/G2/G3 중 하나라도 실패하면 필기 앱 완성으로 판정하지 않는다. PDF G3 실패 시 설계의 Plan B인 페이지 이미지 렌더 방식으로 전환한다.
 
 ## Current native modules

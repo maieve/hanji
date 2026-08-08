@@ -3,6 +3,9 @@
     "name": "Hanji",
     "slug": "hanji",
     "version": "0.1.0",
+    "extra": {
+      "hanjiBuild": "dev"
+    },
     "orientation": "landscape",
     "userInterfaceStyle": "automatic",
     "ios": {
