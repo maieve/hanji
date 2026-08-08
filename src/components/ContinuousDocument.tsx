@@ -7,6 +7,7 @@ import { ElementsLayer } from './ElementsLayer';
 import { Paper } from './Paper';
 import { RotatedPage } from './RotatedPage';
 import {SearchHighlight} from './SearchHighlight';
+import {playConfiguredPageHaptic} from '../pageHaptics';
 
 type Props = {
   pages: Page[];
@@ -68,6 +69,7 @@ export function ContinuousDocument(props: Props) {
   const visible = useRef(({ viewableItems }: { viewableItems: ViewToken<Page>[] }) => {
     const item = viewableItems.filter((x) => x.isViewable && x.index !== null).sort((a, b) => (a.index ?? 0) - (b.index ?? 0))[0];
     if (item?.index !== null && item?.index !== undefined) {
+      playConfiguredPageHaptic(visibleIndex.current,item.index);
       visibleIndex.current = item.index;
       props.onActiveIndexChange(item.index);
     }

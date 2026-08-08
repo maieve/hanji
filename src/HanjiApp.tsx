@@ -50,6 +50,7 @@ import {librarySearchMatches,mayRevealNotebookSnippet} from './notebookPrivacy';
 import Constants from 'expo-constants';
 import {sortNotebooks,type LibrarySort,type LibraryViewMode} from './libraryView';
 import {FOCUS_TOOLBAR_IDLE_MS} from './focusPolicy';
+import {configurePageHaptics,playPageHaptic} from './pageHaptics';
 
 const buildIdentity=`${Constants.expoConfig?.version??'0.1.0'} (${Constants.nativeBuildVersion??'dev'}) · ${String(Constants.expoConfig?.extra?.hanjiBuild??'dev')}`;
 
@@ -132,6 +133,7 @@ export function HanjiApp() {
     void loadUiPreferences().then(setUiPreferences);
   }, []);
   useEffect(()=>()=>{for(const timer of ocrTimers.current.values())clearTimeout(timer);ocrTimers.current.clear();ocrJobs.current=[]},[]);
+  useEffect(()=>configurePageHaptics(uiPreferences.pageTurnHaptics),[uiPreferences.pageTurnHaptics]);
   useEffect(() => {
     if (ready) saveCategories(categories);
   }, [categories, ready]);
@@ -218,6 +220,7 @@ export function HanjiApp() {
     ocrTimers.current.set(key,timer);
   };
   const current = items.find((x) => x.id === openId);
+  const navigatePage=(index:number)=>{playPageHaptic(uiPreferences.pageTurnHaptics,pageIndex,index);setPageIndex(index)};
   const unlockNotebook=async(note:Notebook)=>{
     if(!note.locked||unlockedNotes.has(note.id))return true;
     const success=await privacy.authenticate(`${note.title} 잠금 해제`);
@@ -470,13 +473,13 @@ export function HanjiApp() {
       pages: n.pages.map((p) => (p.id === target.id ? { ...p, elements, updatedAt: new Date().toISOString() } : p)),
     }));
   const handlePdfLink = (link: { pageIndex?: number; url?: string }) => {
-    if (link.pageIndex !== undefined) setPageIndex(link.pageIndex);
+    if (link.pageIndex !== undefined) navigatePage(link.pageIndex);
     else if (link.url) void Linking.openURL(link.url);
   };
   const capturePdfExcerpt=(sourcePage:typeof page,excerpt:{text:string;pageIndex:number})=>setPendingExcerpt({text:excerpt.text,source:{notebookId:current.id,pageId:sourcePage.id,pageIndex:excerpt.pageIndex,pdfName:sourcePage.pdfName}});
   const pastePdfExcerpt=()=>{if(!pendingExcerpt)return;const element:TextElement={id:makeId(),kind:'text',text:pendingExcerpt.text,x:.58,y:.12,width:.34,height:.18,fontSize:16,color:C.ink,source:pendingExcerpt.source};changeElements(page,[...(page.elements??[]),element]);setPendingExcerpt(undefined);setElementMode(true)};
-  const navigateExcerptSource=(source:NonNullable<TextElement['source']>)=>{const note=items.find(item=>item.id===source.notebookId);if(!note)return;const index=note.pages.findIndex(item=>item.id===source.pageId);setOpenId(note.id);setPageIndex(index>=0?index:Math.max(0,Math.min(source.pageIndex,note.pages.length-1)))};
-  const navigateDocumentSearch=(index:number,searchQuery:string)=>{const target=current.pages[index];if(!target)return;setPageIndex(index);setSearchFocus({pageId:target.id,query:searchQuery,nonce:Date.now()});if(target.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(current.id,target.id,target.drawingData)};
+  const navigateExcerptSource=(source:NonNullable<TextElement['source']>)=>{const note=items.find(item=>item.id===source.notebookId);if(!note)return;const index=note.pages.findIndex(item=>item.id===source.pageId);setOpenId(note.id);navigatePage(index>=0?index:Math.max(0,Math.min(source.pageIndex,note.pages.length-1)))};
+  const navigateDocumentSearch=(index:number,searchQuery:string)=>{const target=current.pages[index];if(!target)return;navigatePage(index);setSearchFocus({pageId:target.id,query:searchQuery,nonce:Date.now()});if(target.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(current.id,target.id,target.drawingData)};
   const handleStrokeAdded = (target: typeof page, createdAt: number) => {
     const started = audioStartRef.current;
     if (started === null) return;
@@ -819,7 +822,7 @@ export function HanjiApp() {
           </View>
           <ScrollView contentContainerStyle={s.railList}>
             {current.pages.map((p, i) => (
-              <Pressable key={p.id} onPress={() => setPageIndex(i)} style={[s.thumb, i === pageIndex && s.thumbActive]}>
+              <Pressable key={p.id} onPress={() => navigatePage(i)} style={[s.thumb, i === pageIndex && s.thumbActive]}>
                 <View style={s.thumbLines} />
                 {p.bookmarked && <Ionicons name="bookmark" size={12} color={C.accent} style={s.thumbBookmark} />}
                 <Text style={s.pageNo}>{i + 1}</Text>
@@ -861,14 +864,14 @@ export function HanjiApp() {
           }))
         }
       />
-      <PdfOutlinePanel visible={outlineOpen} items={pdfOutline} onClose={() => setOutlineOpen(false)} onSelect={setPageIndex} />
+      <PdfOutlinePanel visible={outlineOpen} items={pdfOutline} onClose={() => setOutlineOpen(false)} onSelect={navigatePage} />
       <PageTransferPanel visible={pageTransferOpen} sourceId={current.id} notebooks={items} onClose={() => setPageTransferOpen(false)} onTransfer={transferCurrentPage} />
       <PageGridPanel
         visible={pageGridOpen}
         pages={current.pages}
         activeIndex={pageIndex}
         onClose={() => setPageGridOpen(false)}
-        onSelect={setPageIndex}
+        onSelect={navigatePage}
         onReorder={reorderPages}
         onDuplicate={duplicatePage}
         onDelete={deletePageFromGrid}
@@ -881,7 +884,7 @@ export function HanjiApp() {
         }
         onTransfer={(id) => {
           const index = current.pages.findIndex((p) => p.id === id);
-          if (index >= 0) setPageIndex(index);
+          if (index >= 0) navigatePage(index);
           setPageGridOpen(false);
           setTimeout(() => setPageTransferOpen(true), 0);
         }}
