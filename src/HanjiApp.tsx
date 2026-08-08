@@ -128,14 +128,14 @@ export function HanjiApp() {
     if (!ready) return;
     if (backupTimer.current) clearTimeout(backupTimer.current);
     backupTimer.current = setTimeout(() => {
-      void writeAutomaticBackup(items)
+      void writeAutomaticBackup(items,uiPreferences.backupRetention)
         .then((uri) => uri && uploadArchiveIfEnabled(uri))
         .catch(() => undefined);
     }, 15000);
     return () => {
       if (backupTimer.current) clearTimeout(backupTimer.current);
     };
-  }, [items, ready]);
+  }, [items, ready,uiPreferences.backupRetention]);
   useEffect(() => {
     if (!ready) return;
     if (indexTimer.current) clearTimeout(indexTimer.current);
@@ -212,6 +212,7 @@ export function HanjiApp() {
         categories={categories}
         query={query}
         searchHits={searchHits}
+        backupRetention={uiPreferences.backupRetention}
         setQuery={setQuery}
         onOpen={(id, index = 0, searchQuery) => {
           update(id, (n) => ({ ...n, lastOpenedAt: new Date().toISOString() }));
@@ -841,7 +842,7 @@ export function HanjiApp() {
   );
 }
 
-function Library({ items, categories, query, searchHits, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void; onMoveCategory: (id: string, category: string) => void }) {
+function Library({ items, categories, query, searchHits,backupRetention, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void; onMoveCategory: (id: string, category: string) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [selected, setSelected] = useState('전체');
@@ -1019,7 +1020,7 @@ function Library({ items, categories, query, searchHits, setQuery, onOpen, onUpd
           )}
         </View>
       </View>
-      <CloudSyncPanel visible={cloudOpen} onClose={() => setCloudOpen(false)} items={items} onRestore={onCloudRestore} />
+      <CloudSyncPanel visible={cloudOpen} onClose={() => setCloudOpen(false)} items={items} backupRetention={backupRetention} onRestore={onCloudRestore} />
       <NotebookOrganizer
         notebook={managing}
         categories={categories}
