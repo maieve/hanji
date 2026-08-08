@@ -39,7 +39,10 @@ export async function writeAutomaticBackup(items:Notebook[],keep=5,minIntervalMs
 }
 export async function importLibraryBackup():Promise<Notebook[]|null>{
   const picked=await DocumentPicker.getDocumentAsync({type:['application/zip','application/octet-stream','application/json'],copyToCacheDirectory:true});if(picked.canceled||!picked.assets[0])return null;
-  const source=new File(picked.assets[0].uri);const zip=await JSZip.loadAsync(await source.bytes());
+  return importLibraryBackupFromUri(picked.assets[0].uri);
+}
+export async function importLibraryBackupFromUri(uri:string):Promise<Notebook[]>{
+  const source=new File(uri);const zip=await JSZip.loadAsync(await source.bytes());
   const manifestFile=zip.file('manifest.json');const libraryFile=zip.file('library.json');if(!manifestFile||!libraryFile)throw new Error('올바른 Hanji 백업 파일이 아닙니다.');
   const manifest=JSON.parse(await manifestFile.async('string')) as ArchiveManifest;if(manifest.format!=='hanji-archive')throw new Error('지원하지 않는 Hanji 백업입니다.');
   const restored=JSON.parse(await libraryFile.async('string')) as Notebook[];
