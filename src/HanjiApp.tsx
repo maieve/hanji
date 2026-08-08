@@ -9,20 +9,21 @@ import { Toolbar } from './components/Toolbar';
 import { blankPage, loadCategories, loadLibrary, newNotebook, pdfNotebook, saveCategories, saveLibrary } from './storage';
 import { C } from './theme';
 import type { Notebook, ToolSpec } from './types';
-import { exportLibrary, importLibraryBackup } from './backup';
+import { exportLibrary, importLibraryBackup, writeAutomaticBackup } from './backup';
 import { recognizeDrawing } from './vision';
 import { exportNotebookPdf } from './export';
 
 export function HanjiApp() {
   const [items, setItems] = useState<Notebook[]>([]); const [categories,setCategories]=useState<string[]>([]); const [ready, setReady] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null); const [pageIndex, setPageIndex] = useState(0);
-  const [query, setQuery] = useState(''); const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const audioStartRef = useRef<number | null>(null); const audioStrokesRef = useRef<{pageId:string;createdAt:number;seekSec:number}[]>([]);
+  const [query, setQuery] = useState(''); const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const audioStartRef = useRef<number | null>(null); const audioStrokesRef = useRef<{pageId:string;createdAt:number;seekSec:number}[]>([]);
   const [tool, setTool] = useState<ToolSpec>({ kind: 'pen', color: C.ink, width: 2, opacity: 1 });
   const [audioSeek,setAudioSeek]=useState<{seconds:number;nonce:number}>();
   const [undoSignal,setUndoSignal]=useState(0); const [redoSignal,setRedoSignal]=useState(0); const [fingerDrawingEnabled,setFingerDrawingEnabled]=useState(false);
   useEffect(() => { Promise.all([loadLibrary(),loadCategories()]).then(([notes,cats])=>{setItems(notes);setCategories(cats);setReady(true)}); }, []);
   useEffect(()=>{if(ready)saveCategories(categories)},[categories,ready]);
   useEffect(() => { if (!ready) return; if (saveTimer.current) clearTimeout(saveTimer.current); saveTimer.current = setTimeout(() => saveLibrary(items), 350); return () => { if (saveTimer.current) clearTimeout(saveTimer.current); }; }, [items, ready]);
+  useEffect(()=>{if(!ready)return;if(backupTimer.current)clearTimeout(backupTimer.current);backupTimer.current=setTimeout(()=>{void writeAutomaticBackup(items)},15000);return()=>{if(backupTimer.current)clearTimeout(backupTimer.current)}},[items,ready]);
   const importPdf = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
     if (result.canceled) return;
