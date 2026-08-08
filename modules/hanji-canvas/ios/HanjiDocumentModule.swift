@@ -6,7 +6,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -22,13 +22,15 @@ public final class HanjiDocumentModule: Module {
   }
 }
 
-final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
+final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteractionDelegate {
   let pdfView = PDFView()
   let canvas = PKCanvasView()
   let onDrawingChange = EventDispatcher()
   let onPageCount = EventDispatcher()
   let onPdfOutline = EventDispatcher()
   let onPdfLink = EventDispatcher()
+  let onPencilDoubleTap = EventDispatcher()
+  let onPencilSqueeze = EventDispatcher()
   let onStrokeAdded = EventDispatcher()
   let onStrokeTapped = EventDispatcher()
   let onHistoryChange = EventDispatcher()
@@ -60,8 +62,27 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
     tap.cancelsTouchesInView = false
     tap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
     canvas.addGestureRecognizer(tap)
+    let pencilInteraction = UIPencilInteraction(); pencilInteraction.delegate = self; addInteraction(pencilInteraction)
     addSubview(pdfView)
     addSubview(canvas)
+  }
+
+  func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
+    onPencilDoubleTap(["preferredAction": String(describing: UIPencilInteraction.preferredTapAction)])
+    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+  }
+
+  @available(iOS 17.5, *)
+  func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) {
+    onPencilDoubleTap(["preferredAction": String(describing: UIPencilInteraction.preferredTapAction)])
+    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+  }
+
+  @available(iOS 17.5, *)
+  func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveSqueeze squeeze: UIPencilInteraction.Squeeze) {
+    guard squeeze.phase == .began else { return }
+    onPencilSqueeze(["preferredAction": String(describing: UIPencilInteraction.preferredSqueezeAction)])
+    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
   }
 
   override func layoutSubviews() {
