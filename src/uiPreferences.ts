@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { PageTemplate } from "./types";
+import type { PageTemplate, TemplateSpacing } from "./types";
+import { normalizeTemplateSpacing } from "./templateSpacing";
 import {
   normalizeBackupInterval,
   normalizeBackupRetention,
@@ -22,6 +23,7 @@ export type UiPreferences = {
   pencilDoubleTapAction: PencilAction;
   pencilSqueezeAction: PencilAction;
   defaultTemplate: PageTemplate;
+  defaultTemplateSpacing: TemplateSpacing;
   autoDarkInk: boolean;
   backupRetention: number;
   backupIntervalMinutes: number;
@@ -38,6 +40,7 @@ export const defaultUiPreferences: UiPreferences = {
   pencilDoubleTapAction: "system",
   pencilSqueezeAction: "system",
   defaultTemplate: "line",
+  defaultTemplateSpacing: "medium",
   autoDarkInk: true,
   backupRetention: 5,
   backupIntervalMinutes: 30,
@@ -89,6 +92,9 @@ export async function loadUiPreferences(): Promise<UiPreferences> {
       threeFingerRedoEnabled: normalizeEnabledPreference(
         parsed.threeFingerRedoEnabled,
         defaultUiPreferences.threeFingerRedoEnabled,
+      ),
+      defaultTemplateSpacing: normalizeTemplateSpacing(
+        parsed.defaultTemplateSpacing,
       ),
     };
   } catch {

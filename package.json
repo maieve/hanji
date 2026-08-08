@@ -8,7 +8,7 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:pencil-actions && npm run test:touch-gestures && npm run test:device-checklist",
+    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:pencil-actions && npm run test:touch-gestures && npm run test:template-spacing && npm run test:device-checklist",
     "test:cloud-merge": "node --no-warnings --experimental-strip-types scripts/verifyCloudMerge.mts",
     "test:document-search": "node --no-warnings --experimental-strip-types scripts/verifyDocumentSearch.mts",
     "test:page-insert": "node --no-warnings --experimental-strip-types scripts/verifyPageInsert.mts",
@@ -21,6 +21,7 @@
     "test:shape-policy": "node --no-warnings --experimental-strip-types scripts/verifyShapePolicy.mts",
     "test:pencil-actions": "node --no-warnings --experimental-strip-types scripts/verifyPencilActions.mts",
     "test:touch-gestures": "node --no-warnings --experimental-strip-types scripts/verifyTouchGestures.mts",
+    "test:template-spacing": "node --no-warnings --experimental-strip-types scripts/verifyTemplateSpacing.mts",
     "test:device-checklist": "node scripts/createDeviceChecklist.mjs docs/NATIVE_VERIFICATION.md --check",
     "postinstall": "patch-package"
   },

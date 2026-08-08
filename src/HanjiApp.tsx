@@ -94,6 +94,7 @@ import { PagePaintPanel } from "./components/PagePaintPanel";
 import { insertPage } from "./pageInsert";
 import type { PencilAction } from "./pencilActions";
 import { resolvePencilPreferredAction } from "./pencilPreferredAction";
+import { templateSpacings } from "./templateSpacing";
 import { backupIntervalMs } from "./backupPolicy";
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
@@ -587,7 +588,11 @@ export function HanjiApp() {
         }}
         onImport={importPdf}
         onCreate={(folder) => {
-          const n = newNotebook(undefined, uiPreferences.defaultTemplate);
+          const n = newNotebook(
+            undefined,
+            uiPreferences.defaultTemplate,
+            uiPreferences.defaultTemplateSpacing,
+          );
           if (folder) n.folder = folder;
           setItems((x) => [n, ...x]);
           setOpenId(n.id);
@@ -803,7 +808,10 @@ export function HanjiApp() {
   const addPage = (placement?: "end") => {
     const targetPlacement =
       placement === "end" ? "end" : uiPreferences.newPagePlacement;
-    const created = blankPage(uiPreferences.defaultTemplate);
+    const created = blankPage(
+      uiPreferences.defaultTemplate,
+      uiPreferences.defaultTemplateSpacing,
+    );
     const inserted = insertPage(
       current.pages,
       created,
@@ -1114,7 +1122,8 @@ export function HanjiApp() {
       return;
     }
     if (uiPreferences.pencilSqueezeAction !== "temporaryEraser") {
-      if (phase === "began") performPencilAction(uiPreferences.pencilSqueezeAction);
+      if (phase === "began")
+        performPencilAction(uiPreferences.pencilSqueezeAction);
       return;
     }
     if (phase === "began") {
@@ -1368,6 +1377,7 @@ export function HanjiApp() {
             >
               <Paper
                 template={page.template}
+                templateSpacing={page.templateSpacing}
                 customTemplateUri={page.customTemplateUri}
                 backgroundColor={page.backgroundColor}
                 backgroundOpacity={page.backgroundOpacity}
@@ -1725,6 +1735,50 @@ export function HanjiApp() {
                       } as const
                     )[t]
                   }
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={s.templatePicker}>
+            {templateSpacings.map((spacing) => (
+              <Pressable
+                key={spacing.value}
+                accessibilityLabel={`현재 페이지 템플릿 간격 ${spacing.label}`}
+                accessibilityState={{
+                  selected:
+                    (page.templateSpacing ?? "medium") === spacing.value,
+                }}
+                onPress={() =>
+                  update(current.id, (n) => ({
+                    ...n,
+                    pages: n.pages.map((p) =>
+                      p.id === page.id
+                        ? {
+                            ...p,
+                            templateSpacing: spacing.value,
+                            updatedAt: new Date().toISOString(),
+                          }
+                        : p,
+                    ),
+                    updatedAt: new Date().toISOString(),
+                  }))
+                }
+                style={[
+                  s.templateDot,
+                  (page.templateSpacing ?? "medium") === spacing.value &&
+                    s.templateActive,
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 8,
+                    color:
+                      (page.templateSpacing ?? "medium") === spacing.value
+                        ? C.white
+                        : C.muted,
+                  }}
+                >
+                  {spacing.label.slice(0, 1)}
                 </Text>
               </Pressable>
             ))}

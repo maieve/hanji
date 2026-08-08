@@ -14,6 +14,7 @@ import type { PencilAction } from "../pencilActions";
 import { C } from "../theme";
 import type { PageTemplate } from "../types";
 import type { UiPreferences } from "../uiPreferences";
+import { templateSpacings } from "../templateSpacing";
 
 const templates: { value: PageTemplate; label: string }[] = [
   { value: "plain", label: "백지" },
@@ -87,24 +88,24 @@ export function SettingsPanel({
             value={value.leftHanded}
             onChange={toggle("leftHanded")}
           />
-            <SettingRow
-              label="페이지 넘김 햅틱"
+          <SettingRow
+            label="페이지 넘김 햅틱"
             help="직접 다른 페이지로 이동할 때 가벼운 선택 진동을 냅니다."
             value={value.pageTurnHaptics}
-              onChange={toggle("pageTurnHaptics")}
-            />
-            <SettingRow
-              label="두 손가락 탭으로 실행 취소"
-              help="캔버스를 두 손가락으로 한 번 탭하면 마지막 필기를 되돌립니다."
-              value={value.twoFingerUndoEnabled}
-              onChange={toggle("twoFingerUndoEnabled")}
-            />
-            <SettingRow
-              label="세 손가락 탭으로 다시 실행"
-              help="캔버스를 세 손가락으로 한 번 탭하면 되돌린 필기를 복원합니다."
-              value={value.threeFingerRedoEnabled}
-              onChange={toggle("threeFingerRedoEnabled")}
-            />
+            onChange={toggle("pageTurnHaptics")}
+          />
+          <SettingRow
+            label="두 손가락 탭으로 실행 취소"
+            help="캔버스를 두 손가락으로 한 번 탭하면 마지막 필기를 되돌립니다."
+            value={value.twoFingerUndoEnabled}
+            onChange={toggle("twoFingerUndoEnabled")}
+          />
+          <SettingRow
+            label="세 손가락 탭으로 다시 실행"
+            help="캔버스를 세 손가락으로 한 번 탭하면 되돌린 필기를 복원합니다."
+            value={value.threeFingerRedoEnabled}
+            onChange={toggle("threeFingerRedoEnabled")}
+          />
           <SettingRow
             label="다크 페이퍼 잉크 자동 반전"
             help="검정 잉크는 밝게, 다크 페이퍼를 떠날 때는 다시 검정으로 바꿉니다."
@@ -193,6 +194,35 @@ export function SettingsPanel({
                   style={[
                     s.templateLabel,
                     value.defaultTemplate === item.value && s.accentText,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={s.section}>새 페이지 템플릿 간격</Text>
+          <View style={s.placement}>
+            {templateSpacings.map((item) => (
+              <Pressable
+                key={item.value}
+                accessibilityLabel={`기본 템플릿 간격 ${item.label}`}
+                accessibilityState={{
+                  selected: value.defaultTemplateSpacing === item.value,
+                }}
+                onPress={() =>
+                  onChange({ ...value, defaultTemplateSpacing: item.value })
+                }
+                style={[
+                  s.placementButton,
+                  value.defaultTemplateSpacing === item.value &&
+                    s.retentionSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    s.retentionText,
+                    value.defaultTemplateSpacing === item.value && s.white,
                   ]}
                 >
                   {item.label}

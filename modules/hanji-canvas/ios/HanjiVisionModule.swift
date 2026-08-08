@@ -50,7 +50,7 @@ public final class HanjiVisionModule: Module {
             context.cgContext.scaleBy(x: 1, y: -1)
             sourcePage.draw(with: .mediaBox, to: context.cgContext)
             context.cgContext.restoreGState()
-          } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+          } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", spacing: item["templateSpacing"] ?? "medium", in: bounds, context: context.cgContext) }
           drawPagePaint(item, in: bounds, context: context.cgContext)
           if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
             drawing.image(from: bounds, scale: 3).draw(in: bounds)
@@ -79,7 +79,7 @@ public final class HanjiVisionModule: Module {
           context.cgContext.scaleBy(x: 1, y: -1)
           sourcePage.draw(with: .mediaBox, to: context.cgContext)
           context.cgContext.restoreGState()
-        } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", in: bounds, context: context.cgContext) }
+        } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", spacing: item["templateSpacing"] ?? "medium", in: bounds, context: context.cgContext) }
         drawPagePaint(item, in: bounds, context: context.cgContext)
         if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
           drawing.image(from: bounds, scale: 3).draw(in: bounds)
@@ -159,20 +159,21 @@ private func drawHanjiImage(_ image: UIImage, in rect: CGRect, fit: String, rota
   context.restoreGState()
 }
 
-private func drawHanjiTemplate(_ template: String, in bounds: CGRect, context: CGContext) {
+private func drawHanjiTemplate(_ template: String, spacing: String, in bounds: CGRect, context: CGContext) {
   context.saveGState(); defer { context.restoreGState() }
+  let baseStep: CGFloat = spacing == "narrow" ? 24 : (spacing == "wide" ? 40 : 32)
+  let step = baseStep * bounds.width / 900
   if template == "dark" {
     context.setFillColor(UIColor(red: 0.125, green: 0.145, blue: 0.133, alpha: 1).cgColor)
     context.fill(bounds)
     context.setStrokeColor(UIColor(red: 0.28, green: 0.32, blue: 0.29, alpha: 1).cgColor)
     context.setLineWidth(0.6)
-    for y in stride(from: 28, to: bounds.height, by: 28) { context.move(to: CGPoint(x: 0, y: y)); context.addLine(to: CGPoint(x: bounds.width, y: y)) }
+    for y in stride(from: step, to: bounds.height, by: step) { context.move(to: CGPoint(x: 0, y: y)); context.addLine(to: CGPoint(x: bounds.width, y: y)) }
     context.strokePath(); return
   }
   context.setStrokeColor(UIColor(red: 0.86, green: 0.88, blue: 0.85, alpha: 1).cgColor)
   context.setFillColor(UIColor(red: 0.76, green: 0.79, blue: 0.75, alpha: 1).cgColor)
   context.setLineWidth(0.6)
-  let step: CGFloat = template == "dot" ? 22 : 28
   if template == "line" || template == "grid" { for y in stride(from: step, to: bounds.height, by: step) { context.move(to: CGPoint(x: 0, y: y)); context.addLine(to: CGPoint(x: bounds.width, y: y)) } }
   if template == "grid" { for x in stride(from: step, to: bounds.width, by: step) { context.move(to: CGPoint(x: x, y: 0)); context.addLine(to: CGPoint(x: x, y: bounds.height)) } }
   if template == "dot" { for y in stride(from: step, to: bounds.height, by: step) { for x in stride(from: step, to: bounds.width, by: step) { context.fillEllipse(in: CGRect(x: x - 0.8, y: y - 0.8, width: 1.6, height: 1.6)) } } }
