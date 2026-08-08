@@ -2,6 +2,6 @@
   "name":"hanji-sync-worker",
   "private":true,
   "type":"module",
-  "scripts":{"dev":"wrangler dev","deploy":"wrangler deploy","check":"wrangler deploy --dry-run"},
+  "scripts":{"dev":"wrangler dev","deploy":"wrangler deploy","check":"wrangler deploy --dry-run","verify:live":"powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-live.ps1"},
   "devDependencies":{"wrangler":"^4.0.0"}
 }
