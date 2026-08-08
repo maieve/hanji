@@ -100,6 +100,8 @@ export function ReferencePanel({
             templateSpacing={page.templateSpacing}
             customTemplateUri={page.customTemplateUri}
             backgroundColor={page.backgroundColor}
+            backgroundColor2={page.backgroundColor2}
+            backgroundGradientDirection={page.backgroundGradientDirection}
             backgroundOpacity={page.backgroundOpacity}
           />
           <DocumentCanvas

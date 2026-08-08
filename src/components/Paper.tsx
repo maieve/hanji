@@ -1,4 +1,5 @@
 import { Image, StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import type { Page } from "../types";
 import { templateSpacingPoints } from "../templateSpacing";
 
@@ -22,12 +23,16 @@ export function Paper({
   templateSpacing,
   customTemplateUri,
   backgroundColor,
+  backgroundColor2,
+  backgroundGradientDirection = "vertical",
   backgroundOpacity = 0,
 }: {
   template: Page["template"];
   templateSpacing?: Page["templateSpacing"];
   customTemplateUri?: string;
   backgroundColor?: string;
+  backgroundColor2?: string;
+  backgroundGradientDirection?: "vertical" | "horizontal";
   backgroundOpacity?: number;
 }) {
   const step = templateSpacingPoints(templateSpacing);
@@ -95,14 +100,30 @@ export function Paper({
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {content}
-      {backgroundColor && backgroundOpacity > 0 && (
+      {backgroundColor && backgroundColor2 && backgroundOpacity > 0 ? (
+        <Svg style={[StyleSheet.absoluteFill, { opacity: backgroundOpacity }]}>
+          <Defs>
+            <LinearGradient
+              id="pagePaintGradient"
+              x1="0"
+              y1="0"
+              x2={backgroundGradientDirection === "horizontal" ? "1" : "0"}
+              y2={backgroundGradientDirection === "vertical" ? "1" : "0"}
+            >
+              <Stop offset="0" stopColor={backgroundColor} />
+              <Stop offset="1" stopColor={backgroundColor2} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#pagePaintGradient)" />
+        </Svg>
+      ) : backgroundColor && backgroundOpacity > 0 ? (
         <View
           style={[
             StyleSheet.absoluteFill,
             { backgroundColor, opacity: backgroundOpacity },
           ]}
         />
-      )}
+      ) : null}
     </View>
   );
 }

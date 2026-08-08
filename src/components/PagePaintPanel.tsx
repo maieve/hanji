@@ -15,24 +15,34 @@ const colors = [
   "#202522",
 ];
 const opacities = [0.12, 0.25, 0.5, 0.75, 1];
+const gradients = [
+  ["#FFF1A8", "#BFE3C0"],
+  ["#BED4F4", "#D6C4EB"],
+  ["#F4C7C3", "#F7D9A0"],
+  ["#B8DDD8", "#BED4F4"],
+] as const;
 
 export function PagePaintPanel({
   visible,
   color,
+  color2,
+  gradientDirection = "vertical",
   opacity,
   onChange,
   onClose,
 }: {
   visible: boolean;
   color?: string;
+  color2?: string;
+  gradientDirection?: "vertical" | "horizontal";
   opacity: number;
-  onChange: (color: string | undefined, opacity: number) => void;
+  onChange: (color: string | undefined, opacity: number, color2?: string, gradientDirection?: "vertical" | "horizontal") => void;
   onClose: () => void;
 }) {
   const active = color ?? "#FFF1A8";
   const custom = async () => {
     const next = await pickColor(active);
-    if (/^#[0-9A-F]{6}$/i.test(next)) onChange(next, opacity || 0.25);
+    if (/^#[0-9A-F]{6}$/i.test(next)) onChange(next, opacity || 0.25, color2, gradientDirection);
   };
   return (
     <Modal
@@ -82,6 +92,33 @@ export function PagePaintPanel({
               <Ionicons name="eyedrop-outline" size={19} color={C.accent} />
             </Pressable>
           </View>
+          <Text style={s.label}>그라데이션</Text>
+          <View style={s.gradients}>
+            {gradients.map(([start, end]) => {
+              const selected = color === start && color2 === end;
+              return (
+                <Pressable
+                  key={`${start}-${end}`}
+                  accessibilityLabel={`페이지 그라데이션 ${start}에서 ${end}`}
+                  accessibilityState={{ selected }}
+                  onPress={() => onChange(start, opacity || 0.25, end, gradientDirection)}
+                  style={[s.gradientButton, selected && s.selected]}
+                >
+                  <View style={[s.gradientHalf, { backgroundColor: start }]} />
+                  <View style={[s.gradientHalf, { backgroundColor: end }]} />
+                </Pressable>
+              );
+            })}
+            <Pressable
+              accessibilityLabel={`그라데이션 방향 ${gradientDirection === "vertical" ? "세로" : "가로"}`}
+              accessibilityHint="두 번 탭하여 방향 전환"
+              onPress={() => onChange(active, opacity || 0.25, color2 ?? gradients[0][1], gradientDirection === "vertical" ? "horizontal" : "vertical")}
+              style={s.direction}
+            >
+              <Ionicons name={gradientDirection === "vertical" ? "swap-vertical" : "swap-horizontal"} size={18} color={C.accent} />
+              <Text style={s.directionText}>{gradientDirection === "vertical" ? "세로" : "가로"}</Text>
+            </Pressable>
+          </View>
           <Text style={s.label}>농도 {Math.round(opacity * 100)}%</Text>
           <View style={s.opacity}>
             {opacities.map((value) => (
@@ -89,7 +126,7 @@ export function PagePaintPanel({
                 key={value}
                 accessibilityLabel={`페이지 채우기 농도 ${value * 100}%`}
                 accessibilityState={{ selected: opacity === value }}
-                onPress={() => onChange(active, value)}
+                onPress={() => onChange(active, value, color2, gradientDirection)}
                 style={[s.opacityButton, opacity === value && s.opacityActive]}
               >
                 <View
@@ -189,6 +226,11 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   label: { fontSize: 11, fontWeight: "900", color: C.accent, marginTop: 20 },
+  gradients: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginTop: 8 },
+  gradientButton: { width: 54, height: 38, borderRadius: 11, overflow: "hidden", flexDirection: "row", borderWidth: 2, borderColor: C.white },
+  gradientHalf: { flex: 1 },
+  direction: { minHeight: 38, paddingHorizontal: 10, borderRadius: 11, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, flexDirection: "row", alignItems: "center", gap: 5 },
+  directionText: { color: C.accent, fontSize: 10, fontWeight: "800" },
   opacity: { height: 52, flexDirection: "row", gap: 7, marginTop: 8 },
   opacityButton: {
     flex: 1,

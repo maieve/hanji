@@ -159,6 +159,8 @@ export function ContinuousDocument(props: Props) {
             templateSpacing={item.templateSpacing}
             customTemplateUri={item.customTemplateUri}
             backgroundColor={item.backgroundColor}
+            backgroundColor2={item.backgroundColor2}
+            backgroundGradientDirection={item.backgroundGradientDirection}
             backgroundOpacity={item.backgroundOpacity}
           />
           <DocumentCanvas

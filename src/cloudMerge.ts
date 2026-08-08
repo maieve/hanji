@@ -16,6 +16,8 @@ const pageContent = (page: Page) =>
     template: page.template,
     templateSpacing: page.templateSpacing,
     backgroundColor: page.backgroundColor,
+    backgroundColor2: page.backgroundColor2,
+    backgroundGradientDirection: page.backgroundGradientDirection,
     backgroundOpacity: page.backgroundOpacity,
     rotation: page.rotation,
     customTemplate: assetIdentity(page.customTemplateUri),

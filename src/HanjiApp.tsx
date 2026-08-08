@@ -1709,6 +1709,8 @@ export function HanjiApp() {
                 templateSpacing={page.templateSpacing}
                 customTemplateUri={page.customTemplateUri}
                 backgroundColor={page.backgroundColor}
+                backgroundColor2={page.backgroundColor2}
+                backgroundGradientDirection={page.backgroundGradientDirection}
                 backgroundOpacity={page.backgroundOpacity}
               />
               <DocumentCanvas
@@ -2255,8 +2257,10 @@ export function HanjiApp() {
       <PagePaintPanel
         visible={pagePaintOpen}
         color={page.backgroundColor}
+        color2={page.backgroundColor2}
+        gradientDirection={page.backgroundGradientDirection}
         opacity={page.backgroundOpacity ?? 0}
-        onChange={(backgroundColor, backgroundOpacity) =>
+        onChange={(backgroundColor, backgroundOpacity, backgroundColor2, backgroundGradientDirection) =>
           update(current.id, (n) => ({
             ...n,
             updatedAt: new Date().toISOString(),
@@ -2265,6 +2269,8 @@ export function HanjiApp() {
                 ? {
                     ...item,
                     backgroundColor,
+                    backgroundColor2,
+                    backgroundGradientDirection,
                     backgroundOpacity,
                     updatedAt: new Date().toISOString(),
                   }

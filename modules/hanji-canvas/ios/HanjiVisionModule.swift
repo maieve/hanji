@@ -183,9 +183,19 @@ private func hanjiRGBA(_ color: UIColor) -> [String: Double] {
 }
 
 private func drawPagePaint(_ item: [String: String], in bounds: CGRect, context: CGContext) {
-  let color = item["backgroundColor"] ?? "", opacity = min(1, max(0, Double(item["backgroundOpacity"] ?? "") ?? 0))
+  let color = item["backgroundColor"] ?? "", color2 = item["backgroundColor2"] ?? "", opacity = min(1, max(0, Double(item["backgroundOpacity"] ?? "") ?? 0))
   guard !color.isEmpty, opacity > 0 else { return }
-  context.saveGState(); UIColor(hanjiHex: color).withAlphaComponent(CGFloat(opacity)).setFill(); context.fill(bounds); context.restoreGState()
+  context.saveGState()
+  context.setAlpha(CGFloat(opacity))
+  if !color2.isEmpty, let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [UIColor(hanjiHex: color).cgColor, UIColor(hanjiHex: color2).cgColor] as CFArray, locations: [0, 1]) {
+    let horizontal = item["backgroundGradientDirection"] == "horizontal"
+    let start = CGPoint(x: bounds.minX, y: bounds.minY)
+    let end = horizontal ? CGPoint(x: bounds.maxX, y: bounds.minY) : CGPoint(x: bounds.minX, y: bounds.maxY)
+    context.drawLinearGradient(gradient, start: start, end: end, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+  } else {
+    UIColor(hanjiHex: color).setFill(); context.fill(bounds)
+  }
+  context.restoreGState()
 }
 
 private func rotatedBounds(_ source: CGRect, rotation: Int) -> CGRect {

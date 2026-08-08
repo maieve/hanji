@@ -38,7 +38,7 @@ export async function exportNotebookPdf(note: Notebook) {
         : "";
       const paint =
         page.backgroundColor && (page.backgroundOpacity ?? 0) > 0
-          ? `<div class="page-paint" style="background:${esc(page.backgroundColor)};opacity:${page.backgroundOpacity}"></div>`
+          ? `<div class="page-paint" style="background:${page.backgroundColor2 ? `linear-gradient(${page.backgroundGradientDirection === "horizontal" ? "90deg" : "180deg"},${esc(page.backgroundColor)},${esc(page.backgroundColor2)})` : esc(page.backgroundColor)};opacity:${page.backgroundOpacity}"></div>`
           : "";
       const rotation = page.rotation ?? 0,
         portrait = rotation === 90 || rotation === 270;
@@ -100,7 +100,9 @@ export async function exportPagePng(
                 : `<rect width="${canvasWidth}" height="${canvasHeight}" fill="white"/>`;
   const paint =
     page.backgroundColor && (page.backgroundOpacity ?? 0) > 0
-      ? `<rect width="${canvasWidth}" height="${canvasHeight}" fill="${esc(page.backgroundColor)}" opacity="${page.backgroundOpacity}"/>`
+      ? page.backgroundColor2
+        ? `<defs><linearGradient id="pagePaint" x1="0" y1="0" x2="${page.backgroundGradientDirection === "horizontal" ? "1" : "0"}" y2="${page.backgroundGradientDirection === "horizontal" ? "0" : "1"}"><stop offset="0" stop-color="${esc(page.backgroundColor)}"/><stop offset="1" stop-color="${esc(page.backgroundColor2)}"/></linearGradient></defs><rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#pagePaint)" opacity="${page.backgroundOpacity}"/>`
+        : `<rect width="${canvasWidth}" height="${canvasHeight}" fill="${esc(page.backgroundColor)}" opacity="${page.backgroundOpacity}"/>`
       : "";
   const rotation = page.rotation ?? 0,
     odd = rotation === 90 || rotation === 270,
