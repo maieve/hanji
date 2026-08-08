@@ -128,6 +128,7 @@ import {
   type LibrarySort,
   type LibraryViewMode,
 } from "./libraryView";
+import { deleteNotebookSelection, setNotebookSelectionFavorite, toggleNotebookSelection } from "./librarySelection";
 import { FOCUS_TOOLBAR_IDLE_MS } from "./focusPolicy";
 import { configurePageHaptics, playPageHaptic } from "./pageHaptics";
 import { OCR_LOW_POWER_RETRY_MS, ocrJobDisposition } from "./ocrPolicy";
@@ -874,6 +875,24 @@ export function HanjiApp() {
               onPress: () => setItems((x) => x.filter((n) => n.id !== id)),
             },
           ])
+        }
+        onDeleteMany={(ids, onDeleted) =>
+          Alert.alert(
+            "노트 여러 개 삭제",
+            `선택한 노트 ${ids.length}권을 삭제할까요?`,
+            [
+              { text: "취소" },
+              {
+                text: "삭제",
+                style: "destructive",
+                onPress: () => {
+                  const selected = new Set(ids);
+                  setItems((all) => deleteNotebookSelection(all, selected));
+                  onDeleted();
+                },
+              },
+            ],
+          )
         }
       />
     );
@@ -2300,6 +2319,7 @@ function Library({
   onExport,
   onRestore,
   onDelete,
+  onDeleteMany,
   onAddCategory,
   onRenameCategory,
   onDeleteCategory,
@@ -2337,6 +2357,7 @@ function Library({
   onExport: () => void;
   onRestore: () => void;
   onDelete: (id: string) => void;
+  onDeleteMany: (ids: string[], onDeleted: () => void) => void;
   onAddCategory: (name: string) => void;
   onRenameCategory: (folder: string, name: string) => boolean;
   onDeleteCategory: (folder: string) => void;
@@ -2349,6 +2370,8 @@ function Library({
   const [cloudOpen, setCloudOpen] = useState(false);
   const [managing, setManaging] = useState<Notebook | null>(null);
   const [managingFolder, setManagingFolder] = useState<string | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const hitMap = useMemo(
     () => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []),
     [searchHits],
@@ -2385,6 +2408,23 @@ function Library({
   const createHere = () =>
     onCreate(categories.includes(selected) ? selected : undefined);
   const manage = (n: Notebook) => setManaging(n);
+  const toggleSelection = (id: string) =>
+    setSelectedIds((current) => toggleNotebookSelection(current, id));
+  const beginSelection = (id: string) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([id]));
+  };
+  const closeSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+  const setSelectedFavorite = (favorite: boolean) => {
+    const updatedAt = new Date().toISOString();
+    setNotebookSelectionFavorite(items, selectedIds, favorite, updatedAt)
+      .filter((note, index) => note !== items[index])
+      .forEach(onUpdate);
+    closeSelectionMode();
+  };
   const chips = (
     <ScrollView
       horizontal
@@ -2615,6 +2655,15 @@ function Library({
               contentContainerStyle={s.libraryActions}
             >
               <Pressable
+                accessibilityLabel={selectionMode ? "노트 선택 모드 종료" : "노트 여러 개 선택"}
+                accessibilityState={{ selected: selectionMode }}
+                onPress={() => selectionMode ? closeSelectionMode() : setSelectionMode(true)}
+                style={[s.newButton, s.secondaryButton, selectionMode && s.selectionModeButton]}
+              >
+                <Ionicons name={selectionMode ? "close" : "checkmark-circle-outline"} size={20} color={selectionMode ? C.white : C.accent} />
+                <Text style={[s.newText, { color: selectionMode ? C.white : C.accent }]}>{selectionMode ? "완료" : "선택"}</Text>
+              </Pressable>
+              <Pressable
                 accessibilityLabel="Cloudflare 백업 설정"
                 onPress={() => setCloudOpen(true)}
                 style={[s.newButton, s.secondaryButton]}
@@ -2661,6 +2710,14 @@ function Library({
             </ScrollView>
           </View>
           {compact && <View style={{ marginTop: 18 }}>{chips}</View>}
+          {selectionMode && (
+            <View accessibilityRole="toolbar" accessibilityLabel={`노트 선택 도구, ${selectedIds.size}권 선택됨`} style={s.bulkBar}>
+              <Text style={s.bulkCount}>{selectedIds.size}권 선택</Text>
+              <Pressable accessibilityLabel="선택한 노트 모두 즐겨찾기" disabled={!selectedIds.size} onPress={() => setSelectedFavorite(true)} style={[s.bulkAction, !selectedIds.size && s.bulkDisabled]}><Ionicons name="star" size={16} color={C.accent}/><Text style={s.bulkActionText}>즐겨찾기</Text></Pressable>
+              <Pressable accessibilityLabel="선택한 노트 모두 즐겨찾기 해제" disabled={!selectedIds.size} onPress={() => setSelectedFavorite(false)} style={[s.bulkAction, !selectedIds.size && s.bulkDisabled]}><Ionicons name="star-outline" size={16} color={C.accent}/><Text style={s.bulkActionText}>해제</Text></Pressable>
+              <Pressable accessibilityLabel={`선택한 노트 ${selectedIds.size}권 삭제`} disabled={!selectedIds.size} onPress={() => onDeleteMany([...selectedIds], closeSelectionMode)} style={[s.bulkDelete, !selectedIds.size && s.bulkDisabled]}><Ionicons name="trash-outline" size={16} color={C.danger}/><Text style={s.bulkDeleteText}>삭제</Text></Pressable>
+            </View>
+          )}
           <View style={s.libraryControls}>
             <ScrollView
               horizontal
@@ -2782,12 +2839,14 @@ function Library({
                     <Pressable
                       key={n.id}
                       accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked ? ", 잠김" : ""}${n.conflictOf ? ", 페이지 충돌 사본" : ""}`}
+                      accessibilityState={{ selected: selectionMode && selectedIds.has(n.id) }}
                       onPress={() =>
-                        onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
+                        selectionMode ? toggleSelection(n.id) : onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
                       }
-                      onLongPress={() => manage(n)}
-                      style={s.listRow}
+                      onLongPress={() => selectionMode ? toggleSelection(n.id) : beginSelection(n.id)}
+                      style={[s.listRow, selectionMode && selectedIds.has(n.id) && s.selectionSelected]}
                     >
+                      {selectionMode && <Ionicons name={selectedIds.has(n.id) ? "checkmark-circle" : "ellipse-outline"} size={22} color={selectedIds.has(n.id) ? C.accent : C.line}/>}
                       <View style={s.listIcon}>
                         <Ionicons
                           name={
@@ -2820,7 +2879,7 @@ function Library({
                           </Text>
                         )}
                       </View>
-                      <Pressable
+                      {!selectionMode && <Pressable
                         accessibilityLabel={
                           n.favorite ? "즐겨찾기 해제" : "즐겨찾기"
                         }
@@ -2838,8 +2897,8 @@ function Library({
                           size={18}
                           color={n.favorite ? "#B77A18" : C.muted}
                         />
-                      </Pressable>
-                      <Pressable
+                      </Pressable>}
+                      {!selectionMode && <Pressable
                         accessibilityLabel={`${n.title} 설정`}
                         onPress={() => manage(n)}
                         style={s.listAction}
@@ -2849,17 +2908,19 @@ function Library({
                           size={18}
                           color={C.muted}
                         />
-                      </Pressable>
+                      </Pressable>}
                     </Pressable>
                   );
                 return (
                   <Pressable
                     key={n.id}
+                    accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked ? ", 잠김" : ""}${selectionMode ? selectedIds.has(n.id) ? ", 선택됨" : ", 선택 안 됨" : ""}`}
+                    accessibilityState={{ selected: selectionMode && selectedIds.has(n.id) }}
                     onPress={() =>
-                      onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
+                      selectionMode ? toggleSelection(n.id) : onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
                     }
-                    onLongPress={() => manage(n)}
-                    style={s.card}
+                    onLongPress={() => selectionMode ? toggleSelection(n.id) : beginSelection(n.id)}
+                    style={[s.card, selectionMode && selectedIds.has(n.id) && s.selectionSelected]}
                   >
                     <View
                       style={[
@@ -2888,7 +2949,8 @@ function Library({
                             style={[s.coverLine, { top: 42 + i * 20 }]}
                           />
                         ))}
-                      <Pressable
+                      {selectionMode && <View style={s.cardSelection}><Ionicons name={selectedIds.has(n.id) ? "checkmark-circle" : "ellipse-outline"} size={24} color={selectedIds.has(n.id) ? C.accent : C.line}/></View>}
+                      {!selectionMode && <Pressable
                         accessibilityLabel={
                           n.favorite ? "즐겨찾기 해제" : "즐겨찾기"
                         }
@@ -2906,7 +2968,7 @@ function Library({
                           size={17}
                           color={n.favorite ? "#B77A18" : C.muted}
                         />
-                      </Pressable>
+                      </Pressable>}
                       <Text style={s.coverPage}>
                         {hit ? `p.${hit.pageIndex + 1}` : `${n.pages.length}p`}
                       </Text>
@@ -2944,14 +3006,14 @@ function Library({
                       <Text style={s.cardMeta}>
                         {new Date(n.updatedAt).toLocaleDateString("ko-KR")}
                       </Text>
-                      <Pressable
+                      {!selectionMode && <Pressable
                         onPress={() => manage(n)}
                         style={s.folderBadge}
                       >
                         <Text numberOfLines={1} style={s.folderBadgeText}>
                           {folderBreadcrumb(n.folder)}
                         </Text>
-                      </Pressable>
+                      </Pressable>}
                     </View>
                   </Pressable>
                 );
@@ -3356,6 +3418,25 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
   },
   newText: { color: "white", fontWeight: "700" },
+  selectionModeButton: { backgroundColor: C.accent },
+  bulkBar: {
+    minHeight: 48,
+    marginTop: 16,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  bulkCount: { fontSize: 12, fontWeight: "900", color: C.ink, marginRight: "auto" },
+  bulkAction: { height: 34, paddingHorizontal: 10, borderRadius: 10, backgroundColor: C.accentSoft, flexDirection: "row", alignItems: "center", gap: 5 },
+  bulkActionText: { fontSize: 10, fontWeight: "800", color: C.accent },
+  bulkDelete: { height: 34, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#FFF0EF", flexDirection: "row", alignItems: "center", gap: 5 },
+  bulkDeleteText: { fontSize: 10, fontWeight: "800", color: C.danger },
+  bulkDisabled: { opacity: 0.4 },
   search: {
     height: 46,
     borderWidth: 1,
@@ -3411,6 +3492,8 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   card: { width: 168 },
+  selectionSelected: { borderColor: C.accent, borderWidth: 2, borderRadius: 12, backgroundColor: C.accentSoft },
+  cardSelection: { position: "absolute", right: 9, top: 9, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,.92)", alignItems: "center", justifyContent: "center", zIndex: 3 },
   cover: {
     width: 168,
     height: 216,

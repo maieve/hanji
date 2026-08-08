@@ -1,6 +1,6 @@
 {
   "name": "hanji",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "main": "expo/AppEntry.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:drawing-persistence && npm run test:archive-assets && npm run test:audio-sync && npm run test:recording-lifecycle && npm run test:ocr-policy && npm run test:page-jump && npm run test:pdf-navigation && npm run test:pdf-coordinates && npm run test:pdf-text-highlight && npm run test:native-diagnostics && npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:page-transfer && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:pencil-actions && npm run test:touch-gestures && npm run test:template-spacing && npm run test:notebook-cover && npm run test:image-crop && npm run test:canvas-zoom && npm run test:brush-controls && npm run test:toolbar-accessibility && npm run test:dark-ink && npm run test:flashcard-draft && npm run test:image-flashcard && npm run test:flashcard-template && npm run test:element-selection && npm run test:bounded-history && npm run test:canvas-extent && npm run test:reference-document && npm run test:lasso-policy && npm run test:device-checklist",
+    "test": "npm run test:drawing-persistence && npm run test:archive-assets && npm run test:audio-sync && npm run test:recording-lifecycle && npm run test:ocr-policy && npm run test:page-jump && npm run test:pdf-navigation && npm run test:pdf-coordinates && npm run test:pdf-text-highlight && npm run test:native-diagnostics && npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:page-transfer && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:library-selection && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:pencil-actions && npm run test:touch-gestures && npm run test:template-spacing && npm run test:notebook-cover && npm run test:image-crop && npm run test:canvas-zoom && npm run test:brush-controls && npm run test:toolbar-accessibility && npm run test:dark-ink && npm run test:flashcard-draft && npm run test:image-flashcard && npm run test:flashcard-template && npm run test:element-selection && npm run test:bounded-history && npm run test:canvas-extent && npm run test:reference-document && npm run test:lasso-policy && npm run test:device-checklist",
     "test:drawing-persistence": "node --no-warnings --experimental-strip-types scripts/verifyDrawingPersistence.mts",
     "test:archive-assets": "node --no-warnings --experimental-strip-types scripts/verifyArchiveAssets.mts",
     "test:audio-sync": "node --no-warnings --experimental-strip-types scripts/verifyAudioSync.mts",
@@ -32,6 +32,7 @@
     "test:folders": "node --no-warnings --experimental-strip-types scripts/verifyFolders.mts",
     "test:notebook-privacy": "node --no-warnings --experimental-strip-types scripts/verifyNotebookPrivacy.mts",
     "test:library-view": "node --no-warnings --experimental-strip-types scripts/verifyLibraryView.mts",
+    "test:library-selection": "node --no-warnings --experimental-strip-types scripts/verifyLibrarySelection.mts",
     "test:focus-policy": "node --no-warnings --experimental-strip-types scripts/verifyFocusPolicy.mts",
     "test:page-haptics": "node --no-warnings --experimental-strip-types scripts/verifyPageHaptics.mts",
     "test:shape-policy": "node --no-warnings --experimental-strip-types scripts/verifyShapePolicy.mts",
