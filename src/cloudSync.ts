@@ -4,7 +4,7 @@ import {File} from 'expo-file-system';
 const KEY='hanji.cloudflare.v1';
 export type CloudConfig={endpoint:string;token:string;enabled:boolean};
 export type CloudBackup={key:string;name:string;size:number;uploaded:string;etag:string};
-export const emptyCloudConfig:CloudConfig={endpoint:'',token:'',enabled:false};
+export const emptyCloudConfig:CloudConfig={endpoint:'https://hanji-sync.chaekgalpi.workers.dev',token:'',enabled:false};
 const endpoint=(value:string)=>value.trim().replace(/\/+$/,'');
 export async function loadCloudConfig():Promise<CloudConfig>{const raw=await AsyncStorage.getItem(KEY);try{return raw?{...emptyCloudConfig,...JSON.parse(raw)}:emptyCloudConfig}catch{return emptyCloudConfig}}
 export async function saveCloudConfig(value:CloudConfig){await AsyncStorage.setItem(KEY,JSON.stringify({...value,endpoint:endpoint(value.endpoint)}))}
