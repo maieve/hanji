@@ -5,8 +5,9 @@ import type { ToolKind, ToolSpec } from '../types';
 import { C } from '../theme';
 import {defaultToolPresets,isInkTool,loadToolPreferences,pushRecentColor,rememberInkTool,saveToolPreferences,selectToolKind,type ToolPreferences} from '../toolPreferences';
 import {pickColor} from '../colorPicker';
-import {stepBrushOpacity,stepBrushWidth} from '../brushControls';
+import {stepBrushOpacity} from '../brushControls';
 import {ToolPresetPanel} from './ToolPresetPanel';
+import {BrushWidthControl} from './BrushWidthControl';
 
 const tools: { kind: ToolKind; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { kind: 'pen', icon: 'pencil', label: '볼펜' },
@@ -54,7 +55,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
       {!!preferences.recentColors.length&&<><View style={s.rule}/><View accessibilityLabel={`최근 사용 색상 ${preferences.recentColors.length}개`} style={s.colors}>{preferences.recentColors.map((color,index) => <Pressable accessibilityLabel={`최근 색상 ${index+1}, ${color}`} key={color} onPress={() => chooseColor(color)} style={[s.color, { backgroundColor: color }, tool.color.toUpperCase() === color && s.colorSelected]} />)}</View></>}
       <Pressable accessibilityLabel="시스템 컬러 피커와 스포이드" onPress={()=>void openColorPicker()} style={s.colorPicker}><Ionicons name="eyedrop-outline" size={18} color={C.accent}/></Pressable>
       <TextInput accessibilityLabel="HEX 색상" value={tool.color} autoCapitalize="characters" maxLength={7} onChangeText={color=>{if(/^#[0-9A-Fa-f]{0,6}$/.test(color)){setTool({...tool,color});if(/^#[0-9A-Fa-f]{6}$/.test(color))chooseColor(color)}}} style={s.hex} />
-      <View style={s.fineControl}><Pressable accessibilityLabel="브러시 굵기 줄이기" onPress={()=>applyTool({...tool,width:stepBrushWidth(tool.width,-1)})} style={s.fineButton}><Ionicons name="remove" size={14} color={C.accent}/></Pressable><Text style={s.fineValue}>{tool.width.toFixed(1)}pt</Text><Pressable accessibilityLabel="브러시 굵기 늘리기" onPress={()=>applyTool({...tool,width:stepBrushWidth(tool.width,1)})} style={s.fineButton}><Ionicons name="add" size={14} color={C.accent}/></Pressable></View>
+      {(isInkTool(tool.kind)||tool.kind==='shape')&&<BrushWidthControl kind={tool.kind} value={tool.width} onChange={width=>setTool({...tool,width})} onComplete={width=>applyTool({...tool,width})}/>}
       <View style={s.fineControl}><Pressable accessibilityLabel="브러시 불투명도 줄이기" onPress={()=>applyTool({...tool,opacity:stepBrushOpacity(tool.opacity??1,-1)})} style={s.fineButton}><Ionicons name="remove" size={14} color={C.accent}/></Pressable><Text style={s.fineValue}>{Math.round((tool.opacity??1)*100)}%</Text><Pressable accessibilityLabel="브러시 불투명도 늘리기" onPress={()=>applyTool({...tool,opacity:stepBrushOpacity(tool.opacity??1,1)})} style={s.fineButton}><Ionicons name="add" size={14} color={C.accent}/></Pressable></View>
     </ScrollView>
     <ScrollView horizontal style={[s.trailingScroll,compact&&s.trailingCompact]} contentContainerStyle={s.trailing} showsHorizontalScrollIndicator={false}>

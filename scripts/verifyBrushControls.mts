@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
-import {clampBrushOpacity,clampBrushWidth,stepBrushOpacity,stepBrushWidth} from '../src/brushControls.ts';
+import {brushPositionToWidth,brushWidthPresets,brushWidthToPosition,clampBrushOpacity,clampBrushWidth,stepBrushOpacity,stepBrushWidth} from '../src/brushControls.ts';
 import {defaultToolPresets,MAX_RECENT_COLORS,moveToolPreset,normalizeHexColor,normalizeRecentColors,pushRecentColor,removeToolPreset,renameToolPreset,rememberInkTool,replaceToolPreset,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
 
 assert.equal(clampBrushWidth(-1),.5);assert.equal(clampBrushWidth(99),40);
 assert.equal(stepBrushWidth(2,1),2.5);assert.equal(stepBrushWidth(3,1),4);assert.equal(stepBrushWidth(12,1),14);
 assert.equal(stepBrushOpacity(.05,-1),.05);assert.equal(stepBrushOpacity(.95,1),1);
+assert.deepEqual(brushWidthPresets('pen'),[1,2,4]);assert.deepEqual(brushWidthPresets('watercolor'),[8,16,28]);assert.deepEqual(brushWidthPresets('marker'),[6,12,20]);
+assert.equal(brushPositionToWidth(-1),.5);assert.equal(brushPositionToWidth(1),40);
+for(const width of [.5,1,2,5,12,28,40])assert(Math.abs(brushPositionToWidth(brushWidthToPosition(width))-width)<=.1);
 const base:ToolPreferences={presets:defaultToolPresets,recentColors:[],lastTools:{}};
 const remembered=rememberInkTool(base,{kind:'watercolor',color:'#123456',width:23.5,opacity:.45});
 assert.deepEqual(selectToolKind({kind:'pen',color:'#000000',width:2},'watercolor',remembered.lastTools),{kind:'watercolor',color:'#123456',width:23.5,opacity:.45});
