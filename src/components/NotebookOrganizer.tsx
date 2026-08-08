@@ -3,13 +3,14 @@ import {useEffect,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import {C} from '../theme';
 import type {Notebook} from '../types';
+import {folderBreadcrumb} from '../folders';
 
 export function NotebookOrganizer({notebook,categories,onSave,onDelete,onClose}:{notebook:Notebook|null;categories:string[];onSave:(n:Notebook)=>void;onDelete:(id:string)=>void;onClose:()=>void}){
  const [tags,setTags]=useState('');useEffect(()=>setTags(notebook?.tags.join(', ')??''),[notebook]);if(!notebook)return null;
  const save=(patch:Partial<Notebook>)=>onSave({...notebook,...patch,updatedAt:new Date().toISOString()});
  return <Modal visible animationType="fade" transparent onRequestClose={onClose}><Pressable style={s.scrim} onPress={onClose}><Pressable style={s.sheet} onPress={()=>undefined}><View style={s.header}><View><Text style={s.eyebrow}>노트 설정</Text><Text numberOfLines={1} style={s.title}>{notebook.title}</Text></View><Pressable onPress={onClose} style={s.icon}><Ionicons name="close" size={23} color={C.ink}/></Pressable></View>
   <Pressable onPress={()=>save({favorite:!notebook.favorite})} style={[s.favorite,notebook.favorite&&s.favoriteOn]}><Ionicons name={notebook.favorite?'star':'star-outline'} size={21} color={notebook.favorite?'#B77A18':C.muted}/><Text style={s.favoriteText}>{notebook.favorite?'즐겨찾기에서 제거':'즐겨찾기에 추가'}</Text></Pressable>
-  <Text style={s.label}>카테고리</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>{categories.map(category=><Pressable key={category} onPress={()=>save({folder:category})} style={[s.chip,notebook.folder===category&&s.chipOn]}><Text style={[s.chipText,notebook.folder===category&&s.chipTextOn]}>{category}</Text></Pressable>)}</ScrollView>
+  <Text style={s.label}>폴더</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>{categories.map(category=><Pressable accessibilityLabel={`${folderBreadcrumb(category)} 폴더로 이동`} key={category} onPress={()=>save({folder:category})} style={[s.chip,notebook.folder===category&&s.chipOn]}><Text style={[s.chipText,notebook.folder===category&&s.chipTextOn]}>{folderBreadcrumb(category)}</Text></Pressable>)}</ScrollView>
   <Text style={s.label}>태그</Text><TextInput value={tags} onChangeText={setTags} placeholder="예: 회의, 아이디어, 중요" returnKeyType="done" onSubmitEditing={()=>save({tags:tags.split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i)})} style={s.input}/><Text style={s.help}>쉼표로 구분하고 완료를 누르면 저장됩니다.</Text>
   <View style={s.footer}><Pressable onPress={()=>{onDelete(notebook.id);onClose()}} style={s.delete}><Ionicons name="trash-outline" size={18} color={C.danger}/><Text style={s.deleteText}>노트 삭제</Text></Pressable><Pressable onPress={()=>{save({tags:tags.split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i)});onClose()}} style={s.done}><Text style={s.doneText}>완료</Text></Pressable></View>
  </Pressable></Pressable></Modal>;
