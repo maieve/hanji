@@ -120,9 +120,9 @@ public final class HanjiVisionModule: Module {
           } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", spacing: item["templateSpacing"] ?? "medium", columns: columns, in: bounds, context: context.cgContext) }
           drawPagePaint(item, in: bounds, context: context.cgContext)
           if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
-            drawing.image(from: bounds, scale: 3).draw(in: bounds)
+            drawing.image(from: drawingSourceRect(item), scale: 3).draw(in: bounds)
           }
-          drawTextElements(item["elements"] ?? "[]", in: bounds)
+          drawTextElements(item["elements"] ?? "[]", in: bounds, source: drawingSourceRect(item), canvasSize: drawingCanvasSize(item))
           context.cgContext.restoreGState()
         }
       }
@@ -151,9 +151,9 @@ public final class HanjiVisionModule: Module {
         } else if !drawTemplateImage(item["customTemplateUri"] ?? "", in: bounds) { drawHanjiTemplate(item["template"] ?? "plain", spacing: item["templateSpacing"] ?? "medium", columns: columns, in: bounds, context: context.cgContext) }
         drawPagePaint(item, in: bounds, context: context.cgContext)
         if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
-          drawing.image(from: bounds, scale: 3).draw(in: bounds)
+          drawing.image(from: drawingSourceRect(item), scale: 3).draw(in: bounds)
         }
-        drawTextElements(item["elements"] ?? "[]", in: bounds)
+        drawTextElements(item["elements"] ?? "[]", in: bounds, source: drawingSourceRect(item), canvasSize: drawingCanvasSize(item))
         context.cgContext.restoreGState()
       }
       guard let data = image.pngData() else { throw NSError(domain: "HanjiExport", code: 1, userInfo: [NSLocalizedDescriptionKey: "PNG encoding failed"]) }
@@ -202,6 +202,17 @@ private func applyPageRotation(_ context: CGContext, source: CGRect, rotation: I
   }
 }
 
+private func drawingCanvasSize(_ item: [String: String]) -> CGSize {
+  CGSize(width: CGFloat(max(1, Double(item["canvasWidth"] ?? "") ?? 900)), height: CGFloat(max(1, Double(item["canvasHeight"] ?? "") ?? 636)))
+}
+
+private func drawingSourceRect(_ item: [String: String]) -> CGRect {
+  let canvas = drawingCanvasSize(item)
+  let width = max(CGFloat(1), CGFloat(Double(item["viewportWidth"] ?? "") ?? Double(canvas.width)))
+  let height = max(CGFloat(1), CGFloat(Double(item["viewportHeight"] ?? "") ?? Double(canvas.height)))
+  return CGRect(x: CGFloat(Double(item["viewportX"] ?? "") ?? 0), y: CGFloat(Double(item["viewportY"] ?? "") ?? 0), width: width, height: height)
+}
+
 @discardableResult private func drawTemplateImage(_ uri: String, in bounds: CGRect) -> Bool {
   guard !uri.isEmpty else { return false }
   let url = uri.hasPrefix("file://") ? URL(string: uri) : URL(fileURLWithPath: uri)
@@ -209,12 +220,17 @@ private func applyPageRotation(_ context: CGContext, source: CGRect, rotation: I
   image.draw(in: bounds); return true
 }
 
-private func drawTextElements(_ json: String, in bounds: CGRect) {
+private func drawTextElements(_ json: String, in bounds: CGRect, source: CGRect, canvasSize: CGSize) {
   guard let data = json.data(using: .utf8), let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
   for item in items {
     let x = (item["x"] as? NSNumber)?.doubleValue ?? 0, y = (item["y"] as? NSNumber)?.doubleValue ?? 0
     let width = (item["width"] as? NSNumber)?.doubleValue ?? 0.4, height = (item["height"] as? NSNumber)?.doubleValue ?? 0.12
-    let rect = CGRect(x: bounds.width * x, y: bounds.height * y, width: bounds.width * width, height: bounds.height * height)
+    let rect = CGRect(
+      x: bounds.minX + (canvasSize.width * x - source.minX) / source.width * bounds.width,
+      y: bounds.minY + (canvasSize.height * y - source.minY) / source.height * bounds.height,
+      width: canvasSize.width * width / source.width * bounds.width,
+      height: canvasSize.height * height / source.height * bounds.height
+    )
     if item["kind"] as? String == "image", let uri = item["uri"] as? String {
       let url = uri.hasPrefix("file://") ? URL(string: uri) : URL(fileURLWithPath: uri)
       if let path = url?.path, let image = UIImage(contentsOfFile: path) { drawHanjiImage(image, in: rect, fit: item["fit"] as? String ?? "contain", rotation: (item["rotation"] as? NSNumber)?.intValue ?? 0, cropZoom: (item["cropZoom"] as? NSNumber)?.doubleValue ?? 1, cropX: (item["cropX"] as? NSNumber)?.doubleValue ?? 0, cropY: (item["cropY"] as? NSNumber)?.doubleValue ?? 0) }

@@ -51,6 +51,7 @@ type Props = {
   redoSignal: number;
   onActiveIndexChange: (index: number) => void;
   onDrawingChange: (page: Page, drawingData: string) => void;
+  onCanvasMetrics: (page: Page, metrics: NonNullable<Page["drawingViewport"]>) => void;
   onElementsChange: (page: Page, elements: PageElement[]) => void;
   onElementCommit:(page:Page,before:PageElement,after:PageElement)=>void;
   onSaveSticker: (image: ImageElement) => void;
@@ -206,6 +207,7 @@ export function ContinuousDocument(props: Props) {
             onDrawingChange={(drawingData) =>
               props.onDrawingChange(item, drawingData)
             }
+            onCanvasMetrics={(metrics) => props.onCanvasMetrics(item, metrics)}
           />
           <ElementsLayer
               editable={props.elementMode && index === props.activeIndex}

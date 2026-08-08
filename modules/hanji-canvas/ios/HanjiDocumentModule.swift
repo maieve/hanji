@@ -7,7 +7,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPdfExcerpt", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onSelectionClip", "onCircleLasso")
+      Events("onDrawingChange", "onCanvasMetrics", "onPageCount", "onPdfOutline", "onPdfLink", "onPdfExcerpt", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onSelectionClip", "onCircleLasso")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -32,6 +32,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   let pdfView = PDFView()
   let canvas = PKCanvasView()
   let onDrawingChange = EventDispatcher()
+  let onCanvasMetrics = EventDispatcher()
   let onPageCount = EventDispatcher()
   let onPdfOutline = EventDispatcher()
   let onPdfLink = EventDispatcher()
@@ -175,6 +176,23 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     pdfView.frame = bounds
     canvas.frame = bounds
     if canvas.contentSize.width < bounds.width || canvas.contentSize.height < bounds.height { canvas.contentSize = bounds.size }
+    if !zoomWindowEnabled { DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() } }
+  }
+
+  private func emitCanvasMetrics() {
+    guard canvas.bounds.width > 0, canvas.bounds.height > 0 else { return }
+    var viewport = canvas.bounds
+    if let page = document?.page(at: currentPage) {
+      pdfView.layoutDocumentView()
+      let pageRect = pdfView.convert(page.bounds(for: .mediaBox), from: page)
+      let converted = canvas.convert(pageRect, from: pdfView).intersection(canvas.bounds)
+      if !converted.isNull, converted.width > 1, converted.height > 1 { viewport = converted }
+    }
+    onCanvasMetrics([
+      "x": viewport.minX, "y": viewport.minY,
+      "width": viewport.width, "height": viewport.height,
+      "canvasWidth": canvas.bounds.width, "canvasHeight": canvas.bounds.height
+    ])
   }
 
   private var selectionPan: UIPanGestureRecognizer? { canvas.gestureRecognizers?.compactMap { $0 as? UIPanGestureRecognizer }.first { $0.name == "hanji-rectangle-selection" } }
@@ -229,6 +247,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     guard let page = document?.page(at: currentPage) else { return }
     pdfView.go(to: page)
     pdfView.autoScales = true
+    DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() }
   }
 
   func loadDrawing(_ base64: String) {

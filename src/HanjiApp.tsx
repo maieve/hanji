@@ -1100,6 +1100,16 @@ export function HanjiApp() {
     }));
     queueOcr(current.id, target.id, drawingData);
   };
+  const changeCanvasMetrics = (target: typeof page, drawingViewport: NonNullable<Page["drawingViewport"]>) =>
+    update(current.id, (notebook) => ({
+      ...notebook,
+      pages: notebook.pages.map((candidate) => {
+        if (candidate.id !== target.id) return candidate;
+        const previous = candidate.drawingViewport;
+        if (previous && (["x", "y", "width", "height", "canvasWidth", "canvasHeight"] as const).every((key) => Math.abs(previous[key] - drawingViewport[key]) < 0.5)) return candidate;
+        return { ...candidate, drawingViewport };
+      }),
+    }));
   const changeElements = (
     target: typeof page,
     elements: NonNullable<typeof page.elements>,
@@ -1639,6 +1649,7 @@ export function HanjiApp() {
               redoSignal={redoSignal}
               onActiveIndexChange={setPageIndex}
               onDrawingChange={changeDrawing}
+              onCanvasMetrics={changeCanvasMetrics}
               onElementsChange={changeElements}
               onElementCommit={commitElementChange}
               onSaveSticker={saveImageSticker}
@@ -1713,6 +1724,7 @@ export function HanjiApp() {
                 onDrawingChange={(drawingData) =>
                   changeDrawing(page, drawingData)
                 }
+                onCanvasMetrics={(metrics) => changeCanvasMetrics(page, metrics)}
               />
               <ElementsLayer
                 editable={elementMode}

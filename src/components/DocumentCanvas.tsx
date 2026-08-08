@@ -1,5 +1,5 @@
 import { requireNativeViewManager } from 'expo-modules-core';
-import type { ToolSpec } from '../types';
+import type { DrawingViewport, ToolSpec } from '../types';
 export type PdfOutlineItem = {
   title: string;
   pageIndex: number;
@@ -21,6 +21,7 @@ type Props = {
   undoSignal?: number;
   redoSignal?: number;
   onDrawingChange: (v: string) => void;
+  onCanvasMetrics?: (metrics: DrawingViewport) => void;
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: PdfOutlineItem[]) => void;
   onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
@@ -56,6 +57,7 @@ export function DocumentCanvas(p: Props) {
       undoSignal={p.undoSignal ?? 0}
       redoSignal={p.redoSignal ?? 0}
       onDrawingChange={(e: E<{ drawingData: string }>) => p.onDrawingChange(e.nativeEvent.drawingData)}
+      onCanvasMetrics={(e: E<DrawingViewport>) => p.onCanvasMetrics?.(e.nativeEvent)}
       onPageCount={(e: E<{ count: number }>) => p.onPageCount?.(e.nativeEvent.count)}
       onPdfOutline={(e: E<{ items: PdfOutlineItem[] }>) => p.onPdfOutline?.(e.nativeEvent.items)}
       onPdfLink={(e: E<{ pageIndex?: number; url?: string }>) => p.onPdfLink?.(e.nativeEvent)}

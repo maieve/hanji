@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import type { ToolSpec } from '../types';
+import type { DrawingViewport, ToolSpec } from '../types';
 import { HanjiCanvas } from './HanjiCanvas';
 import { PdfBackground } from './PdfBackground';
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'flashcard' | 'imageFlashcard' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
   selectedElementCount?:number;
   onDrawingChange: (v: string) => void;
+  onCanvasMetrics?: (metrics: DrawingViewport) => void;
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: []) => void;
   onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
