@@ -34,6 +34,9 @@ const paintRemote=note([{...page('paint','same-ink','2026-03-02'),backgroundColo
 const paintMerge=mergeCloudRestore([paintLocal],[paintRemote]);
 assert(paintMerge.find(item=>item.id==='n1')?.pages[0]?.backgroundColor==='#B8DDD8','newer page paint must win merge');
 assert(paintMerge.some(item=>item.conflictOf==='n1'&&item.pages[0]?.backgroundColor==='#FFF1A8'),'different page paint must create a recoverable conflict');
+const openedLocal={...note([page('opened','same','2026-03-01')],'2026-03-03'),lastOpenedAt:'2026-05-01'};
+const openedRemote={...note([page('opened','same','2026-03-01')],'2026-04-01'),lastOpenedAt:'2026-04-20'};
+assert(mergeCloudRestore([openedLocal],[openedRemote])[0]?.lastOpenedAt==='2026-05-01','cloud merge must preserve newest independent access time');
 const coverLocal={...note([page('cover','same','2026-04-01')],'2026-04-01'),coverColor:'#E8F2ED',coverUri:'file:///local/1-cover.png'};
 const coverRemote={...note([page('cover','same','2026-04-01')],'2026-04-02'),coverColor:'#EAF0FA',coverUri:'file:///remote/2-cover.png'};
 const coverMerge=mergeCloudRestore([coverLocal],[coverRemote]).find(item=>item.id==='n1');

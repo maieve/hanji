@@ -119,6 +119,7 @@ import {
 import Constants from "expo-constants";
 import {
   sortNotebooks,
+  markNotebookOpened,
   type LibrarySort,
   type LibraryViewMode,
 } from "./libraryView";
@@ -382,6 +383,13 @@ export function HanjiApp() {
   useEffect(() => {
     if (openId) tabPages.current[openId] = pageIndex;
   }, [openId, pageIndex]);
+  const trackedOpenId=useRef<string|null>(null);
+  useEffect(()=>{
+    if(!openId){trackedOpenId.current=null;return}
+    if(trackedOpenId.current===openId)return;
+    trackedOpenId.current=openId;
+    setItems(all=>markNotebookOpened(all,openId,new Date().toISOString()));
+  },[openId]);
   useEffect(() => {
     if (openId)
       setOpenTabs((tabs) => (tabs.includes(openId) ? tabs : [...tabs, openId]));
@@ -501,7 +509,6 @@ export function HanjiApp() {
         onOpen={async (id, index = 0, searchQuery) => {
           const opening = items.find((note) => note.id === id);
           if (!opening || !(await unlockNotebook(opening))) return;
-          update(id, (n) => ({ ...n, lastOpenedAt: new Date().toISOString() }));
           const target = items.find((note) => note.id === id)?.pages[index];
           setSearchFocus(
             searchQuery && target
@@ -659,7 +666,7 @@ export function HanjiApp() {
     if(referenceId===id)setReferenceId(undefined);
     setPageIndex(tabPages.current[id] ?? 0);
   };
-  const selectReference=async(id:string)=>{const note=items.find(item=>item.id===id);if(!note||note.id===current.id||!(await unlockNotebook(note)))return;setReferenceId(id)};
+  const selectReference=async(id:string)=>{const note=items.find(item=>item.id===id);if(!note||note.id===current.id||!(await unlockNotebook(note)))return;setItems(all=>markNotebookOpened(all,id,new Date().toISOString()));setReferenceId(id)};
   const closeTab = (id: string) => {
     const index = openTabs.indexOf(id),
       remaining = openTabs.filter((x) => x !== id);

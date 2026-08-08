@@ -1,5 +1,7 @@
 import type { AudioSession, Flashcard, Notebook, Page } from "./types";
 
+const latestOpenedAt=(a?:string,b?:string)=>[a,b].filter((value):value is string=>Boolean(value)).sort().at(-1);
+
 const assetIdentity = (uri?: string) => {
   if (!uri) return undefined;
   try {
@@ -138,6 +140,7 @@ function mergeNotebook(
         local.createdAt < remote.createdAt ? local.createdAt : remote.createdAt,
       updatedAt:
         local.updatedAt > remote.updatedAt ? local.updatedAt : remote.updatedAt,
+      lastOpenedAt:latestOpenedAt(local.lastOpenedAt,remote.lastOpenedAt),
       pages,
       deletedPages,
       audioSessions: mergeAudio(local.audioSessions, remote.audioSessions),
