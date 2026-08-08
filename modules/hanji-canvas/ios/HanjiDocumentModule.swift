@@ -6,7 +6,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -25,6 +25,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   let canvas = PKCanvasView()
   let onDrawingChange = EventDispatcher()
   let onPageCount = EventDispatcher()
+  let onPdfOutline = EventDispatcher()
   let onStrokeAdded = EventDispatcher()
   let onStrokeTapped = EventDispatcher()
   let onHistoryChange = EventDispatcher()
@@ -78,7 +79,25 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
     pdfView.document = pdf
     pdfView.autoScales = true
     onPageCount(["count": pdf.pageCount])
+    onPdfOutline(["items": outlineItems(pdf)])
     showPage(currentPage)
+  }
+
+  private func outlineItems(_ pdf: PDFDocument) -> [[String: Any]] {
+    guard let root = pdf.outlineRoot else { return [] }
+    var result: [[String: Any]] = []
+    func visit(_ node: PDFOutline, depth: Int) {
+      for index in 0..<node.numberOfChildren {
+        guard let child = node.child(at: index) else { continue }
+        let destination = child.destination ?? (child.action as? PDFActionGoTo)?.destination
+        if let page = destination?.page {
+          let pageIndex = pdf.index(for: page)
+          if pageIndex != NSNotFound { result.append(["title": child.label ?? "페이지 \(pageIndex + 1)", "pageIndex": pageIndex, "depth": min(depth, 5)]) }
+        }
+        if result.count < 500 { visit(child, depth: depth + 1) }
+      }
+    }
+    visit(root, depth: 0); return result
   }
 
   func showPage(_ index: Int) {

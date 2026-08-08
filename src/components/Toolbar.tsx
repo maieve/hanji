@@ -19,7 +19,7 @@ const colors = ['#20201E', '#225D50', '#315E9C', '#A4493D', '#8A653E'];
 const eraserLabels = {vector:'획',bitmap:'픽셀',fixedWidthBitmap:'고정'} as const;
 const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사각',triangle:'삼각'} as const;
 
-export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, onExportPdf, onFlashcards, dueCards }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number }) {
+export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
   return <View style={s.bar}>
     <Pressable onPress={onLibrary} style={s.nav}><Ionicons name="library-outline" size={20} color={C.ink} /><Text style={s.navText}>서재</Text></Pressable>
     <TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={s.title} accessibilityLabel="노트 제목" /><View style={s.rule} />
@@ -35,6 +35,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
       <View style={{flexDirection:'row',alignItems:'center',gap:3,marginLeft:4}}>{[0.25,0.5,0.75,1].map(opacity=><Pressable accessibilityLabel={`불투명도 ${opacity*100}%`} key={opacity} onPress={()=>setTool({...tool,opacity})} style={[s.opacity,tool.opacity===opacity&&s.selected]}><Text style={s.opacityText}>{opacity*100}</Text></Pressable>)}</View>
     </ScrollView>
     <Pressable accessibilityLabel="플래시카드" onPress={onFlashcards} style={s.tool}><Ionicons name="albums-outline" size={20} color={C.accent}/>{dueCards>0&&<View style={s.badge}><Text style={s.badgeText}>{Math.min(99,dueCards)}</Text></View>}</Pressable>
+    {onPdfOutline&&<Pressable accessibilityLabel={`PDF 목차 ${outlineCount}개`} disabled={!outlineCount} onPress={onPdfOutline} style={[s.tool,!outlineCount&&{opacity:.35}]}><Ionicons name="list-outline" size={20} color={C.accent}/></Pressable>}
     <Pressable accessibilityLabel="PDF 내보내기" onPress={onExportPdf} style={s.tool}><Ionicons name="share-outline" size={20} color={C.accent}/></Pressable>
     <Pressable accessibilityLabel="실행 취소" onPress={onUndo} style={s.tool}><Ionicons name="arrow-undo" size={20} color={C.muted}/></Pressable>
     <Pressable accessibilityLabel="다시 실행" onPress={onRedo} style={s.tool}><Ionicons name="arrow-redo" size={20} color={C.muted}/></Pressable>
