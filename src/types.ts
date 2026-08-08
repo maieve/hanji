@@ -5,4 +5,5 @@ export type OcrWord={text:string;confidence:number;x:number;y:number;width:numbe
 export type Page={id:string;drawingData:string;template:'plain'|'line'|'grid'|'dot';updatedAt:string;pdfUri?:string;pdfName?:string;ocrText?:string;ocrWords?:OcrWord[]};
 export type StrokeSync={pageId:string;createdAt:number;seekSec:number};
 export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[]};
-export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;createdAt:string;updatedAt:string;pages:Page[];audioSessions?:AudioSession[]};
+export type Flashcard={id:string;question:string;answer:string;createdAt:string;updatedAt:string;dueAt:string;intervalDays:number;easeFactor:number;repetitions:number;lapses:number;lastReviewedAt?:string};
+export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;createdAt:string;updatedAt:string;pages:Page[];audioSessions?:AudioSession[];flashcards?:Flashcard[]};
