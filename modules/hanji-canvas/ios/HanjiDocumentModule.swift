@@ -214,10 +214,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     func mix(_ value: UInt64) { hash = (hash ^ value) &* 1099511628211 }
     mix(stroke.path.creationDate.timeIntervalSince1970.bitPattern)
     mix(UInt64(stroke.path.count))
-    for index in 0..<stroke.path.count {
-      let point = stroke.path[index]
-      mix(Double(point.location.x).bitPattern); mix(Double(point.location.y).bitPattern); mix(point.timeOffset.bitPattern)
-    }
+    for index in 0..<stroke.path.count { mix(stroke.path[index].timeOffset.bitPattern) }
     return String(format: "%016llx", hash)
   }
 
@@ -662,7 +659,10 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       let original = canvas.drawing
       clipboardPasteCount += 1
       let distance = CGFloat(18 * clipboardPasteCount)
-      let inserted = pasted.strokes.map { offsetStroke($0, dx: distance, dy: distance) }
+      let copiedAt = Date()
+      let inserted = pasted.strokes.enumerated().map { index, stroke in
+        offsetStroke(stroke, dx: distance, dy: distance, creationDate: copiedAt.addingTimeInterval(Double(index) * 0.000001))
+      }
       registerTransformUndo(original)
       let first = original.strokes.count
       replaceDrawing(PKDrawing(strokes: original.strokes + inserted))
@@ -679,7 +679,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     }
     if action == "clip" || action == "imageFlashcard" { createSelectionClip(); return }
     if action == "duplicate" {
-      let original = canvas.drawing, chosen = original.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? offsetStroke($0.element, dx: 18, dy: 18) : nil }
+      let original = canvas.drawing, copiedAt = Date()
+      let chosen = original.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? offsetStroke($0.element, dx: 18, dy: 18, creationDate: copiedAt.addingTimeInterval(Double($0.offset) * 0.000001)) : nil }
       guard !chosen.isEmpty else { return }
       registerTransformUndo(original)
       let first = original.strokes.count
@@ -784,12 +785,12 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     onDrawingChange(["drawingData": encoded])
   }
 
-  private func offsetStroke(_ stroke: PKStroke, dx: CGFloat, dy: CGFloat) -> PKStroke {
+  private func offsetStroke(_ stroke: PKStroke, dx: CGFloat, dy: CGFloat, creationDate: Date? = nil) -> PKStroke {
     let controls = (0..<stroke.path.count).map { index in
       let point = stroke.path[index]
       return PKStrokePoint(location: CGPoint(x: point.location.x + dx, y: point.location.y + dy), timeOffset: point.timeOffset, size: point.size, opacity: point.opacity, force: point.force, azimuth: point.azimuth, altitude: point.altitude)
     }
-    return PKStroke(ink: stroke.ink, path: PKStrokePath(controlPoints: controls, creationDate: stroke.path.creationDate))
+    return PKStroke(ink: stroke.ink, path: PKStrokePath(controlPoints: controls, creationDate: creationDate ?? stroke.path.creationDate))
   }
 
   private func transformStroke(_ stroke: PKStroke, center: CGPoint, scale: CGFloat, angle: CGFloat) -> PKStroke {
