@@ -87,6 +87,7 @@ import { loadUiPreferences, saveUiPreferences } from "./uiPreferences";
 import { appearanceOverride } from "./themePolicy";
 import { ZoomablePage } from "./components/ZoomablePage";
 import { PageGridPanel } from "./components/PageGridPanel";
+import { PageJumpPanel } from "./components/PageJumpPanel";
 import { resolvePdfPageIndex } from "./pdfNavigation";
 import { StickerPanel } from "./components/StickerPanel";
 import { loadStickers, saveStickers, stickerFromImage } from "./stickers";
@@ -141,6 +142,7 @@ export function HanjiApp() {
     () => new Set(),
   );
   const [pageIndex, setPageIndex] = useState(0);
+  const [pageJumpOpen, setPageJumpOpen] = useState(false);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [referenceId,setReferenceId]=useState<string>();
   const tabPages = useRef<Record<string, number>>({});
@@ -1611,6 +1613,13 @@ export function HanjiApp() {
           {(canvasExtent.columns>1||canvasExtent.rows>1)&&<Text style={s.railTitle}>{canvasExtent.columns}×{canvasExtent.rows} 보드</Text>}
           <View style={s.railActions}>
             <Pressable
+              accessibilityLabel={`페이지 직접 이동, 현재 ${pageIndex + 1} / ${current.pages.length}`}
+              onPress={() => setPageJumpOpen(true)}
+              style={s.railAction}
+            >
+              <Ionicons name="reader-outline" size={16} color={C.accent} />
+            </Pressable>
+            <Pressable
               accessibilityLabel={
                 leftHanded ? "오른손 모드로 전환" : "왼손 모드로 전환"
               }
@@ -1914,6 +1923,14 @@ export function HanjiApp() {
           const target = resolvePdfPageIndex(current.pages, page, pdfPageIndex);
           if (target !== undefined) navigatePage(target);
         }}
+      />
+      <PageJumpPanel
+        visible={pageJumpOpen}
+        currentIndex={pageIndex}
+        pageCount={current.pages.length}
+        pdfPageIndex={page.pdfPageIndex}
+        onSelect={navigatePage}
+        onClose={() => setPageJumpOpen(false)}
       />
       <PageTransferPanel
         visible={pageTransferOpen}
