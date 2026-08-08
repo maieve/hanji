@@ -1,5 +1,6 @@
 export type PencilAction =
   | "eraser"
+  | "system"
   | "temporaryEraser"
   | "undo"
   | "redo"
@@ -7,6 +8,7 @@ export type PencilAction =
   | "none";
 
 export const pencilActions: { value: PencilAction; label: string }[] = [
+  { value: "system", label: "시스템 설정 따르기" },
   { value: "eraser", label: "지우개 전환" },
   { value: "undo", label: "실행 취소" },
   { value: "redo", label: "다시 실행" },

@@ -93,6 +93,7 @@ import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
 import { PagePaintPanel } from "./components/PagePaintPanel";
 import { insertPage } from "./pageInsert";
 import type { PencilAction } from "./pencilActions";
+import { resolvePencilPreferredAction } from "./pencilPreferredAction";
 import { backupIntervalMs } from "./backupPolicy";
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
@@ -155,10 +156,13 @@ export function HanjiApp() {
     eraserAutoReturn: true,
   });
   const previousPencilTool = useRef<ToolSpec>(tool);
+  const previousSystemTool = useRef<ToolSpec>(tool);
   const squeezeTemporaryTool = useRef<ToolSpec | undefined>(undefined);
   const setTool = (value: ToolSpec | ((active: ToolSpec) => ToolSpec)) =>
     setToolState((active) => {
       const next = typeof value === "function" ? value(active) : value;
+      if (JSON.stringify(next) !== JSON.stringify(active))
+        previousSystemTool.current = active;
       const inks = [
         "pen",
         "fountainPen",
@@ -769,6 +773,10 @@ export function HanjiApp() {
       previousPencilTool.current = active;
       return { ...active, kind: "eraser", eraserMode: "vector" };
     });
+  const restorePencilTool = () =>
+    setTool((active) =>
+      active.kind === "eraser" ? previousPencilTool.current : active,
+    );
   const movePage = (direction: -1 | 1) => {
     const target = pageIndex + direction;
     if (target < 0 || target >= current.pages.length) return;
@@ -1081,9 +1089,30 @@ export function HanjiApp() {
     else if (action === "redo") performRedo();
     else if (action === "toolbar") showFocusToolbar();
   };
-  const handlePencilDoubleTap = () =>
-    performPencilAction(uiPreferences.pencilDoubleTapAction);
-  const handlePencilSqueeze = (phase: "began" | "ended") => {
+  const performSystemPencilAction = (preferredAction?: string) => {
+    const resolved = resolvePencilPreferredAction(preferredAction);
+    if (resolved === "eraser") togglePencilEraser();
+    else if (resolved === "previous") {
+      setToolState((active) => {
+        const previous = previousSystemTool.current;
+        previousSystemTool.current = active;
+        return previous;
+      });
+    } else if (resolved === "toolbar") showFocusToolbar();
+  };
+  const handlePencilDoubleTap = (preferredAction?: string) => {
+    if (uiPreferences.pencilDoubleTapAction === "system")
+      performSystemPencilAction(preferredAction);
+    else performPencilAction(uiPreferences.pencilDoubleTapAction);
+  };
+  const handlePencilSqueeze = (
+    phase: "began" | "ended",
+    preferredAction?: string,
+  ) => {
+    if (uiPreferences.pencilSqueezeAction === "system") {
+      if (phase === "began") performSystemPencilAction(preferredAction);
+      return;
+    }
     if (uiPreferences.pencilSqueezeAction !== "temporaryEraser") {
       if (phase === "began") performPencilAction(uiPreferences.pencilSqueezeAction);
       return;
@@ -1323,6 +1352,7 @@ export function HanjiApp() {
               onNavigateSource={navigateExcerptSource}
               onPencilDoubleTap={handlePencilDoubleTap}
               onPencilSqueeze={handlePencilSqueeze}
+              onEraserEnded={restorePencilTool}
               onStrokeAdded={handleStrokeAdded}
               onStrokeTapped={handleStrokeTapped}
             />
@@ -1362,6 +1392,7 @@ export function HanjiApp() {
                 onPdfExcerpt={(excerpt) => capturePdfExcerpt(page, excerpt)}
                 onPencilDoubleTap={handlePencilDoubleTap}
                 onPencilSqueeze={handlePencilSqueeze}
+                onEraserEnded={restorePencilTool}
                 onStrokeAdded={(createdAt) =>
                   handleStrokeAdded(page, createdAt)
                 }

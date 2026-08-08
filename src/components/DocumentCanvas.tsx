@@ -24,8 +24,8 @@ type Props = {
   onPdfOutline?: (items: PdfOutlineItem[]) => void;
   onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
   onPdfExcerpt?: (excerpt:{text:string;pageIndex:number})=>void;
-  onPencilDoubleTap?: () => void;
-  onPencilSqueeze?: (phase: 'began' | 'ended') => void;
+  onPencilDoubleTap?: (preferredAction?: string) => void;
+  onPencilSqueeze?: (phase: 'began' | 'ended', preferredAction?: string) => void;
   onEraserEnded?: () => void;
   onStrokeAdded?: (createdAt: number) => void;
   onStrokeTapped?: (createdAt: number) => void;
@@ -58,11 +58,10 @@ export function DocumentCanvas(p: Props) {
       onPdfOutline={(e: E<{ items: PdfOutlineItem[] }>) => p.onPdfOutline?.(e.nativeEvent.items)}
       onPdfLink={(e: E<{ pageIndex?: number; url?: string }>) => p.onPdfLink?.(e.nativeEvent)}
       onPdfExcerpt={(e:E<{text:string;pageIndex:number}>)=>p.onPdfExcerpt?.(e.nativeEvent)}
-      onPencilDoubleTap={() => p.onPencilDoubleTap?.()}
-      onPencilSqueeze={(e:E<{phase?:'began'|'ended'}>) => p.onPencilSqueeze?.(e.nativeEvent.phase ?? 'began')}
+      onPencilDoubleTap={(e:E<{preferredAction?:string}>) => p.onPencilDoubleTap?.(e.nativeEvent.preferredAction)}
+      onPencilSqueeze={(e:E<{phase?:'began'|'ended';preferredAction?:string}>) => p.onPencilSqueeze?.(e.nativeEvent.phase ?? 'began',e.nativeEvent.preferredAction)}
       onEraserEnded={() => {
-        if (p.onEraserEnded) p.onEraserEnded();
-        else if (p.tool.kind === 'eraser' && (p.tool.eraserAutoReturn ?? true)) p.onPencilDoubleTap?.();
+        if (p.tool.kind === 'eraser' && (p.tool.eraserAutoReturn ?? true)) p.onEraserEnded?.();
       }}
       onStrokeAdded={(e: E<{ createdAt: number }>) => p.onStrokeAdded?.(e.nativeEvent.createdAt)}
       onStrokeTapped={(e: E<{ createdAt: number }>) => p.onStrokeTapped?.(e.nativeEvent.createdAt)}

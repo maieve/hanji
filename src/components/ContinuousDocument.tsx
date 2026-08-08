@@ -37,8 +37,9 @@ type Props = {
   onPdfLink: (link: { pageIndex?: number; url?: string }) => void;
   onPdfExcerpt:(page:Page,excerpt:{text:string;pageIndex:number})=>void;
   onNavigateSource:(source:NonNullable<import('../types').TextElement['source']>)=>void;
-  onPencilDoubleTap: () => void;
-  onPencilSqueeze: (phase: 'began' | 'ended') => void;
+  onPencilDoubleTap: (preferredAction?: string) => void;
+  onPencilSqueeze: (phase: 'began' | 'ended', preferredAction?: string) => void;
+  onEraserEnded: () => void;
   onStrokeAdded: (page: Page, createdAt: number) => void;
   onStrokeTapped: (page: Page, createdAt: number) => void;
 };
@@ -102,6 +103,7 @@ export function ContinuousDocument(props: Props) {
             onPdfExcerpt={excerpt=>props.onPdfExcerpt(item,excerpt)}
             onPencilDoubleTap={props.onPencilDoubleTap}
             onPencilSqueeze={props.onPencilSqueeze}
+            onEraserEnded={props.onEraserEnded}
             onStrokeAdded={(createdAt) => props.onStrokeAdded(item, createdAt)}
             onStrokeTapped={(createdAt) => props.onStrokeTapped(item, createdAt)}
             onSelectionChange={(selection) => props.onSelectionChange(item, selection)}
