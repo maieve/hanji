@@ -17,6 +17,7 @@ type Props = {
   interactionEnabled?: boolean;
   replayCutoff?: number;
   selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'flashcard' | 'imageFlashcard' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
+  selectedElementCount?:number;
   undoSignal?: number;
   redoSignal?: number;
   onDrawingChange: (v: string) => void;
@@ -29,7 +30,7 @@ type Props = {
   onEraserEnded?: () => void;
   onStrokeAdded?: (createdAt: number) => void;
   onStrokeTapped?: (createdAt: number) => void;
-  onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
+  onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
   onSelectionClip?: (result: { uri: string; x: number; y: number; width: number; height: number }) => void;
   onCircleLasso?: () => void;
@@ -51,6 +52,7 @@ export function DocumentCanvas(p: Props) {
       interactionEnabled={p.interactionEnabled ?? true}
       replayCutoff={p.replayCutoff}
       selectionAction={p.selectionAction}
+      selectedElementCount={p.selectedElementCount??0}
       undoSignal={p.undoSignal ?? 0}
       redoSignal={p.redoSignal ?? 0}
       onDrawingChange={(e: E<{ drawingData: string }>) => p.onDrawingChange(e.nativeEvent.drawingData)}
@@ -65,7 +67,7 @@ export function DocumentCanvas(p: Props) {
       }}
       onStrokeAdded={(e: E<{ createdAt: number }>) => p.onStrokeAdded?.(e.nativeEvent.createdAt)}
       onStrokeTapped={(e: E<{ createdAt: number }>) => p.onStrokeTapped?.(e.nativeEvent.createdAt)}
-      onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number }>) => p.onSelectionChange?.(e.nativeEvent)}
+      onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }>) => p.onSelectionChange?.(e.nativeEvent)}
       onSelectionText={(e: E<{ text: string; x: number; y: number; width: number; height: number }>) => p.onSelectionText?.(e.nativeEvent)}
       onSelectionClip={(e: E<{ uri: string; x: number; y: number; width: number; height: number }>) => p.onSelectionClip?.(e.nativeEvent)}
       onCircleLasso={() => p.onCircleLasso?.()}

@@ -11,6 +11,7 @@ type Props = {
   interactionEnabled?: boolean;
   replayCutoff?: number;
   selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'flashcard' | 'imageFlashcard' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
+  selectedElementCount?:number;
   onDrawingChange: (v: string) => void;
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: []) => void;
@@ -20,7 +21,7 @@ type Props = {
   onPencilSqueeze?: () => void;
   onEraserEnded?: () => void;
   onStrokeAdded?: (createdAt: number) => void;
-  onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
+  onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
   onSelectionClip?: (result: { uri: string; x: number; y: number; width: number; height: number }) => void;
   onCircleLasso?: () => void;

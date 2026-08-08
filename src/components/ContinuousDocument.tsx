@@ -175,6 +175,7 @@ export function ContinuousDocument(props: Props) {
             selectionAction={
               index === props.activeIndex ? props.selectionAction : undefined
             }
+            selectedElementCount={props.selectedElements.pageId===item.id?props.selectedElements.ids.length:0}
             undoSignal={
               index === props.activeIndex ? props.undoSignal : undefined
             }

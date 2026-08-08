@@ -23,6 +23,7 @@ public final class HanjiDocumentModule: Module {
       Prop("interactionEnabled") { (view: HanjiDocumentView, value: Bool) in view.canvas.isUserInteractionEnabled = value }
       Prop("replayCutoff") { (view: HanjiDocumentView, value: Double?) in view.setReplayCutoff(value) }
       Prop("selectionAction") { (view: HanjiDocumentView, value: [String: Any]?) in view.applySelectionAction(value) }
+      Prop("selectedElementCount") { (view: HanjiDocumentView, value: Int) in view.selectedElementCount = value }
     }
   }
 }
@@ -69,6 +70,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var selectedStrokeIndexes: [Int] = []
   private var lassoMode = "freeform"
   private var lassoInkEnabled = true
+  var selectedElementCount = 0
   private var selectionPoints: [CGPoint] = []
   private var selectionBounds = CGRect.zero
   private var selectionMoveDrawing: PKDrawing?
@@ -353,7 +355,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let point = recognizer.location(in: canvas)
     switch recognizer.state {
     case .began:
-      if !selectedStrokeIndexes.isEmpty, selectionBounds.insetBy(dx: -12, dy: -12).contains(point) {
+      if (!selectedStrokeIndexes.isEmpty || selectedElementCount > 0), selectionBounds.insetBy(dx: -12, dy: -12).contains(point) {
         selectionMoveDrawing = canvas.drawing
         selectionMoveBounds = selectionBounds
         recognizer.setTranslation(.zero, in: canvas)
@@ -371,7 +373,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         applyingShape = true; canvas.drawing = PKDrawing(strokes: moved); applyingShape = false
         selectionBounds = selectionMoveBounds.offsetBy(dx: translation.x, dy: translation.y)
         selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
-        emitSelection()
+        emitSelection(moving: true)
         return
       }
       if lassoMode == "rectangle" {
@@ -410,7 +412,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         replaceDrawing(original)
         selectionBounds = selectionMoveBounds
         selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
-        emitSelection()
+        emitSelection(cancelled: true)
       } else { clearSelection() }
     default: break
     }
@@ -428,9 +430,9 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     return corners.contains(where:path.contains)
   }
 
-  private func emitSelection() {
+  private func emitSelection(moving: Bool = false, cancelled: Bool = false) {
     let width = max(canvas.bounds.width, 1), height = max(canvas.bounds.height, 1)
-    onSelectionChange(["count": selectedStrokeIndexes.count, "x": selectionBounds.minX / width, "y": selectionBounds.minY / height, "width": selectionBounds.width / width, "height": selectionBounds.height / height])
+    onSelectionChange(["count": selectedStrokeIndexes.count, "x": selectionBounds.minX / width, "y": selectionBounds.minY / height, "width": selectionBounds.width / width, "height": selectionBounds.height / height, "moving": moving, "moveCancelled": cancelled])
   }
 
   private func clearSelection() {

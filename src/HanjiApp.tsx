@@ -95,7 +95,7 @@ import { defaultUiPreferences, type UiPreferences } from "./uiPreferences";
 import { DocumentSearchPanel } from "./components/DocumentSearchPanel";
 import { PagePaintPanel } from "./components/PagePaintPanel";
 import { selectionTextToQuestion } from "./flashcardDraft";
-import {selectElementIds} from './elementSelection';
+import {moveSelectedElements,selectElementIds} from './elementSelection';
 import {normalizeCanvasExtent,resizePageCanvas} from './canvasExtent';
 import {resolveReferenceNotebook} from './referenceDocument';
 import { insertPage } from "./pageInsert";
@@ -196,6 +196,10 @@ export function HanjiApp() {
     { pageId: "", count: 0 },
   );
   const [selectedElements,setSelectedElements]=useState<{pageId:string;ids:string[]}>({pageId:"",ids:[]});
+  const selectedElementsRef=useRef(selectedElements);selectedElementsRef.current=selectedElements;
+  const selectionBoundsRef=useRef<{pageId:string;x:number;y:number;width:number;height:number}|undefined>(undefined);
+  const selectionWasMovingRef=useRef(false);
+  const selectionElementMoveOriginRef=useRef<{pageId:string;elements:PageElement[]}|undefined>(undefined);
   const selectedElementClipboardRef=useRef<PageElement[]>([]);
   const [selectionAction, setSelectionAction] = useState<{
     nonce: number;
@@ -973,9 +977,20 @@ export function HanjiApp() {
       ),
     }));
   };
-  const handleSelection = (target: typeof page, value: { count: number;x?:number;y?:number;width?:number;height?:number }) => {
+  const handleSelection = (target: typeof page, value: { count: number;x?:number;y?:number;width?:number;height?:number;moving?:boolean;moveCancelled?:boolean }) => {
     const hasBounds=value.x!==undefined&&value.y!==undefined&&value.width!==undefined&&value.height!==undefined;
+    const previous=selectionBoundsRef.current,selected=selectedElementsRef.current;
+    if(value.moveCancelled&&selectionElementMoveOriginRef.current?.pageId===target.id){const origin=selectionElementMoveOriginRef.current;update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===target.id?{...p,elements:origin.elements,updatedAt:new Date().toISOString()}:p)}));selectionElementMoveOriginRef.current=undefined;selectionWasMovingRef.current=false;if(hasBounds)selectionBoundsRef.current={pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!};setSelection({pageId:target.id,count:value.count+selected.ids.length});return}
+    if(hasBounds&&value.moving&&previous?.pageId===target.id&&selected.pageId===target.id&&selected.ids.length){
+      if(!selectionWasMovingRef.current)selectionElementMoveOriginRef.current={pageId:target.id,elements:(target.elements??[]).map(element=>({...element}))};
+      const dx=value.x!-previous.x,dy=value.y!-previous.y,ids=new Set(selected.ids);
+      update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===target.id?{...p,elements:moveSelectedElements(p.elements??[],ids,dx,dy),updatedAt:new Date().toISOString()}:p)}));
+      selectionBoundsRef.current={pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!};selectionWasMovingRef.current=true;
+      setSelection({pageId:target.id,count:value.count+selected.ids.length});return;
+    }
+    if(hasBounds&&!value.moving&&selectionWasMovingRef.current&&previous?.pageId===target.id&&selected.pageId===target.id){selectionWasMovingRef.current=false;selectionElementMoveOriginRef.current=undefined;selectionBoundsRef.current={pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!};setSelection({pageId:target.id,count:value.count+selected.ids.length});return}
     const ids=hasBounds?selectElementIds(target.elements??[],{x:value.x!,y:value.y!,width:value.width!,height:value.height!},{text:tool.lassoText??true,images:tool.lassoImages??true}):[];
+    selectionBoundsRef.current=hasBounds?{pageId:target.id,x:value.x!,y:value.y!,width:value.width!,height:value.height!}:undefined;
     setSelectedElements({pageId:ids.length?target.id:"",ids});
     setSelection({ pageId: target.id, count: value.count+ids.length });
   };
@@ -1457,6 +1472,7 @@ export function HanjiApp() {
                 interactionEnabled={!elementMode && replayCutoff === undefined}
                 replayCutoff={replayCutoff}
                 selectionAction={selectionAction}
+                selectedElementCount={selectedElements.pageId===page.id?selectedElements.ids.length:0}
                 undoSignal={undoSignal}
                 redoSignal={redoSignal}
                 onPdfOutline={setPdfOutline}
