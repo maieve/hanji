@@ -19,11 +19,13 @@ import {
 import { C } from "../theme";
 import type { AudioSession } from "../types";
 import { TranscriptPanel } from "./TranscriptPanel";
+import { persistRecording } from "../audioAssets";
 export type AudioSaved = Omit<AudioSession, "strokes">;
 type Props = {
   sessions: AudioSession[];
   seekRequest?: { seconds: number; nonce: number; sessionCreatedAt: string };
   onRecordingStart: (startedAt: number) => void;
+  onRecordingCancelled: () => void;
   onSaved: (v: AudioSaved) => void;
   onReplayCutoffChange: (cutoff?: number) => void;
   onTranscribe: (session: AudioSession) => Promise<void>;
@@ -35,6 +37,7 @@ export function AudioPanel({
   sessions,
   seekRequest,
   onRecordingStart,
+  onRecordingCancelled,
   onSaved,
   onReplayCutoffChange,
   onTranscribe,
@@ -73,17 +76,24 @@ export function AudioPanel({
   }, [seekRequest?.nonce, active?.createdAt, active?.uri]);
   const toggleRecord = async () => {
     if (recording.isRecording) {
-      await recorder.stop();
-      if (recorder.uri)
+      const durationMs = recording.durationMillis;
+      try {
+        await recorder.stop();
+        if (!recorder.uri) throw new Error("녹음 파일을 찾을 수 없습니다.");
+        const persistentUri = persistRecording(recorder.uri);
         onSaved({
-          uri: recorder.uri,
+          uri: persistentUri,
           createdAt: new Date().toISOString(),
           startedAt:
             (recorder as unknown as { __hanjiStartedAt?: number })
               .__hanjiStartedAt ??
-            Date.now() / 1000 - recording.durationMillis / 1000,
-          durationMs: recording.durationMillis,
+            Date.now() / 1000 - durationMs / 1000,
+          durationMs,
         });
+      } catch (error) {
+        onRecordingCancelled();
+        Alert.alert("녹음 저장 실패", error instanceof Error ? error.message : "녹음을 영구 저장하지 못했습니다.");
+      }
       return;
     }
     const permission = await requestRecordingPermissionsAsync();
@@ -94,12 +104,16 @@ export function AudioPanel({
       );
       return;
     }
-    await recorder.prepareToRecordAsync();
-    const startedAt = Date.now() / 1000;
-    (recorder as unknown as { __hanjiStartedAt?: number }).__hanjiStartedAt =
-      startedAt;
-    onRecordingStart(startedAt);
-    recorder.record();
+    try {
+      await recorder.prepareToRecordAsync();
+      const startedAt = Date.now() / 1000;
+      (recorder as unknown as { __hanjiStartedAt?: number }).__hanjiStartedAt = startedAt;
+      recorder.record();
+      onRecordingStart(startedAt);
+    } catch (error) {
+      onRecordingCancelled();
+      Alert.alert("녹음 시작 실패", error instanceof Error ? error.message : "녹음을 시작하지 못했습니다.");
+    }
   };
   const togglePlay = () => {
     if (!active) return;

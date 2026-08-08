@@ -1537,6 +1537,10 @@ export function HanjiApp() {
               audioStartRef.current = startedAt;
               audioStrokesRef.current = [];
             }}
+            onRecordingCancelled={() => {
+              audioStartRef.current = null;
+              audioStrokesRef.current = [];
+            }}
             onSaved={(audio) => {
               const strokes = audioStrokesRef.current;
               update(current.id, (n) => ({
