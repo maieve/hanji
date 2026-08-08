@@ -30,7 +30,7 @@ export async function exportNotebookPdf(note: Notebook) {
         .map((x) =>
           x.kind === "text"
             ? `<div style="position:absolute;white-space:pre-wrap;overflow:hidden;left:${x.x * 100}%;top:${x.y * 100}%;width:${x.width * 100}%;height:${x.height * 100}%;font-size:${x.fontSize}px;color:${esc(x.color)}">${esc(x.text)}${x.source ? `<span style="position:absolute;left:0;bottom:0;font-size:${Math.max(9, x.fontSize * 0.55)}px;font-weight:600;color:#2f7d66">↩ ${esc(x.source.pdfName || "PDF")} · ${x.source.pageIndex + 1}쪽</span>` : ""}</div>`
-            : `<img src="${esc(x.uri)}" style="position:absolute;object-fit:${x.fit ?? "contain"};left:${x.x * 100}%;top:${x.y * 100}%;width:${x.width * 100}%;height:${x.height * 100}%;transform:rotate(${x.rotation ?? 0}deg)"/>`,
+            : `<div style="position:absolute;overflow:hidden;left:${x.x * 100}%;top:${x.y * 100}%;width:${x.width * 100}%;height:${x.height * 100}%"><img src="${esc(x.uri)}" style="width:100%;height:100%;object-fit:${x.fit ?? "contain"};transform:translate(${x.fit==='cover'?(Math.max(-1,Math.min(1,x.cropX??0))*30):0}%,${x.fit==='cover'?(Math.max(-1,Math.min(1,x.cropY??0))*30):0}%) scale(${x.fit==='cover'?Math.max(1,Math.min(4,x.cropZoom??1)):1}) rotate(${x.rotation ?? 0}deg)"/></div>`,
         )
         .join("");
       const custom = page.customTemplateUri
@@ -76,7 +76,7 @@ export async function exportPagePng(
     .map((x) =>
       x.kind === "text"
         ? `<text x="${x.x * canvasWidth}" y="${x.y * canvasHeight + x.fontSize}" font-family="sans-serif" font-size="${x.fontSize}" fill="${esc(x.color)}">${esc(x.text)}</text>${x.source ? `<text x="${x.x * canvasWidth}" y="${(x.y + x.height) * canvasHeight - 5}" font-family="sans-serif" font-size="${Math.max(9, x.fontSize * 0.55)}" font-weight="600" fill="#2f7d66">↩ ${esc(x.source.pdfName || "PDF")} · ${x.source.pageIndex + 1}쪽</text>` : ""}`
-        : `<image href="${esc(x.uri)}" x="${x.x * canvasWidth}" y="${x.y * canvasHeight}" width="${x.width * canvasWidth}" height="${x.height * canvasHeight}" preserveAspectRatio="xMidYMid ${x.fit === "cover" ? "slice" : "meet"}" transform="rotate(${x.rotation ?? 0} ${x.x * canvasWidth + x.width * canvasWidth/2} ${x.y * canvasHeight + x.height * canvasHeight/2})"/>`,
+        : (()=>{const left=x.x*canvasWidth,top=x.y*canvasHeight,width=x.width*canvasWidth,height=x.height*canvasHeight,cx=left+width/2,cy=top+height/2,zoom=x.fit==='cover'?Math.max(1,Math.min(4,x.cropZoom??1)):1,dx=x.fit==='cover'?Math.max(-1,Math.min(1,x.cropX??0))*width*.3:0,dy=x.fit==='cover'?Math.max(-1,Math.min(1,x.cropY??0))*height*.3:0,clip=`crop-${esc(x.id)}`;return `<defs><clipPath id="${clip}"><rect x="${left}" y="${top}" width="${width}" height="${height}"/></clipPath></defs><g clip-path="url(#${clip})"><image href="${esc(x.uri)}" x="${left}" y="${top}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid ${x.fit === "cover" ? "slice" : "meet"}" transform="translate(${dx} ${dy}) translate(${cx} ${cy}) rotate(${x.rotation??0}) scale(${zoom}) translate(${-cx} ${-cy})"/></g>`})(),
     )
     .join("");
   const spacing = templateSpacingPoints(page.templateSpacing);

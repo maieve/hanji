@@ -2,8 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { C } from '../theme';
 import type { ImageElement, PageElement, TextElement } from '../types';
+import {adjustImageCrop,normalizeCropOffset,normalizeCropZoom} from '../imageCrop';
 
-export function ElementsLayer({ elements, editable, selectedIds=[], onChange, onSaveImage,onNavigateSource }: { elements: PageElement[]; editable: boolean; selectedIds?:string[]; onChange: (v: PageElement[]) => void; onSaveImage?: (image: ImageElement) => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
+export function ElementsLayer({ elements, editable, selectedIds=[], onChange,onCommit, onSaveImage,onNavigateSource }: { elements: PageElement[]; editable: boolean; selectedIds?:string[]; onChange: (v: PageElement[]) => void;onCommit?:(before:PageElement,after:PageElement)=>void; onSaveImage?: (image: ImageElement) => void;onNavigateSource?:(source:NonNullable<TextElement['source']>)=>void }) {
   const [size,setSize]=useState({width:900,height:636});
   const replace = (next: PageElement) => onChange(elements.map((x) => (x.id === next.id ? next : x)));
   return (
@@ -12,17 +13,18 @@ export function ElementsLayer({ elements, editable, selectedIds=[], onChange, on
         element.kind === 'text' ? (
           <TextBox key={element.id} element={element} selected={selectedIds.includes(element.id)} canvasSize={size} editable={editable} onChange={replace} onNavigateSource={onNavigateSource} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
         ) : (
-          <ImageBox key={element.id} element={element} selected={selectedIds.includes(element.id)} canvasSize={size} editable={editable} onChange={replace} onSave={onSaveImage ? () => onSaveImage(element) : undefined} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
+          <ImageBox key={element.id} element={element} selected={selectedIds.includes(element.id)} canvasSize={size} editable={editable} onChange={replace} onCommit={next=>onCommit?onCommit(element,next):replace(next)} onSave={onSaveImage ? () => onSaveImage(element) : undefined} onDelete={() => onChange(elements.filter((x) => x.id !== element.id))} />
         ),
       )}
     </View>
   );
 }
 
-function ImageBox({ element, canvasSize, editable, selected, onChange, onDelete, onSave }: { element: ImageElement;canvasSize:{width:number;height:number}; editable: boolean;selected:boolean; onChange: (v: ImageElement) => void; onDelete: () => void; onSave?: () => void }) {
+function ImageBox({ element, canvasSize, editable, selected, onChange,onCommit, onDelete, onSave }: { element: ImageElement;canvasSize:{width:number;height:number}; editable: boolean;selected:boolean; onChange: (v: ImageElement) => void;onCommit:(v:ImageElement)=>void; onDelete: () => void; onSave?: () => void }) {
   const start = useRef({ x: element.x, y: element.y }),
     latest = useRef(element);
   latest.current = element;
+  const cropping=element.fit==='cover',cropZoom=cropping?normalizeCropZoom(element.cropZoom):1,cropX=cropping?normalizeCropOffset(element.cropX):0,cropY=cropping?normalizeCropOffset(element.cropY):0,boxWidth=element.width*canvasSize.width,boxHeight=element.height*canvasSize.height;
   const pan = useMemo(
     () =>
       PanResponder.create({
@@ -46,34 +48,35 @@ function ImageBox({ element, canvasSize, editable, selected, onChange, onDelete,
       style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, height: `${element.height * 100}%` }, editable && s.editable,selected&&s.selected]}
     >
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, s.imageClip]}>
-        <Image source={{ uri: element.uri }} resizeMode={element.fit ?? 'contain'} style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${element.rotation ?? 0}deg` }] }]} />
+        <Image source={{ uri: element.uri }} resizeMode={element.fit ?? 'contain'} style={[StyleSheet.absoluteFill, { transform: [{translateX:cropX*boxWidth*.3},{translateY:cropY*boxHeight*.3},{scale:cropZoom},{ rotate: `${element.rotation ?? 0}deg` }] }]} />
       </View>
       {editable && (
+        <>
         <View style={s.controls}>
           <Pressable
             accessibilityLabel="이미지 축소"
-            onPress={() => onChange({ ...element, width: Math.max(0.1, element.width - 0.05), height: Math.max(0.1, element.height - 0.05) })}
+            onPress={() => onCommit({ ...element, width: Math.max(0.1, element.width - 0.05), height: Math.max(0.1, element.height - 0.05) })}
             style={s.control}
           >
             <Text>−</Text>
           </Pressable>
           <Pressable
             accessibilityLabel="이미지 확대"
-            onPress={() => onChange({ ...element, width: Math.min(0.9, element.width + 0.05), height: Math.min(0.9, element.height + 0.05) })}
+            onPress={() => onCommit({ ...element, width: Math.min(0.9, element.width + 0.05), height: Math.min(0.9, element.height + 0.05) })}
             style={s.control}
           >
             <Text>＋</Text>
           </Pressable>
           <Pressable
             accessibilityLabel={element.fit === 'cover' ? '이미지 전체 맞춤' : '이미지 영역 채우기 크롭'}
-            onPress={() => onChange({ ...element, fit: element.fit === 'cover' ? 'contain' : 'cover' })}
+            onPress={() => onCommit({ ...element, fit: element.fit === 'cover' ? 'contain' : 'cover' })}
             style={s.control}
           >
             <Text>{element.fit === 'cover' ? '맞춤' : '채움'}</Text>
           </Pressable>
           <Pressable
             accessibilityLabel="이미지 90도 회전"
-            onPress={() => onChange({ ...element, rotation: (((element.rotation ?? 0) + 90) % 360) as 0 | 90 | 180 | 270 })}
+            onPress={() => onCommit({ ...element, rotation: (((element.rotation ?? 0) + 90) % 360) as 0 | 90 | 180 | 270 })}
             style={s.control}
           >
             <Text>↻</Text>
@@ -83,6 +86,8 @@ function ImageBox({ element, canvasSize, editable, selected, onChange, onDelete,
             <Text style={{ color: C.danger }}>삭제</Text>
           </Pressable>
         </View>
+        {cropping&&<View style={s.cropControls}><Pressable accessibilityLabel="이미지 크롭 축소" onPress={()=>onCommit({...element,...adjustImageCrop(element,{zoom:-.25})})} style={s.control}><Text>−</Text></Pressable><Pressable accessibilityLabel="이미지 크롭 확대" onPress={()=>onCommit({...element,...adjustImageCrop(element,{zoom:.25})})} style={s.control}><Text>＋</Text></Pressable><Pressable accessibilityLabel="이미지 크롭 초점 왼쪽" onPress={()=>onCommit({...element,...adjustImageCrop(element,{x:-.1})})} style={s.control}><Text>←</Text></Pressable><Pressable accessibilityLabel="이미지 크롭 초점 오른쪽" onPress={()=>onCommit({...element,...adjustImageCrop(element,{x:.1})})} style={s.control}><Text>→</Text></Pressable><Pressable accessibilityLabel="이미지 크롭 초점 위쪽" onPress={()=>onCommit({...element,...adjustImageCrop(element,{y:-.1})})} style={s.control}><Text>↑</Text></Pressable><Pressable accessibilityLabel="이미지 크롭 초점 아래쪽" onPress={()=>onCommit({...element,...adjustImageCrop(element,{y:.1})})} style={s.control}><Text>↓</Text></Pressable></View>}
+        </>
       )}
     </View>
   );
@@ -150,5 +155,6 @@ const s = StyleSheet.create({
     borderColor: C.line,
     overflow: 'hidden',
   },
+  cropControls:{position:'absolute',right:0,top:'100%',marginTop:31,flexDirection:'row',backgroundColor:C.white,borderRadius:7,borderWidth:1,borderColor:C.line,overflow:'hidden'},
   control: { height: 28, minWidth: 30, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
 });

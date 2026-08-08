@@ -144,7 +144,7 @@ private func drawTextElements(_ json: String, in bounds: CGRect) {
     let rect = CGRect(x: bounds.width * x, y: bounds.height * y, width: bounds.width * width, height: bounds.height * height)
     if item["kind"] as? String == "image", let uri = item["uri"] as? String {
       let url = uri.hasPrefix("file://") ? URL(string: uri) : URL(fileURLWithPath: uri)
-      if let path = url?.path, let image = UIImage(contentsOfFile: path) { drawHanjiImage(image, in: rect, fit: item["fit"] as? String ?? "contain", rotation: (item["rotation"] as? NSNumber)?.intValue ?? 0) }
+      if let path = url?.path, let image = UIImage(contentsOfFile: path) { drawHanjiImage(image, in: rect, fit: item["fit"] as? String ?? "contain", rotation: (item["rotation"] as? NSNumber)?.intValue ?? 0, cropZoom: (item["cropZoom"] as? NSNumber)?.doubleValue ?? 1, cropX: (item["cropX"] as? NSNumber)?.doubleValue ?? 0, cropY: (item["cropY"] as? NSNumber)?.doubleValue ?? 0) }
       continue
     }
     guard let text = item["text"] as? String else { continue }
@@ -162,14 +162,16 @@ private func drawTextElements(_ json: String, in bounds: CGRect) {
   }
 }
 
-private func drawHanjiImage(_ image: UIImage, in rect: CGRect, fit: String, rotation: Int) {
+private func drawHanjiImage(_ image: UIImage, in rect: CGRect, fit: String, rotation: Int, cropZoom: Double = 1, cropX: Double = 0, cropY: Double = 0) {
   guard let context = UIGraphicsGetCurrentContext(), image.size.width > 0, image.size.height > 0 else { return }
   let normalized = ((rotation % 360) + 360) % 360, odd = normalized == 90 || normalized == 270
   let targetSize = odd ? CGSize(width: rect.height, height: rect.width) : rect.size
   let scaleX = targetSize.width / image.size.width, scaleY = targetSize.height / image.size.height
-  let scale = fit == "cover" ? max(scaleX, scaleY) : min(scaleX, scaleY)
+  let zoom = fit == "cover" ? CGFloat(min(4, max(1, cropZoom))) : 1
+  let scale = (fit == "cover" ? max(scaleX, scaleY) : min(scaleX, scaleY)) * zoom
   let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-  context.saveGState(); context.clip(to: rect); context.translateBy(x: rect.midX, y: rect.midY); context.rotate(by: CGFloat(normalized) * .pi / 180)
+  let offsetX = fit == "cover" ? CGFloat(min(1, max(-1, cropX))) * rect.width * 0.3 : 0, offsetY = fit == "cover" ? CGFloat(min(1, max(-1, cropY))) * rect.height * 0.3 : 0
+  context.saveGState(); context.clip(to: rect); context.translateBy(x: rect.midX + offsetX, y: rect.midY + offsetY); context.rotate(by: CGFloat(normalized) * .pi / 180)
   image.draw(in: CGRect(x: -drawSize.width / 2, y: -drawSize.height / 2, width: drawSize.width, height: drawSize.height))
   context.restoreGState()
 }

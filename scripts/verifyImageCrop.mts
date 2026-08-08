@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {adjustImageCrop,normalizeCropOffset,normalizeCropZoom} from '../src/imageCrop.ts';
+import {stickerFromImage} from '../src/stickers.ts';
+assert.equal(normalizeCropZoom(undefined),1);
+assert.equal(normalizeCropZoom(9),4);
+assert.equal(normalizeCropOffset(-3),-1);
+assert.deepEqual(adjustImageCrop({cropZoom:1,cropX:.95,cropY:-.95},{zoom:.25,x:.1,y:-.1}),{cropZoom:1.25,cropX:1,cropY:-1});
+const sticker=stickerFromImage({id:'image',kind:'image',uri:'file:///photo.png',x:0,y:0,width:.4,height:.3,fit:'cover',rotation:90,cropZoom:2,cropX:.4,cropY:-.3});
+assert.deepEqual([sticker.fit,sticker.rotation,sticker.cropZoom,sticker.cropX,sticker.cropY],['cover',90,2,.4,-.3]);
+console.log('image crop verification passed');

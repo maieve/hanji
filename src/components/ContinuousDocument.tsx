@@ -52,6 +52,7 @@ type Props = {
   onActiveIndexChange: (index: number) => void;
   onDrawingChange: (page: Page, drawingData: string) => void;
   onElementsChange: (page: Page, elements: PageElement[]) => void;
+  onElementCommit:(page:Page,before:PageElement,after:PageElement)=>void;
   onSaveSticker: (image: ImageElement) => void;
   onSelectionChange: (
     page: Page,
@@ -207,7 +208,8 @@ export function ContinuousDocument(props: Props) {
               editable={props.elementMode && index === props.activeIndex}
               elements={item.elements ?? []}
               selectedIds={props.selectedElements.pageId===item.id?props.selectedElements.ids:[]}
-            onChange={(elements) => props.onElementsChange(item, elements)}
+              onChange={(elements) => props.onElementsChange(item, elements)}
+              onCommit={(before,after)=>props.onElementCommit(item,before,after)}
             onSaveImage={props.onSaveSticker}
             onNavigateSource={props.onNavigateSource}
           />

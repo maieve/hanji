@@ -694,7 +694,7 @@ export function HanjiApp() {
       (item) =>
         item.uri === image.uri &&
         item.fit === image.fit &&
-        item.rotation === image.rotation,
+        item.rotation === image.rotation&&item.cropZoom===image.cropZoom&&item.cropX===image.cropX&&item.cropY===image.cropY,
     );
     const next = existing
       ? [existing, ...stickers.filter((item) => item.id !== existing.id)]
@@ -729,6 +729,9 @@ export function HanjiApp() {
       height: sticker.height,
       fit: sticker.fit,
       rotation: sticker.rotation,
+      cropZoom:sticker.cropZoom,
+      cropX:sticker.cropX,
+      cropY:sticker.cropY,
     };
     update(current.id, (n) => ({
       ...n,
@@ -875,6 +878,7 @@ export function HanjiApp() {
           : p,
       ),
     }));
+  const commitElementChange=(target:typeof page,before:PageElement,after:PageElement)=>{const previous=target.elements??[],next=previous.map(element=>element.id===after.id?after:element);recordSelectionHistory({kind:'snapshot',pageId:target.id,before:previous,after:next,native:false});changeElements(target,next)};
   const handlePdfLink = (link: { pageIndex?: number; url?: string }) => {
     if (link.pageIndex !== undefined) navigatePage(link.pageIndex);
     else if (link.url) void Linking.openURL(link.url);
@@ -1406,6 +1410,7 @@ export function HanjiApp() {
               onActiveIndexChange={setPageIndex}
               onDrawingChange={changeDrawing}
               onElementsChange={changeElements}
+              onElementCommit={commitElementChange}
               onSaveSticker={saveImageSticker}
               onSelectionChange={handleSelection}
               onSelectionText={handleSelectionText}
@@ -1484,6 +1489,7 @@ export function HanjiApp() {
                 elements={page.elements ?? []}
                 selectedIds={selectedElements.pageId===page.id?selectedElements.ids:[]}
                 onChange={(elements) => changeElements(page, elements)}
+                onCommit={(before,after)=>commitElementChange(page,before,after)}
                 onSaveImage={saveImageSticker}
                 onNavigateSource={navigateExcerptSource}
               />
