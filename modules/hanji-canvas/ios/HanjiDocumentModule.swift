@@ -51,6 +51,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var shapeLineStyle = "solid"
   private var applyingShape = false
   private var activeKind = "pen"
+  private var activeInkColor = UIColor.black
   private var scratchEnabled = true
   private var circleToLasso = true
   private var markerStraightLine = true
@@ -82,6 +83,12 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     tap.cancelsTouchesInView = false
     tap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
     canvas.addGestureRecognizer(tap)
+    let pdfTextPress = UILongPressGestureRecognizer(target: self, action: #selector(handlePDFTextPress(_:)))
+    pdfTextPress.minimumPressDuration = 0.35
+    pdfTextPress.allowableMovement = 12
+    pdfTextPress.cancelsTouchesInView = false
+    pdfTextPress.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
+    canvas.addGestureRecognizer(pdfTextPress)
     let pencilInteraction = UIPencilInteraction(); pencilInteraction.delegate = self; addInteraction(pencilInteraction)
     selectionLayer.fillColor = UIColor.systemTeal.withAlphaComponent(0.08).cgColor
     selectionLayer.strokeColor = UIColor.systemTeal.cgColor
@@ -236,6 +243,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     default: inkType = .pen
     }
     let color = UIColor(hanjiHex: value["color"] as? String ?? "#20201E").withAlphaComponent(opacity)
+    activeInkColor = color
     canvas.tool = PKInkingTool(inkType, color: color, width: width)
   }
 
@@ -260,6 +268,28 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     } else if let urlAction = action as? PDFActionURL, let url = urlAction.url {
       onPdfLink(["url": url.absoluteString])
     }
+  }
+
+  @objc private func handlePDFTextPress(_ recognizer: UILongPressGestureRecognizer) {
+    guard recognizer.state == .began, activeKind == "marker", replayCutoff == nil, document != nil else { return }
+    let canvasPoint = recognizer.location(in: canvas), pdfPoint = canvas.convert(canvasPoint, to: pdfView)
+    guard let page = pdfView.page(for: pdfPoint, nearest: false) else { return }
+    let pagePoint = pdfView.convert(pdfPoint, to: page)
+    guard let selection = page.selectionForWord(at: pagePoint) else { return }
+    let pageBounds = selection.bounds(for: page)
+    guard !pageBounds.isNull, pageBounds.width > 1, pageBounds.height > 1 else { return }
+    let pdfBounds = pdfView.convert(pageBounds, from: page)
+    let rect = canvas.convert(pdfBounds, from: pdfView).insetBy(dx: -1.5, dy: 0)
+    let thickness = max(3, rect.height * 0.72), y = rect.midY
+    let points = [
+      PKStrokePoint(location: CGPoint(x: rect.minX + thickness / 2, y: y), timeOffset: 0, size: CGSize(width: thickness, height: thickness), opacity: 1, force: 1, azimuth: 0, altitude: .pi / 2),
+      PKStrokePoint(location: CGPoint(x: rect.maxX - thickness / 2, y: y), timeOffset: 0.01, size: CGSize(width: thickness, height: thickness), opacity: 1, force: 1, azimuth: 0, altitude: .pi / 2)
+    ]
+    let stroke = PKStroke(ink: PKInk(.marker, color: activeInkColor), path: PKStrokePath(controlPoints: points, creationDate: Date()))
+    let original = canvas.drawing
+    registerTransformUndo(original)
+    replaceDrawing(PKDrawing(strokes: original.strokes + [stroke]))
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
   }
 
   @objc private func handleSelectionPan(_ recognizer: UIPanGestureRecognizer) {
