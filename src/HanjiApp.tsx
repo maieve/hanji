@@ -43,6 +43,7 @@ import {defaultUiPreferences,type UiPreferences} from './uiPreferences';
 import {DocumentSearchPanel} from './components/DocumentSearchPanel';
 import {PagePaintPanel} from './components/PagePaintPanel';
 import {insertPage} from './pageInsert';
+import {backupIntervalMs} from './backupPolicy';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -134,14 +135,14 @@ export function HanjiApp() {
     if (!ready) return;
     if (backupTimer.current) clearTimeout(backupTimer.current);
     backupTimer.current = setTimeout(() => {
-      void writeAutomaticBackup(items,uiPreferences.backupRetention)
+      void writeAutomaticBackup(items,uiPreferences.backupRetention,backupIntervalMs(uiPreferences.backupIntervalMinutes))
         .then((uri) => uri && uploadArchiveIfEnabled(uri))
         .catch(() => undefined);
     }, 15000);
     return () => {
       if (backupTimer.current) clearTimeout(backupTimer.current);
     };
-  }, [items, ready,uiPreferences.backupRetention]);
+  }, [items, ready,uiPreferences.backupRetention,uiPreferences.backupIntervalMinutes]);
   useEffect(() => {
     if (!ready) return;
     if (indexTimer.current) clearTimeout(indexTimer.current);

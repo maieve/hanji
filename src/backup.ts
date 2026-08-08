@@ -3,6 +3,7 @@ import {Directory,File,Paths} from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
 import type {Notebook} from './types';
+import {normalizeBackupRetention} from './backupPolicy';
 
 type ArchiveManifest={format:'hanji-archive';version:2;createdAt:string;assets:Record<string,string>};
 const clean=(value:string)=>value.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-90)||'asset';
@@ -29,10 +30,10 @@ export async function exportLibrary(items:Notebook[]){
 
 export async function writeAutomaticBackup(items:Notebook[],keep=5,minIntervalMs=30*60*1000){
   if(!items.length)return null;
-  const retention=Math.max(1,Math.min(50,Math.round(keep)||5));
+  const retention=normalizeBackupRetention(keep);
   const directory=new Directory(Paths.document,'Hanji','backups');if(!directory.exists)directory.create({intermediates:true,idempotent:true});
   const existing=directory.list().filter((entry):entry is File=>entry instanceof File&&entry.extension==='.hanji').sort((a,b)=>(b.modificationTime??0)-(a.modificationTime??0));
-  if(existing[0]?.modificationTime&&Date.now()-existing[0].modificationTime<minIntervalMs){for(const old of existing.slice(retention))if(old.exists)old.delete();return existing[0].uri;}
+  if(existing[0]?.modificationTime&&Date.now()-existing[0].modificationTime<minIntervalMs){for(const old of existing.slice(retention))if(old.exists)old.delete();return null;}
   const zip=new JSZip();const assets:Record<string,string>={};let assetIndex=0;
   const addAsset=async(uri:string,folder:string)=>{if(!uri||assets[uri])return;try{const archived=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(archived,await bytes(uri));assets[uri]=archived}catch{}};
   for(const note of items){for(const page of note.pages){if(page.pdfUri)await addAsset(page.pdfUri,'pdf');if(page.customTemplateUri)await addAsset(page.customTemplateUri,'template');for(const element of page.elements??[])if(element.kind==='image')await addAsset(element.uri,'image');if(page.drawingData){const json=page.drawingData.trimStart().startsWith('[');zip.file(`notebooks/${note.id}/pages/${page.id}.${json?'drawing.json':'pkdrawing'}`,page.drawingData,{base64:!json})}}for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio')}
