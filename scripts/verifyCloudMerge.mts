@@ -42,4 +42,10 @@ const coverRemote={...note([page('cover','same','2026-04-01')],'2026-04-02'),cov
 const coverMerge=mergeCloudRestore([coverLocal],[coverRemote]).find(item=>item.id==='n1');
 assert(coverMerge?.coverColor==='#EAF0FA','newer notebook cover color must win merge');
 assert(coverMerge?.coverUri==='file:///remote/2-cover.png','newer notebook cover asset must win merge');
+const orderedPages=[page('o1','one','2026-05-01'),page('o2','two','2026-05-01'),page('o3','three','2026-05-01')];
+const orderLocal={...note(orderedPages,'2026-06-03'),pageOrderUpdatedAt:'2026-06-01'};
+const orderRemote={...note([orderedPages[2]!,orderedPages[0]!,orderedPages[1]!],'2026-06-02'),pageOrderUpdatedAt:'2026-06-02'};
+assert(mergeCloudRestore([orderLocal],[orderRemote]).find(item=>item.id==='n1')?.pages.map(item=>item.id).join(',')==='o3,o1,o2','newest explicit page order must win independently of notebook edits');
+const legacyRemote={...note([orderedPages[1]!,orderedPages[2]!,orderedPages[0]!],'2026-07-01')};
+assert(mergeCloudRestore([orderLocal],[legacyRemote]).find(item=>item.id==='n1')?.pages.map(item=>item.id).join(',')==='o1,o2,o3','legacy notebook updatedAt must not overwrite an explicit local page order');
 console.log('cloud merge verification passed');

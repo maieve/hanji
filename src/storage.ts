@@ -33,6 +33,7 @@ export function newNotebook(
     favorite: false,
     createdAt: t,
     updatedAt: t,
+    pageOrderUpdatedAt: t,
     pages: [blankPage(template, templateSpacing)],
   };
 }

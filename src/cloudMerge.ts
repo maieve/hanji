@@ -92,10 +92,12 @@ function mergeNotebook(
   const deletedPages = { ...(local.deletedPages ?? {}) };
   for (const [id, stamp] of Object.entries(remote.deletedPages ?? {}))
     if (!deletedPages[id] || stamp > deletedPages[id]) deletedPages[id] = stamp;
+  const remoteOrderWins=Boolean(remote.pageOrderUpdatedAt)&&(!local.pageOrderUpdatedAt||remote.pageOrderUpdatedAt!>local.pageOrderUpdatedAt);
+  const primaryOrder=remoteOrderWins?remote.pages:local.pages,secondaryOrder=remoteOrderWins?local.pages:remote.pages;
   const order = [
     ...new Set([
-      ...local.pages.map((page) => page.id),
-      ...remote.pages.map((page) => page.id),
+      ...primaryOrder.map((page) => page.id),
+      ...secondaryOrder.map((page) => page.id),
       ...Object.keys(deletedPages),
     ]),
   ];
@@ -141,6 +143,7 @@ function mergeNotebook(
       updatedAt:
         local.updatedAt > remote.updatedAt ? local.updatedAt : remote.updatedAt,
       lastOpenedAt:latestOpenedAt(local.lastOpenedAt,remote.lastOpenedAt),
+      pageOrderUpdatedAt:latestOpenedAt(local.pageOrderUpdatedAt,remote.pageOrderUpdatedAt),
       pages,
       deletedPages,
       audioSessions: mergeAudio(local.audioSessions, remote.audioSessions),

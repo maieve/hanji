@@ -840,7 +840,7 @@ export function HanjiApp() {
       if (!moving) return n;
       pages.splice(pageIndex, 1);
       pages.splice(target, 0, moving);
-      return { ...n, pages, updatedAt: new Date().toISOString() };
+      const timestamp=new Date().toISOString();return { ...n, pages, updatedAt: timestamp,pageOrderUpdatedAt:timestamp };
     });
     setPageIndex(target);
   };
@@ -857,11 +857,12 @@ export function HanjiApp() {
       pageIndex,
       targetPlacement,
     );
-    update(current.id, (n) => ({
+    update(current.id, (n) => {const timestamp=new Date().toISOString();return{
       ...n,
       pages: inserted.pages,
-      updatedAt: new Date().toISOString(),
-    }));
+      updatedAt: timestamp,
+      pageOrderUpdatedAt:timestamp,
+    }});
     setPageIndex(inserted.index);
   };
   const changeDrawing = (target: typeof page, drawingData: string) => {
@@ -1210,7 +1211,7 @@ export function HanjiApp() {
   };
   const handlePageCount = (count: number, source: typeof page) => {
     if (count <= current.pages.length) return;
-    update(current.id, (n) => ({
+    update(current.id, (n) => {const timestamp=new Date().toISOString();return({
       ...n,
       pages: Array.from(
         { length: count },
@@ -1221,8 +1222,8 @@ export function HanjiApp() {
             pdfName: source.pdfName,
             pdfPageIndex: i,
           },
-      ),
-    }));
+      ),updatedAt:timestamp,pageOrderUpdatedAt:timestamp,
+    })});
   };
   const transferCurrentPage = (targetId: string, mode: "copy" | "move") => {
     setItems((all) =>
@@ -1253,11 +1254,11 @@ export function HanjiApp() {
       .map((id) => map.get(id))
       .filter((p): p is typeof page => Boolean(p));
     const active = pages.findIndex((p) => p.id === page.id);
-    update(current.id, (n) => ({
+    update(current.id, (n) => {const timestamp=new Date().toISOString();return({
       ...n,
       pages,
-      updatedAt: new Date().toISOString(),
-    }));
+      updatedAt: timestamp,pageOrderUpdatedAt:timestamp,
+    })});
     if (active >= 0) setPageIndex(active);
   };
   const duplicatePage = (id: string) => update(current.id,n=>duplicateNotebookPage(n,id));
@@ -1273,6 +1274,7 @@ export function HanjiApp() {
         pages: n.pages.filter((p) => p.id !== id),
         deletedPages: { ...(n.deletedPages ?? {}), [id]: timestamp },
         updatedAt: timestamp,
+        pageOrderUpdatedAt:timestamp,
       };
     });
     if (index <= pageIndex) setPageIndex(Math.max(0, pageIndex - 1));
@@ -1643,20 +1645,7 @@ export function HanjiApp() {
             </Pressable>
             <Pressable
               accessibilityLabel="페이지 복제"
-              onPress={() =>
-                update(current.id, (n) => ({
-                  ...n,
-                  pages: [
-                    ...n.pages.slice(0, pageIndex + 1),
-                    {
-                      ...page,
-                      id: `${Date.now()}`,
-                      updatedAt: new Date().toISOString(),
-                    },
-                    ...n.pages.slice(pageIndex + 1),
-                  ],
-                }))
-              }
+              onPress={() => duplicatePage(page.id)}
               style={s.railAction}
             >
               <Ionicons name="copy-outline" size={16} color={C.accent} />
@@ -1682,6 +1671,7 @@ export function HanjiApp() {
                       [page.id]: timestamp,
                     },
                     updatedAt: timestamp,
+                    pageOrderUpdatedAt:timestamp,
                   };
                 });
                 setPageIndex(Math.max(0, pageIndex - 1));
