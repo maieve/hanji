@@ -7,10 +7,11 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Pressable,
   StyleSheet,
   Text,
@@ -49,6 +50,8 @@ export function AudioPanel({
   const [selectedSessionAt, setSelectedSessionAt] = useState<string>();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recording = useAudioRecorderState(recorder, 250);
+  const recordingStartedAtRef = useRef<number | undefined>(undefined);
+  const finalizingRef = useRef(false);
   const latest = sessions.at(-1);
   const active = sessions.find((session) => session.createdAt === selectedSessionAt) ?? latest;
   const activeIndex = active ? sessions.indexOf(active) : -1;
@@ -74,26 +77,48 @@ export function AudioPanel({
     if (!seekRequest || active?.createdAt !== seekRequest.sessionCreatedAt) return;
     void player.seekTo(seekRequest.seconds).then(() => player.play());
   }, [seekRequest?.nonce, active?.createdAt, active?.uri]);
-  const toggleRecord = async () => {
-    if (recording.isRecording) {
-      const durationMs = recording.durationMillis;
-      try {
-        await recorder.stop();
-        if (!recorder.uri) throw new Error("녹음 파일을 찾을 수 없습니다.");
-        const persistentUri = persistRecording(recorder.uri);
-        onSaved({
-          uri: persistentUri,
-          createdAt: new Date().toISOString(),
-          startedAt:
-            (recorder as unknown as { __hanjiStartedAt?: number })
-              .__hanjiStartedAt ??
-            Date.now() / 1000 - durationMs / 1000,
-          durationMs,
-        });
-      } catch (error) {
-        onRecordingCancelled();
-        Alert.alert("녹음 저장 실패", error instanceof Error ? error.message : "녹음을 영구 저장하지 못했습니다.");
+  const finishRecording = useCallback(async (showError: boolean) => {
+    const startedAt = recordingStartedAtRef.current;
+    if (startedAt === undefined || finalizingRef.current) return;
+    finalizingRef.current = true;
+    const durationMs = Math.max(
+      recorder.getStatus().durationMillis,
+      Math.round((Date.now() / 1000 - startedAt) * 1000),
+    );
+    try {
+      if (recorder.isRecording) await recorder.stop();
+      if (!recorder.uri) throw new Error("녹음 파일을 찾을 수 없습니다.");
+      const persistentUri = persistRecording(recorder.uri);
+      onSaved({
+        uri: persistentUri,
+        createdAt: new Date().toISOString(),
+        startedAt,
+        durationMs,
+      });
+    } catch (error) {
+      onRecordingCancelled();
+      if (showError) {
+        Alert.alert(
+          "녹음 저장 실패",
+          error instanceof Error ? error.message : "녹음을 안전하게 저장하지 못했습니다.",
+        );
       }
+    } finally {
+      recordingStartedAtRef.current = undefined;
+      finalizingRef.current = false;
+    }
+  }, [onRecordingCancelled, onSaved, recorder]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" && recordingStartedAtRef.current !== undefined) {
+        void finishRecording(false);
+      }
+    });
+    return () => subscription.remove();
+  }, [finishRecording]);
+  const toggleRecord = async () => {
+    if (recordingStartedAtRef.current !== undefined) {
+      await finishRecording(true);
       return;
     }
     const permission = await requestRecordingPermissionsAsync();
@@ -107,10 +132,11 @@ export function AudioPanel({
     try {
       await recorder.prepareToRecordAsync();
       const startedAt = Date.now() / 1000;
-      (recorder as unknown as { __hanjiStartedAt?: number }).__hanjiStartedAt = startedAt;
+      recordingStartedAtRef.current = startedAt;
       recorder.record();
       onRecordingStart(startedAt);
     } catch (error) {
+      recordingStartedAtRef.current = undefined;
       onRecordingCancelled();
       Alert.alert("녹음 시작 실패", error instanceof Error ? error.message : "녹음을 시작하지 못했습니다.");
     }
