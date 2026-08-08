@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { pickColor } from "../colorPicker";
 import { C } from "../theme";
 
@@ -29,6 +29,7 @@ export function PagePaintPanel({
   gradientDirection = "vertical",
   opacity,
   onChange,
+  onApplyAll,
   onClose,
 }: {
   visible: boolean;
@@ -37,6 +38,7 @@ export function PagePaintPanel({
   gradientDirection?: "vertical" | "horizontal";
   opacity: number;
   onChange: (color: string | undefined, opacity: number, color2?: string, gradientDirection?: "vertical" | "horizontal") => void;
+  onApplyAll: () => void;
   onClose: () => void;
 }) {
   const active = color ?? "#FFF1A8";
@@ -178,6 +180,16 @@ export function PagePaintPanel({
               <Ionicons name="trash-outline" size={17} color={C.danger} />
               <Text style={s.clearText}>채우기 제거</Text>
             </Pressable>
+            <Pressable
+              accessibilityLabel="현재 페이지 페인트를 모든 페이지에 적용"
+              accessibilityHint="확인 후 이 노트의 모든 페이지 배경을 변경합니다"
+              disabled={!color || opacity <= 0}
+              onPress={() => Alert.alert("모든 페이지에 적용", "현재 페이지의 페인트를 이 노트의 모든 페이지에 적용할까요? 필기와 템플릿은 유지됩니다.", [{text:"취소",style:"cancel"},{text:"적용",onPress:onApplyAll}])}
+              style={[s.applyAll, (!color || opacity <= 0) && s.disabled]}
+            >
+              <Ionicons name="albums-outline" size={17} color={C.accent} />
+              <Text style={s.applyAllText}>전체 적용</Text>
+            </Pressable>
             <Pressable accessibilityLabel="페이지 색상 채우기 완료" onPress={onClose} style={s.done}>
               <Text style={s.doneText}>완료</Text>
             </Pressable>
@@ -280,6 +292,8 @@ const s = StyleSheet.create({
   opacityText: { fontSize: 9, fontWeight: "800", color: C.muted, marginTop: 3 },
   actions: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     justifyContent: "space-between",
     marginTop: 20,
   },
@@ -295,6 +309,8 @@ const s = StyleSheet.create({
     gap: 6,
   },
   clearText: { fontSize: 11, fontWeight: "800", color: C.danger },
+  applyAll: { minHeight: 40, paddingHorizontal: 13, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, flexDirection: "row", alignItems: "center", gap: 6 },
+  applyAllText: { fontSize: 11, fontWeight: "800", color: C.accent },
   done: {
     height: 40,
     paddingHorizontal: 24,

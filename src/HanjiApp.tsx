@@ -115,7 +115,8 @@ import {pushBounded} from './boundedHistory';
 import {resolveDarkInkTransition} from './darkInkPolicy';
 
 type PagePaintSnapshot=Pick<Page,'backgroundColor'|'backgroundColor2'|'backgroundGradientDirection'|'backgroundOpacity'>;
-type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'pagePaint';pageId:string;before:PagePaintSnapshot;after:PagePaintSnapshot}|{kind:'native'};
+type PagePaintPageSnapshot={pageId:string;paint:PagePaintSnapshot};
+type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'pagePaint';pageId:string;before:PagePaintSnapshot;after:PagePaintSnapshot}|{kind:'pagePaintBatch';before:PagePaintPageSnapshot[];after:PagePaintPageSnapshot[]}|{kind:'native'};
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
 import { LibraryMovePanel } from "./components/LibraryMovePanel";
@@ -1416,7 +1417,8 @@ export function HanjiApp() {
   const performUndo = () => {
     const conversion = selectionUndoRef.current.pop();
     if (conversion) {
-      if(conversion.kind==='pagePaint')update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===conversion.pageId?{...p,...conversion.before,updatedAt:new Date().toISOString()}:p)}));
+      if(conversion.kind==='pagePaintBatch')update(current.id,n=>{const paintByPage=new Map(conversion.before.map(entry=>[entry.pageId,entry.paint]));const updatedAt=new Date().toISOString();return{...n,updatedAt,pages:n.pages.map(p=>paintByPage.has(p.id)?{...p,...paintByPage.get(p.id),updatedAt}:p)}});
+      else if(conversion.kind==='pagePaint')update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===conversion.pageId?{...p,...conversion.before,updatedAt:new Date().toISOString()}:p)}));
       else if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.before:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));
       selectionRedoRef.current=pushBounded(selectionRedoRef.current,conversion);
       if(conversion.kind==='native'||conversion.kind==='element'||(conversion.kind==='snapshot'&&conversion.native))setUndoSignal((v)=>v+1);
@@ -1427,7 +1429,8 @@ export function HanjiApp() {
   const performRedo = () => {
     const conversion = selectionRedoRef.current.pop();
     if (conversion) {
-      if(conversion.kind==='pagePaint')update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===conversion.pageId?{...p,...conversion.after,updatedAt:new Date().toISOString()}:p)}));
+      if(conversion.kind==='pagePaintBatch')update(current.id,n=>{const paintByPage=new Map(conversion.after.map(entry=>[entry.pageId,entry.paint]));const updatedAt=new Date().toISOString();return{...n,updatedAt,pages:n.pages.map(p=>paintByPage.has(p.id)?{...p,...paintByPage.get(p.id),updatedAt}:p)}});
+      else if(conversion.kind==='pagePaint')update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===conversion.pageId?{...p,...conversion.after,updatedAt:new Date().toISOString()}:p)}));
       else if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.after:[...(p.elements ?? []),conversion.element]}:p)}));
       selectionUndoRef.current=pushBounded(selectionUndoRef.current,conversion);
       if(conversion.kind==='native'||conversion.kind==='element'||(conversion.kind==='snapshot'&&conversion.native))setRedoSignal((v)=>v+1);
@@ -2284,6 +2287,15 @@ export function HanjiApp() {
                 : item,
             ),
           }));
+        }}
+        onApplyAll={() => {
+          const paint:PagePaintSnapshot={backgroundColor:page.backgroundColor,backgroundColor2:page.backgroundColor2,backgroundGradientDirection:page.backgroundGradientDirection,backgroundOpacity:page.backgroundOpacity};
+          const changed=current.pages.filter(item=>JSON.stringify({backgroundColor:item.backgroundColor,backgroundColor2:item.backgroundColor2,backgroundGradientDirection:item.backgroundGradientDirection,backgroundOpacity:item.backgroundOpacity})!==JSON.stringify(paint));
+          if(!changed.length)return;
+          const before=changed.map(item=>({pageId:item.id,paint:{backgroundColor:item.backgroundColor,backgroundColor2:item.backgroundColor2,backgroundGradientDirection:item.backgroundGradientDirection,backgroundOpacity:item.backgroundOpacity}}));
+          const after=changed.map(item=>({pageId:item.id,paint}));
+          recordSelectionHistory({kind:'pagePaintBatch',before,after});
+          update(current.id,n=>{const ids=new Set(changed.map(item=>item.id));const updatedAt=new Date().toISOString();return{...n,updatedAt,pages:n.pages.map(item=>ids.has(item.id)?{...item,...paint,updatedAt}:item)}});
         }}
         onClose={() => setPagePaintOpen(false)}
       />
