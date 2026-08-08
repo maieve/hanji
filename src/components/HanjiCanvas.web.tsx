@@ -20,6 +20,9 @@ export function HanjiCanvas({ drawingData, tool, onDrawingChange }: HanjiCanvasP
   const [strokes, setStrokes] = useState<Stroke[]>(initial);
   const live = useRef<Stroke | null>(null);
   const shapeStart=useRef<{x:number;y:number}|null>(null);
+  const strokeStart=useRef<{x:number;y:number}|null>(null);
+  const strokeEnd=useRef<{x:number;y:number}|null>(null);
+  const lastMoveAt=useRef(0);
   const [, redraw] = useState(0);
   const eraseAt=(x:number,y:number)=>setStrokes(previous=>{const next=previous.filter(stroke=>!touches(stroke,x,y,Math.max(8,tool.width)));if(next.length!==previous.length)onDrawingChange(JSON.stringify(next));return next});
   const responder = useMemo(() => PanResponder.create({
@@ -29,18 +32,21 @@ export function HanjiCanvas({ drawingData, tool, onDrawingChange }: HanjiCanvasP
       if (tool.kind === 'eraser') {eraseAt(nativeEvent.locationX,nativeEvent.locationY);return}
       if (tool.kind === 'lasso') return;
       if(tool.kind==='shape')shapeStart.current={x:nativeEvent.locationX,y:nativeEvent.locationY};
+      strokeStart.current={x:nativeEvent.locationX,y:nativeEvent.locationY};strokeEnd.current=strokeStart.current;lastMoveAt.current=Date.now();
       live.current = { d: `M ${nativeEvent.locationX} ${nativeEvent.locationY}`, color: tool.color, width: tool.width, opacity: tool.opacity ?? (tool.kind === 'marker' ? 0.35 : tool.kind === 'watercolor' ? 0.45 : tool.kind === 'pencil' ? 0.65 : tool.kind === 'crayon' ? 0.85 : 1) };
       redraw(v => v + 1);
     },
     onPanResponderMove: ({ nativeEvent }) => {
       if(tool.kind==='eraser'){eraseAt(nativeEvent.locationX,nativeEvent.locationY);return}
       if (!live.current) return;
+      strokeEnd.current={x:nativeEvent.locationX,y:nativeEvent.locationY};lastMoveAt.current=Date.now();
       if(tool.kind==='shape'&&shapeStart.current)live.current.d=shapePath(tool.shapeKind??'line',shapeStart.current.x,shapeStart.current.y,nativeEvent.locationX,nativeEvent.locationY);else live.current.d += ` L ${nativeEvent.locationX} ${nativeEvent.locationY}`;
       redraw(v => v + 1);
     },
     onPanResponderRelease: () => {
       if (tool.kind === 'eraser'||tool.kind === 'lasso') return;
       if (!live.current) return;
+      if(tool.kind==='marker'&&(tool.markerStraightLine??true)&&Date.now()-lastMoveAt.current>=350&&strokeStart.current&&strokeEnd.current)live.current.d=shapePath('line',strokeStart.current.x,strokeStart.current.y,strokeEnd.current.x,strokeEnd.current.y);
       const next = [...strokes, live.current]; live.current = null; shapeStart.current=null; setStrokes(next); onDrawingChange(JSON.stringify(next));
     },
   }), [onDrawingChange, strokes, tool]);

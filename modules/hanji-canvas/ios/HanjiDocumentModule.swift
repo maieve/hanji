@@ -46,6 +46,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var applyingShape = false
   private var activeKind = "pen"
   private var scratchEnabled = true
+  private var markerStraightLine = true
   private var zoomWindowEnabled = false
   private var sourceDrawing = PKDrawing()
   private var replayCutoff: Double?
@@ -179,6 +180,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let kind = value["kind"] as? String ?? "pen"
     activeKind = kind
     scratchEnabled = value["scratchEnabled"] as? Bool ?? true
+    markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     let width = (value["width"] as? NSNumber)?.doubleValue ?? 2
     let opacity = (value["opacity"] as? NSNumber)?.doubleValue ?? 1
@@ -234,6 +236,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       let target = scratch.renderBounds.insetBy(dx: -8, dy: -8)
       let previous = strokes.dropLast(), survivors = previous.filter { !$0.renderBounds.intersects(target) }
       if survivors.count < previous.count {
+        registerTransformUndo(canvasView.drawing)
         strokes = Array(survivors); applyingShape = true; canvasView.drawing = PKDrawing(strokes: strokes); applyingShape = false
         UINotificationFeedbackGenerator().notificationOccurred(.success)
       }
@@ -241,7 +244,17 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last {
       let replacements = makeShapeStrokes(source, kind: shapeKind)
       if !replacements.isEmpty {
+        registerTransformUndo(canvasView.drawing)
         strokes.removeLast(); strokes.append(contentsOf: replacements)
+        applyingShape = true; canvasView.drawing = PKDrawing(strokes: strokes); applyingShape = false
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      }
+    }
+    if activeKind == "marker", markerStraightLine, strokes.count > knownStrokeCount, let source = strokes.last, heldAtEnd(source) {
+      let replacement = makeShapeStrokes(source, kind: "line")
+      if let line = replacement.first {
+        registerTransformUndo(canvasView.drawing)
+        strokes.removeLast(); strokes.append(line)
         applyingShape = true; canvasView.drawing = PKDrawing(strokes: strokes); applyingShape = false
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
       }
@@ -319,6 +332,37 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     }
     let diagonal = hypot(stroke.renderBounds.width, stroke.renderBounds.height)
     return reversals >= 4 && diagonal > 12 && distance > diagonal * 2.4
+  }
+
+  private func heldAtEnd(_ stroke: PKStroke) -> Bool {
+    guard stroke.path.count >= 3 else { return false }
+    let last = stroke.path[stroke.path.count - 1], radius = CGFloat(7)
+    for index in stride(from: stroke.path.count - 2, through: 0, by: -1) {
+      let point = stroke.path[index]
+      if hypot(point.location.x - last.location.x, point.location.y - last.location.y) > radius {
+        return last.timeOffset - point.timeOffset >= 0.35
+      }
+    }
+    return false
+  }
+
+  private func registerTransformUndo(_ drawing: PKDrawing) {
+    canvas.undoManager?.registerUndo(withTarget: self) { target in
+      let inverse = target.canvas.drawing
+      target.registerTransformUndo(inverse)
+      target.applyingShape = true
+      target.canvas.drawing = drawing
+      target.applyingShape = false
+      target.sourceDrawing = drawing
+      target.knownStrokeCount = drawing.strokes.count
+      let value = drawing.dataRepresentation().base64EncodedString()
+      target.loadedDrawing = value
+      target.onDrawingChange(["drawingData": value])
+      target.onHistoryChange([
+        "canUndo": target.canvas.undoManager?.canUndo ?? false,
+        "canRedo": target.canvas.undoManager?.canRedo ?? false
+      ])
+    }
   }
 }
 

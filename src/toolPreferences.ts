@@ -17,7 +17,7 @@ export const defaultToolPresets:ToolPreset[]=[
   {id:'default-pen',name:'검정 펜',tool:{kind:'pen',color:'#20201E',width:2,opacity:1,scratchEnabled:true}},
   {id:'default-fountain',name:'파랑 만년필',tool:{kind:'fountainPen',color:'#315E9C',width:2,opacity:1,scratchEnabled:true}},
   {id:'default-pencil',name:'연필',tool:{kind:'pencil',color:'#525252',width:2,opacity:.75,scratchEnabled:true}},
-  {id:'default-marker',name:'형광펜',tool:{kind:'marker',color:'#F0C84B',width:12,opacity:.35,scratchEnabled:true}},
+  {id:'default-marker',name:'형광펜',tool:{kind:'marker',color:'#F0C84B',width:12,opacity:.35,scratchEnabled:true,markerStraightLine:true}},
 ];
 
 export const isInkTool=(kind:ToolKind):kind is InkToolKind=>inkKinds.includes(kind as InkToolKind);
