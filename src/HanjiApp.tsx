@@ -114,7 +114,8 @@ import { backupFailureStage as resolveBackupFailureStage, backupIntervalMs, back
 import {pushBounded} from './boundedHistory';
 import {resolveDarkInkTransition} from './darkInkPolicy';
 
-type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'native'};
+type PagePaintSnapshot=Pick<Page,'backgroundColor'|'backgroundColor2'|'backgroundGradientDirection'|'backgroundOpacity'>;
+type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'pagePaint';pageId:string;before:PagePaintSnapshot;after:PagePaintSnapshot}|{kind:'native'};
 import { ExportPanel } from "./components/ExportPanel";
 import { FolderManager } from "./components/FolderManager";
 import { LibraryMovePanel } from "./components/LibraryMovePanel";
@@ -1415,9 +1416,10 @@ export function HanjiApp() {
   const performUndo = () => {
     const conversion = selectionUndoRef.current.pop();
     if (conversion) {
-      if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.before:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));
+      if(conversion.kind==='pagePaint')update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===conversion.pageId?{...p,...conversion.before,updatedAt:new Date().toISOString()}:p)}));
+      else if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.before:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));
       selectionRedoRef.current=pushBounded(selectionRedoRef.current,conversion);
-      if(conversion.kind==='native'||conversion.kind==='element'||conversion.native)setUndoSignal((v)=>v+1);
+      if(conversion.kind==='native'||conversion.kind==='element'||(conversion.kind==='snapshot'&&conversion.native))setUndoSignal((v)=>v+1);
       return;
     }
     setUndoSignal((v) => v + 1);
@@ -1425,9 +1427,10 @@ export function HanjiApp() {
   const performRedo = () => {
     const conversion = selectionRedoRef.current.pop();
     if (conversion) {
-      if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.after:[...(p.elements ?? []),conversion.element]}:p)}));
+      if(conversion.kind==='pagePaint')update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===conversion.pageId?{...p,...conversion.after,updatedAt:new Date().toISOString()}:p)}));
+      else if(conversion.kind!=='native')update(current.id, (n) => ({...n,pages:n.pages.map((p)=>p.id===conversion.pageId?{...p,elements:conversion.kind==='snapshot'?conversion.after:[...(p.elements ?? []),conversion.element]}:p)}));
       selectionUndoRef.current=pushBounded(selectionUndoRef.current,conversion);
-      if(conversion.kind==='native'||conversion.kind==='element'||conversion.native)setRedoSignal((v)=>v+1);
+      if(conversion.kind==='native'||conversion.kind==='element'||(conversion.kind==='snapshot'&&conversion.native))setRedoSignal((v)=>v+1);
       return;
     }
     setRedoSignal((v) => v + 1);
@@ -2260,7 +2263,11 @@ export function HanjiApp() {
         color2={page.backgroundColor2}
         gradientDirection={page.backgroundGradientDirection}
         opacity={page.backgroundOpacity ?? 0}
-        onChange={(backgroundColor, backgroundOpacity, backgroundColor2, backgroundGradientDirection) =>
+        onChange={(backgroundColor, backgroundOpacity, backgroundColor2, backgroundGradientDirection) => {
+          const before:PagePaintSnapshot={backgroundColor:page.backgroundColor,backgroundColor2:page.backgroundColor2,backgroundGradientDirection:page.backgroundGradientDirection,backgroundOpacity:page.backgroundOpacity};
+          const after:PagePaintSnapshot={backgroundColor,backgroundColor2,backgroundGradientDirection,backgroundOpacity};
+          if(JSON.stringify(before)===JSON.stringify(after))return;
+          recordSelectionHistory({kind:'pagePaint',pageId:page.id,before,after});
           update(current.id, (n) => ({
             ...n,
             updatedAt: new Date().toISOString(),
@@ -2276,8 +2283,8 @@ export function HanjiApp() {
                   }
                 : item,
             ),
-          }))
-        }
+          }));
+        }}
         onClose={() => setPagePaintOpen(false)}
       />
       <ExportPanel
