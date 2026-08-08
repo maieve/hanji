@@ -939,7 +939,20 @@ export function HanjiApp() {
     if (link.pageIndex !== undefined) {
       const target = resolvePdfPageIndex(current.pages, sourcePage, link.pageIndex);
       if (target !== undefined) navigatePage(target);
-    } else if (link.url) void Linking.openURL(link.url);
+    } else if (link.url) {
+      void (async () => {
+        try {
+          if (!(await Linking.canOpenURL(link.url!)))
+            throw new Error("이 링크 형식을 열 수 없습니다.");
+          await Linking.openURL(link.url!);
+        } catch (error) {
+          Alert.alert(
+            "PDF 링크 열기 실패",
+            error instanceof Error ? error.message : "외부 링크를 열 수 없습니다.",
+          );
+        }
+      })();
+    }
   };
   const capturePdfExcerpt = (
     sourcePage: typeof page,

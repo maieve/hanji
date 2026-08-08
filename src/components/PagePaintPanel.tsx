@@ -118,7 +118,7 @@ export function PagePaintPanel({
               <Ionicons name="trash-outline" size={17} color={C.danger} />
               <Text style={s.clearText}>채우기 제거</Text>
             </Pressable>
-            <Pressable onPress={onClose} style={s.done}>
+            <Pressable accessibilityLabel="페이지 색상 채우기 완료" onPress={onClose} style={s.done}>
               <Text style={s.doneText}>완료</Text>
             </Pressable>
           </View>

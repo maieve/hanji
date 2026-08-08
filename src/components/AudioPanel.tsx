@@ -139,7 +139,7 @@ export function AudioPanel({
     <View style={[s.wrap, leftHanded && s.wrapLeftHanded]}>
       {active && (
         <View style={s.playback}>
-          <Pressable onPress={togglePlay} style={s.round}>
+          <Pressable accessibilityLabel={playback.playing ? "녹음 일시 정지" : "선택한 녹음 재생"} onPress={togglePlay} style={s.round}>
             <Ionicons
               name={playback.playing ? "pause" : "play"}
               size={15}
@@ -203,6 +203,8 @@ export function AudioPanel({
         </View>
       )}
       <Pressable
+        accessibilityLabel={recording.isRecording ? "녹음 정지 및 저장" : "새 녹음 시작"}
+        accessibilityState={{ selected: recording.isRecording }}
         onPress={toggleRecord}
         style={[s.record, recording.isRecording && s.active]}
       >

@@ -82,7 +82,7 @@ function ImageBox({ element, canvasSize, editable, selected, onChange,onCommit, 
             <Text>↻</Text>
           </Pressable>
           {onSave && <Pressable accessibilityLabel="스티커 컬렉션에 보관" onPress={onSave} style={s.control}><Text>보관</Text></Pressable>}
-          <Pressable onPress={onDelete} style={s.control}>
+          <Pressable accessibilityLabel="이미지 삭제" onPress={onDelete} style={s.control}>
             <Text style={{ color: C.danger }}>삭제</Text>
           </Pressable>
         </View>
@@ -116,20 +116,20 @@ function TextBox({ element,canvasSize, editable,selected, onChange, onDelete,onN
       style={[s.box, { left: `${element.x * 100}%`, top: `${element.y * 100}%`, width: `${element.width * 100}%`, minHeight: element.height * canvasSize.height }, editable && s.editable,selected&&s.selected]}
     >
       {editable ? (
-        <TextInput multiline value={element.text} onChangeText={(text) => onChange({ ...element, text })} style={[s.input, { fontSize: element.fontSize, color: element.color }]} />
+        <TextInput accessibilityLabel="텍스트 상자 내용" multiline value={element.text} onChangeText={(text) => onChange({ ...element, text })} style={[s.input, { fontSize: element.fontSize, color: element.color }]} />
       ) : (
         <Text style={{ fontSize: element.fontSize, color: element.color }}>{element.text}</Text>
       )}
       {element.source&&<Pressable accessibilityLabel={`원문 PDF ${element.source.pageIndex+1}쪽으로 이동`} onPress={()=>onNavigateSource?.(element.source!)} style={s.source}><Text style={s.sourceText}>↩ {element.source.pdfName??'PDF'} · {element.source.pageIndex+1}쪽</Text></Pressable>}
       {editable && (
         <View style={s.controls}>
-          <Pressable onPress={() => onChange({ ...element, fontSize: Math.max(10, element.fontSize - 2) })} style={s.control}>
+          <Pressable accessibilityLabel="텍스트 크기 줄이기" onPress={() => onChange({ ...element, fontSize: Math.max(10, element.fontSize - 2) })} style={s.control}>
             <Text>−</Text>
           </Pressable>
-          <Pressable onPress={() => onChange({ ...element, fontSize: Math.min(72, element.fontSize + 2) })} style={s.control}>
+          <Pressable accessibilityLabel="텍스트 크기 키우기" onPress={() => onChange({ ...element, fontSize: Math.min(72, element.fontSize + 2) })} style={s.control}>
             <Text>＋</Text>
           </Pressable>
-          <Pressable onPress={onDelete} style={s.control}>
+          <Pressable accessibilityLabel="텍스트 상자 삭제" onPress={onDelete} style={s.control}>
             <Text style={{ color: C.danger }}>삭제</Text>
           </Pressable>
         </View>
