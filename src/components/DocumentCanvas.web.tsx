@@ -21,6 +21,7 @@ type Props = {
   onStrokeAdded?: (createdAt: number) => void;
   onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
+  onCircleLasso?: () => void;
 };
 export function DocumentCanvas(p: Props) {
   return (

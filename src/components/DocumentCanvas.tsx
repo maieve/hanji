@@ -28,6 +28,7 @@ type Props = {
   onStrokeTapped?: (createdAt: number) => void;
   onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
+  onCircleLasso?: () => void;
 };
 type E<T> = { nativeEvent: T };
 const Native = requireNativeViewManager('HanjiDocumentCanvas');
@@ -60,6 +61,7 @@ export function DocumentCanvas(p: Props) {
       onStrokeTapped={(e: E<{ createdAt: number }>) => p.onStrokeTapped?.(e.nativeEvent.createdAt)}
       onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number }>) => p.onSelectionChange?.(e.nativeEvent)}
       onSelectionText={(e: E<{ text: string; x: number; y: number; width: number; height: number }>) => p.onSelectionText?.(e.nativeEvent)}
+      onCircleLasso={() => p.onCircleLasso?.()}
     />
   );
 }

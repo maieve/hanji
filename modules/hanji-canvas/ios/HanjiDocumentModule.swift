@@ -7,7 +7,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onCircleLasso")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -40,6 +40,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   let onEraserEnded = EventDispatcher()
   let onSelectionChange = EventDispatcher()
   let onSelectionText = EventDispatcher()
+  let onCircleLasso = EventDispatcher()
   private var document: PDFDocument?
   private var currentPage = 0
   private var loadedDrawing = ""
@@ -51,6 +52,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var applyingShape = false
   private var activeKind = "pen"
   private var scratchEnabled = true
+  private var circleToLasso = true
   private var markerStraightLine = true
   private var zoomWindowEnabled = false
   private var sourceDrawing = PKDrawing()
@@ -206,6 +208,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     selectionPan?.isEnabled = kind == "lasso"
     if kind != "lasso" { clearSelection() }
     scratchEnabled = value["scratchEnabled"] as? Bool ?? true
+    circleToLasso = value["circleToLasso"] as? Bool ?? true
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     shapeLineStyle = value["shapeLineStyle"] as? String ?? "solid"
@@ -347,6 +350,17 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
     if applyingShape { return }
     var strokes = canvasView.drawing.strokes
+    if circleToLasso, ["pen", "fountainPen", "monoline", "pencil"].contains(activeKind), strokes.count > knownStrokeCount, let gesture = strokes.last, let indexes = circleLassoTargets(gesture, in: Array(strokes.dropLast())), !indexes.isEmpty {
+      strokes.removeLast()
+      applyingShape = true; canvasView.drawing = PKDrawing(strokes: strokes); applyingShape = false
+      sourceDrawing = canvasView.drawing; knownStrokeCount = strokes.count
+      selectionBounds = gesture.renderBounds.insetBy(dx: -4, dy: -4)
+      selectedStrokeIndexes = indexes
+      let encoded = canvasView.drawing.dataRepresentation().base64EncodedString(); loadedDrawing = encoded
+      onDrawingChange(["drawingData": encoded]); emitSelection(); onCircleLasso(["count": indexes.count])
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      return
+    }
     if scratchEnabled, ["pen", "fountainPen", "monoline", "pencil", "crayon"].contains(activeKind), strokes.count > knownStrokeCount, let scratch = strokes.last, isScratchStroke(scratch) {
       let target = scratch.renderBounds.insetBy(dx: -8, dy: -8)
       let previous = strokes.dropLast(), survivors = previous.filter { !$0.renderBounds.intersects(target) }
@@ -471,6 +485,22 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     }
     let diagonal = hypot(stroke.renderBounds.width, stroke.renderBounds.height)
     return reversals >= 4 && diagonal > 12 && distance > diagonal * 2.4
+  }
+
+  private func circleLassoTargets(_ gesture: PKStroke, in previous: [PKStroke]) -> [Int]? {
+    guard gesture.path.count >= 14 else { return nil }
+    let bounds = gesture.renderBounds, diagonal = hypot(bounds.width, bounds.height)
+    guard bounds.width >= 28, bounds.height >= 28, diagonal > 0 else { return nil }
+    let start = gesture.path[0].location, end = gesture.path[gesture.path.count - 1].location
+    guard hypot(end.x - start.x, end.y - start.y) <= max(14, diagonal * 0.18) else { return nil }
+    let aspect = bounds.width / max(bounds.height, 1)
+    guard aspect >= 0.45, aspect <= 2.2 else { return nil }
+    var length = CGFloat(0), last = start
+    for index in 1..<gesture.path.count { let point = gesture.path[index].location; length += hypot(point.x - last.x, point.y - last.y); last = point }
+    let expected = .pi * (bounds.width + bounds.height) / 2
+    guard length >= expected * 0.65, length <= expected * 1.7 else { return nil }
+    let interior = bounds.insetBy(dx: max(5, bounds.width * 0.06), dy: max(5, bounds.height * 0.06))
+    return previous.enumerated().compactMap { index, stroke in interior.contains(CGPoint(x: stroke.renderBounds.midX, y: stroke.renderBounds.midY)) ? index : nil }
   }
 
   private func heldAtEnd(_ stroke: PKStroke) -> Bool {
