@@ -14,7 +14,7 @@ export async function rebuildSearchIndex(items:Notebook[]){
   const value=await db();
   await value.withTransactionAsync(async()=>{
     await value.runAsync('DELETE FROM page_search');
-    for(const note of items)for(const [pageIndex,page] of note.pages.entries())await value.runAsync('INSERT INTO page_search(notebookId,pageId,pageIndex,title,tags,body) VALUES(?,?,?,?,?,?)',note.id,page.id,pageIndex,note.title,note.tags.join(' '),page.ocrText??'');
+    for(const note of items){const transcripts=(note.audioSessions??[]).map(session=>session.transcript??'').join(' ');for(const [pageIndex,page] of note.pages.entries())await value.runAsync('INSERT INTO page_search(notebookId,pageId,pageIndex,title,tags,body) VALUES(?,?,?,?,?,?)',note.id,page.id,pageIndex,note.title,note.tags.join(' '),`${page.ocrText??''} ${pageIndex===0?transcripts:''}`.trim());}
   });
 }
 export async function searchLibrary(query:string):Promise<SearchHit[]>{

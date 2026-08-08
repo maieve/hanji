@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { C } from '../theme';
 import type { AudioSession } from '../types';
+import {TranscriptPanel} from './TranscriptPanel';
 export type AudioSaved = Omit<AudioSession, 'strokes'>;
 type Props = {
   sessions: AudioSession[];
@@ -17,6 +18,7 @@ const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.fl
 export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, onReplayCutoffChange, onTranscribe }: Props) {
   const [replay, setReplay] = useState(false);
   const [transcribing,setTranscribing]=useState(false);
+  const [transcriptOpen,setTranscriptOpen]=useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recording = useAudioRecorderState(recorder, 250);
   const latest = sessions.at(-1);
@@ -75,13 +77,14 @@ export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, o
             <Ionicons name="sparkles" size={14} color={replay ? 'white' : C.accent} />
             <Text style={[s.replayText, replay && { color: 'white' }]}>잉크</Text>
           </Pressable>
-          {latest.transcript?<Pressable accessibilityLabel="오디오 전사문 보기" onPress={()=>Alert.alert('오디오 전사',latest.transcript??'')} style={s.replay}><Ionicons name="document-text-outline" size={14} color={C.accent}/><Text style={s.replayText}>전사문</Text></Pressable>:<Pressable accessibilityLabel="온디바이스 한국어 전사" disabled={transcribing} onPress={()=>void transcribe()} style={s.replay}>{transcribing?<ActivityIndicator size="small" color={C.accent}/>:<Ionicons name="language-outline" size={14} color={C.accent}/>}<Text style={s.replayText}>전사</Text></Pressable>}
+          {latest.transcript?<Pressable accessibilityLabel="오디오 전사문 보기" onPress={()=>setTranscriptOpen(true)} style={s.replay}><Ionicons name="document-text-outline" size={14} color={C.accent}/><Text style={s.replayText}>전사문</Text></Pressable>:<Pressable accessibilityLabel="온디바이스 한국어 전사" disabled={transcribing} onPress={()=>void transcribe()} style={s.replay}>{transcribing?<ActivityIndicator size="small" color={C.accent}/>:<Ionicons name="language-outline" size={14} color={C.accent}/>}<Text style={s.replayText}>전사</Text></Pressable>}
         </View>
       )}
       <Pressable onPress={toggleRecord} style={[s.record, recording.isRecording && s.active]}>
         <Ionicons name={recording.isRecording ? 'stop' : 'mic'} size={18} color="white" />
         <Text style={s.recordText}>{recording.isRecording ? clock(recording.durationMillis / 1000) : '녹음'}</Text>
       </Pressable>
+      {latest&&<TranscriptPanel visible={transcriptOpen} session={latest} currentTime={playback.currentTime} onClose={()=>setTranscriptOpen(false)} onSeek={seconds=>{void player.seekTo(seconds).then(()=>player.play())}}/>}
     </View>
   );
 }
