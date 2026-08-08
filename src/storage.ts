@@ -2,7 +2,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Notebook, Page, PageTemplate, TemplateSpacing } from "./types";
 import { expandFolderPaths } from "./folders";
 import { normalizeTemplateSpacing } from "./templateSpacing";
-const KEY = "hanji.library.v2";
+import { Directory, File, Paths } from "expo-file-system";
+import { drawingBlobName, libraryMetadata, type StoredNotebook } from "./drawingPersistence";
+const KEY = "hanji.library.v3";
+const LEGACY_KEY = "hanji.library.v2";
 const CATEGORY_KEY = "hanji.categories.v1";
 export const makeId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
@@ -50,13 +53,48 @@ export function pdfNotebook(name: string, uri: string): Notebook {
   ];
   return n;
 }
+const corruptDrawingRefs=new Set<string>();
+const unrecoverableDrawingRefs=new Map<string,string>();
 export async function loadLibrary(): Promise<Notebook[]> {
-  const raw =
-    (await AsyncStorage.getItem(KEY)) ??
-    (await AsyncStorage.getItem("hanji.library.v1"));
+  const raw = await AsyncStorage.getItem(KEY);
+  const legacyRaw = (await AsyncStorage.getItem(LEGACY_KEY)) ?? (await AsyncStorage.getItem("hanji.library.v1"));
   try {
-    const notes = (raw ? JSON.parse(raw) : []) as Notebook[];
-    return notes.map((note) => ({
+    if (!raw) {
+      const legacy = (legacyRaw ? JSON.parse(legacyRaw) : []) as Notebook[];
+      const normalized = normalizeLibrary(legacy);
+      if (normalized.length) await saveLibrary(normalized);
+      return normalized;
+    }
+    const stored = JSON.parse(raw) as StoredNotebook[];
+    const fallback = new Map<string,string>();
+    if (legacyRaw) for(const note of JSON.parse(legacyRaw) as Notebook[])for(const page of note.pages)fallback.set(`${note.id}:${page.id}`,page.drawingData);
+    const directory = drawingDirectory();
+    const notes = await Promise.all(stored.map(async(note)=>({...note,pages:await Promise.all(note.pages.map(async({drawingRef,...page})=>{
+      let drawingData="";
+      if(drawingRef){
+        const file=new File(directory,drawingRef);
+        if(file.exists){
+          const candidate=await file.text();
+          if(drawingBlobName(note.id,page.id,candidate)===drawingRef)drawingData=candidate;
+          else{
+            const recovered=fallback.get(`${note.id}:${page.id}`)??"";
+            if(recovered)corruptDrawingRefs.add(drawingRef);else unrecoverableDrawingRefs.set(`${note.id}:${page.id}`,drawingRef);
+            drawingData=recovered;
+          }
+        }else{
+          const recovered=fallback.get(`${note.id}:${page.id}`)??"";
+          if(!recovered)unrecoverableDrawingRefs.set(`${note.id}:${page.id}`,drawingRef);
+          drawingData=recovered;
+        }
+      }
+      return {...page,drawingData};
+    }))})));
+    return normalizeLibrary(notes);
+  } catch {
+    try { return normalizeLibrary(legacyRaw ? JSON.parse(legacyRaw) as Notebook[] : []); } catch { return []; }
+  }
+}
+const normalizeLibrary=(notes:Notebook[])=>notes.map((note) => ({
       ...note,
       pages: note.pages.map((page, index) => ({
         ...page,
@@ -66,12 +104,24 @@ export async function loadLibrary(): Promise<Notebook[]> {
           : {}),
       })),
     }));
-  } catch {
-    return [];
-  }
-}
+function drawingDirectory(){const directory=new Directory(Paths.document,"Hanji","drawings");if(!directory.exists)directory.create({intermediates:true,idempotent:true});return directory;}
+let saveQueue:Promise<void>=Promise.resolve();
 export async function saveLibrary(v: Notebook[]) {
-  await AsyncStorage.setItem(KEY, JSON.stringify(v));
+  const task=saveQueue.catch(()=>undefined).then(async()=>{
+    const directory=drawingDirectory(),metadata=libraryMetadata(v);
+    for(const [noteIndex,note] of v.entries())for(const [pageIndex,page] of note.pages.entries()){
+      const pageKey=`${note.id}:${page.id}`,storedPage=metadata[noteIndex]?.pages[pageIndex];
+      if(!page.drawingData){const preserved=unrecoverableDrawingRefs.get(pageKey);if(preserved&&storedPage)storedPage.drawingRef=preserved;continue;}
+      unrecoverableDrawingRefs.delete(pageKey);
+      const drawingRef=storedPage?.drawingRef;if(!drawingRef)continue;
+      const file=new File(directory,drawingRef);
+      if(corruptDrawingRefs.has(drawingRef)&&file.exists)file.delete();
+      if(!file.exists){file.create();file.write(page.drawingData);}
+      corruptDrawingRefs.delete(drawingRef);
+    }
+    await AsyncStorage.setItem(KEY,JSON.stringify(metadata));
+  });
+  saveQueue=task.then(()=>undefined,()=>undefined);await task;
 }
 export async function loadCategories(): Promise<string[]> {
   const raw = await AsyncStorage.getItem(CATEGORY_KEY);
