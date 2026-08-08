@@ -120,8 +120,22 @@ export function CloudSyncPanel({
       ],
     );
 
+  const closePanel = async () => {
+    if (busy) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await saveCloudConfig(config);
+      onClose();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "설정 저장 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => void closePanel()}>
       <View style={s.scrim}>
         <View style={s.card} accessibilityViewIsModal>
           <Text accessibilityRole="header" style={s.title}>Cloudflare R2 백업</Text>
@@ -193,8 +207,8 @@ export function CloudSyncPanel({
           {!!message && <Text accessibilityLiveRegion="polite" style={s.message}>{message}</Text>}
           {busy && <ActivityIndicator accessibilityLabel="클라우드 작업 중" color={C.accent} />}
           <View style={s.actions}>
-            <Pressable accessibilityRole="button" onPress={onClose} style={s.secondary}>
-              <Text>닫기</Text>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={() => void closePanel()} style={s.secondary}>
+              <Text>저장 후 닫기</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"

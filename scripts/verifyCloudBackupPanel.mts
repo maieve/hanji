@@ -10,5 +10,10 @@ assert.match(panel, /accessibilityHint="두 번 탭하면 복원 확인창이 �
 assert.match(panel, /accessibilityLiveRegion="polite"/, "cloud operation results must be announced");
 assert.match(panel, /minHeight: 44/, "cloud controls must preserve a 44pt minimum target");
 assert.match(panel, /maxHeight: "88%"[\s\S]*backupList: \{ maxHeight:/, "the backup inventory must remain scrollable on compact screens");
+assert.match(panel, /const closePanel = async \(\) => \{[\s\S]*await saveCloudConfig\(config\);[\s\S]*onClose\(\)/, "closing the panel must persist edited URL, token, and automatic-backup state");
+assert.match(panel, /onRequestClose=\{\(\) => void closePanel\(\)\}/, "system modal dismissal must use the same durable save path");
+
+const sync = await readFile(new URL("../src/cloudSync.ts", import.meta.url), "utf8");
+assert.match(sync, /sort\(\(a,b\)=>new Date\(b\.uploaded\)\.getTime\(\)-new Date\(a\.uploaded\)\.getTime\(\)\)/, "the client must defensively sort backups newest first");
 
 console.log("cloud backup panel verification passed");
