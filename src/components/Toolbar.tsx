@@ -13,9 +13,11 @@ const tools: { kind: ToolKind; icon: keyof typeof Ionicons.glyphMap; label: stri
   { kind: 'marker', icon: 'brush', label: '형광펜' },
   { kind: 'eraser', icon: 'backspace-outline', label: '지우개' },
   { kind: 'lasso', icon: 'scan-outline', label: '라쏘' },
+  { kind: 'shape', icon: 'shapes-outline', label: '도형' },
 ];
 const colors = ['#20201E', '#225D50', '#315E9C', '#A4493D', '#8A653E'];
 const eraserLabels = {vector:'획',bitmap:'픽셀',fixedWidthBitmap:'고정'} as const;
+const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사각',triangle:'삼각'} as const;
 
 export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, onExportPdf }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void; onExportPdf:()=>void }) {
   return <View style={s.bar}>
@@ -25,6 +27,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
       {tools.map(x => <Pressable accessibilityLabel={x.label} key={x.kind} onPress={() => setTool({ ...tool, kind: x.kind })} style={[s.tool, tool.kind === x.kind && s.selected]}><Ionicons name={x.icon} size={21} color={tool.kind === x.kind ? C.accent : C.muted} /></Pressable>)}
       <Pressable accessibilityLabel="자" onPress={()=>setTool({...tool,rulerActive:!tool.rulerActive})} style={[s.tool,tool.rulerActive&&s.selected]}><Ionicons name="resize-outline" size={21} color={tool.rulerActive?C.accent:C.muted}/></Pressable>
       {tool.kind==='eraser'&&<View style={s.segment}>{(Object.keys(eraserLabels) as (keyof typeof eraserLabels)[]).map(mode=><Pressable key={mode} onPress={()=>setTool({...tool,eraserMode:mode})} style={[s.segmentButton,(tool.eraserMode??'vector')===mode&&s.segmentActive]}><Text style={s.segmentText}>{eraserLabels[mode]}</Text></Pressable>)}</View>}
+      {tool.kind==='shape'&&<View style={s.segment}>{(Object.keys(shapeLabels) as (keyof typeof shapeLabels)[]).map(shapeKind=><Pressable key={shapeKind} onPress={()=>setTool({...tool,shapeKind})} style={[s.segmentButton,(tool.shapeKind??'line')===shapeKind&&s.segmentActive]}><Text style={s.segmentText}>{shapeLabels[shapeKind]}</Text></Pressable>)}</View>}
       <View style={s.colors}>{colors.map(color => <Pressable key={color} onPress={() => setTool({ ...tool, color })} style={[s.color, { backgroundColor: color }, tool.color === color && s.colorSelected]} />)}</View>
       <TextInput accessibilityLabel="HEX 색상" value={tool.color} autoCapitalize="characters" maxLength={7} onChangeText={color=>{if(/^#[0-9A-Fa-f]{0,6}$/.test(color))setTool({...tool,color})}} style={s.hex} />
       {[1, 2, 5, 9, 16, 28].map(width => <Pressable key={width} onPress={() => setTool({ ...tool, width })} style={[s.width, tool.width === width && s.selected]}><View style={{ width: width + 3, height: width + 3, borderRadius: 20, backgroundColor: C.ink }} /></Pressable>)}

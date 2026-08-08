@@ -34,6 +34,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   private var knownStrokeCount = 0
   private var lastUndoSignal = 0
   private var lastRedoSignal = 0
+  private var shapeKind: String?
+  private var applyingShape = false
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -97,6 +99,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
 
   func setTool(_ value: [String: Any]) {
     let kind = value["kind"] as? String ?? "pen"
+    shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     let width = (value["width"] as? NSNumber)?.doubleValue ?? 2
     let opacity = (value["opacity"] as? NSNumber)?.doubleValue ?? 1
     canvas.isRulerActive = value["rulerActive"] as? Bool ?? false
@@ -136,7 +139,16 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   }
 
   func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-    let strokes = canvasView.drawing.strokes
+    if applyingShape { return }
+    var strokes = canvasView.drawing.strokes
+    if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last {
+      let replacements = makeShapeStrokes(source, kind: shapeKind)
+      if !replacements.isEmpty {
+        strokes.removeLast(); strokes.append(contentsOf: replacements)
+        applyingShape = true; canvasView.drawing = PKDrawing(strokes: strokes); applyingShape = false
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      }
+    }
     if strokes.count > knownStrokeCount, let stroke = strokes.last {
       onStrokeAdded(["createdAt": stroke.path.creationDate.timeIntervalSince1970])
     }
@@ -148,6 +160,31 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
       "canUndo": canvasView.undoManager?.canUndo ?? false,
       "canRedo": canvasView.undoManager?.canRedo ?? false
     ])
+  }
+
+  private func makeShapeStrokes(_ source: PKStroke, kind: String) -> [PKStroke] {
+    guard source.path.count > 1 else { return [source] }
+    var start = source.path[0].location, end = source.path[source.path.count - 1].location
+    let angle = atan2(end.y - start.y, end.x - start.x), tolerance = CGFloat.pi / 60
+    if kind == "line" && abs(sin(angle)) < sin(tolerance) { end.y = start.y }
+    if kind == "line" && abs(cos(angle)) < sin(tolerance) { end.x = start.x }
+    let left = min(start.x, end.x), top = min(start.y, end.y), width = max(abs(end.x - start.x), 2), height = max(abs(end.y - start.y), 2)
+    let locations: [[CGPoint]]
+    switch kind {
+    case "arrow":
+      let length = min(CGFloat(28), hypot(end.x - start.x, end.y - start.y) * 0.3)
+      locations = [[start, end], [end, CGPoint(x: end.x - length * cos(angle - 0.55), y: end.y - length * sin(angle - 0.55))], [end, CGPoint(x: end.x - length * cos(angle + 0.55), y: end.y - length * sin(angle + 0.55))]]
+    case "ellipse":
+      locations = [(0...64).map { index in let t = CGFloat(index) / 64 * .pi * 2; return CGPoint(x: left + width / 2 + cos(t) * width / 2, y: top + height / 2 + sin(t) * height / 2) }]
+    case "rectangle": locations = [[CGPoint(x:left,y:top),CGPoint(x:left+width,y:top),CGPoint(x:left+width,y:top+height),CGPoint(x:left,y:top+height),CGPoint(x:left,y:top)]]
+    case "triangle": locations = [[CGPoint(x:left+width/2,y:top),CGPoint(x:left+width,y:top+height),CGPoint(x:left,y:top+height),CGPoint(x:left+width/2,y:top)]]
+    default: locations = [[start, end]]
+    }
+    let prototype = source.path[0]
+    return locations.map { points in
+      let controls = points.enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: prototype.size, opacity: prototype.opacity, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
+      return PKStroke(ink: source.ink, path: PKStrokePath(controlPoints: controls, creationDate: source.path.creationDate))
+    }
   }
 }
 
