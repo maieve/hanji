@@ -2155,7 +2155,7 @@ function Library({
               <View style={s.mark}>
                 <Text style={s.markText}>한</Text>
               </View>
-              <Text style={s.brandText}>Hanji</Text>
+              <Text style={s.brandText}>yoojin note</Text>
             </View>
             <Text style={s.section}>라이브러리</Text>
             {(

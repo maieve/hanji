@@ -1,4 +1,4 @@
-# Hanji
+# yoojin note
 
 iPadOS 17+용 로컬 퍼스트 개인 필기 앱. iOS에서는 PencilKit `PKCanvasView`, 웹에서는 개발·UX 검증용 SVG 캔버스를 사용한다.
 

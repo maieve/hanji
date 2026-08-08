@@ -65,7 +65,7 @@ export function SettingsPanel({
       <View style={s.root}>
         <View style={s.header}>
           <View>
-            <Text style={s.eyebrow}>HANJI SETTINGS</Text>
+            <Text style={s.eyebrow}>YOOJIN NOTE SETTINGS</Text>
             <Text style={s.title}>필기 환경</Text>
           </View>
           <Pressable

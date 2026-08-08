@@ -7,7 +7,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <View style={s.mark}>
         <Text style={s.markText}>한</Text>
       </View>
-      <Text style={s.title}>Hanji가 잠겨 있습니다</Text>
+      <Text style={s.title}>yoojin note가 잠겨 있습니다</Text>
       <Text style={s.body}>
         Face ID, Touch ID 또는 iPad 암호로 잠금을 해제하세요.
       </Text>

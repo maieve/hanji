@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Hanji",
+    "name": "yoojin note",
     "slug": "hanji",
     "version": "0.1.0",
     "extra": {
@@ -14,6 +14,7 @@
       "bundleIdentifier": "dev.hanji.notes",
       "deploymentTarget": "17.0",
       "infoPlist": {
+        "CFBundleDisplayName": "yoojin note",
         "NSSpeechRecognitionUsageDescription": "녹음된 강의와 회의를 기기 안에서 텍스트로 변환합니다."
       }
     },
@@ -25,7 +26,7 @@
       "expo-audio",
       "expo-sqlite",
       "expo-asset",
-      ["expo-local-authentication", {"faceIDPermission": "Hanji 노트를 잠금 해제하려면 Face ID를 사용합니다."}]
+      ["expo-local-authentication", {"faceIDPermission": "yoojin note의 잠긴 노트를 열려면 Face ID를 사용합니다."}]
     ]
   }
 }

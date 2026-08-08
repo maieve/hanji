@@ -82,7 +82,7 @@ Windows에서는 iOS 프로젝트 생성과 Swift 컴파일이 지원되지 않�
 - G73 Atomic mixed-selection history: 잉크·텍스트·이미지 혼합 선택과 요소 전용 선택에서 이동·삭제·잘라내기·붙여넣기·복제·색 변경·축소·확대·회전을 각각 20회 수행한다. 실행 취소 한 번으로 해당 작업의 모든 잉크와 요소가 동시에 직전 상태로 돌아가고 다시 실행 한 번으로 최종 상태가 복원되어야 한다. 요소 전용 작업의 실행 취소는 이전 PencilKit 획을 잘못 제거하지 않고, 혼합 작업은 네이티브 UndoManager와 요소 스냅샷을 함께 진행해야 한다. 페이지 전환·연속 모드·앱 백그라운드 복귀 뒤에도 바로 직전 작업은 복원 가능하며, undo/redo 100회 왕복 후 요소 순서·ID·URI·텍스트와 PKStroke 압력·기울기·생성 시각이 원본과 일치해야 한다.
 - G74 Non-destructive image crop: 가로·세로·정사각 사진 각 10장을 채움 모드로 전환해 1–4배 확대와 상하좌우 초점 이동을 경계까지 반복한다. cropZoom은 1–4, cropX/cropY는 -1–1로 고정되고 원본 이미지 파일과 URI 및 SHA-256은 변하지 않아야 한다. 화면·스티커 미리보기·재삽입·웹/iPad 3배 PNG·PDF에서 회전·채움·확대·초점 위치가 2px 이내로 일치하고 맞춤 모드에서는 저장된 크롭값이 렌더에 영향을 주지 않아야 한다. 페이지 복제·다른 노트 전송·앱 재시작·`.hanji`/Cloud 복원 후 크롭 값이 유지되며 크롭 변경을 100회 실행 취소/다시 실행해도 원본 화질과 좌표가 유지되어야 한다.
 
-1. `main`의 최신 `iOS Native Build`가 성공했는지 확인하고 unsigned IPA artifact를 내려받는다. 함께 들어 있는 `Hanji-build.txt`와 `Hanji-device-checklist.md`를 보존한다.
+1. `main`의 최신 `iOS Native Build`가 성공했는지 확인하고 unsigned IPA artifact를 내려받는다. 함께 들어 있는 `YoojinNote-build.txt`와 `YoojinNote-device-checklist.md`를 보존한다.
 2. [IPAD_INSTALL.md](./IPAD_INSTALL.md)에 따라 AltServer/SideStore로 동일 빌드를 설치한다.
 3. iPadOS 17 이상 실제 iPad와 Apple Pencil로 G1–G16을 순서대로 수행한다.
 4. 생성된 체크리스트에 기기 모델, iPadOS 버전, Pencil 모델, 성공 횟수/전체 횟수, 화면 녹화 또는 샘플 파일을 기록한다.

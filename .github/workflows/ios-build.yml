@@ -32,9 +32,12 @@ jobs:
         working-directory: ios
         run: |
           set -o pipefail
+          WORKSPACE="$(find . -maxdepth 1 -name '*.xcworkspace' -print -quit)"
+          test -n "$WORKSPACE"
+          SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
           xcodebuild \
-            -workspace Hanji.xcworkspace \
-            -scheme Hanji \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
@@ -47,12 +50,12 @@ jobs:
         run: |
           APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
           test -n "$APP_PATH"
-          rm -rf Payload Hanji-unsigned.ipa
+          rm -rf Payload YoojinNote-unsigned.ipa
           mkdir Payload
-          ditto "$APP_PATH" "Payload/Hanji.app"
-          zip -qry Hanji-unsigned.ipa Payload
+          ditto "$APP_PATH" "Payload/YoojinNote.app"
+          zip -qry YoojinNote-unsigned.ipa Payload
           {
-            echo "Hanji build"
+            echo "yoojin note build"
             echo "commit=${GITHUB_SHA}"
             echo "run=${GITHUB_RUN_ID}"
             echo "workflow_run_number=${GITHUB_RUN_NUMBER}"
@@ -60,15 +63,15 @@ jobs:
             echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | sed 's/^/version=/'
             /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist" | sed 's/^/build_number=/'
-          } > Hanji-build.txt
-          node ../scripts/createDeviceChecklist.mjs ../docs/NATIVE_VERIFICATION.md Hanji-device-checklist.md
+          } > YoojinNote-build.txt
+          node ../scripts/createDeviceChecklist.mjs ../docs/NATIVE_VERIFICATION.md YoojinNote-device-checklist.md
       - uses: actions/upload-artifact@v4
         with:
-          name: Hanji-unsigned-ipa
+          name: YoojinNote-unsigned-ipa
           path: |
-            ios/Hanji-unsigned.ipa
-            ios/Hanji-build.txt
-            ios/Hanji-device-checklist.md
+            ios/YoojinNote-unsigned.ipa
+            ios/YoojinNote-build.txt
+            ios/YoojinNote-device-checklist.md
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
