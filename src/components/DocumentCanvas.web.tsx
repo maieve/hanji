@@ -10,6 +10,7 @@ type Props = {
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear'; color?: string };
   onDrawingChange: (v: string) => void;
   onPageCount?: (n: number) => void;
   onPdfOutline?: (items: []) => void;
@@ -18,6 +19,8 @@ type Props = {
   onPencilSqueeze?: () => void;
   onEraserEnded?: () => void;
   onStrokeAdded?: (createdAt: number) => void;
+  onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
+  onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
 };
 export function DocumentCanvas(p: Props) {
   return (

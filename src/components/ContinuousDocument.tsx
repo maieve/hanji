@@ -15,12 +15,15 @@ type Props = {
   zoomWindowEnabled: boolean;
   elementMode: boolean;
   replayCutoff?: number;
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear'; color?: string };
   undoSignal: number;
   redoSignal: number;
   onActiveIndexChange: (index: number) => void;
   onDrawingChange: (page: Page, drawingData: string) => void;
   onElementsChange: (page: Page, elements: PageElement[]) => void;
   onSaveSticker: (image: ImageElement) => void;
+  onSelectionChange: (page: Page, selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
+  onSelectionText: (page: Page, result: { text: string; x: number; y: number; width: number; height: number }) => void;
   onAddPage: () => void;
   onPageCount: (count: number, page: Page) => void;
   onPdfOutline: (items: PdfOutlineItem[]) => void;
@@ -79,6 +82,7 @@ export function ContinuousDocument(props: Props) {
             zoomWindowEnabled={props.zoomWindowEnabled && index === props.activeIndex}
             interactionEnabled={!props.elementMode && props.replayCutoff === undefined}
             replayCutoff={props.replayCutoff}
+            selectionAction={index === props.activeIndex ? props.selectionAction : undefined}
             undoSignal={index === props.activeIndex ? props.undoSignal : undefined}
             redoSignal={index === props.activeIndex ? props.redoSignal : undefined}
             onPdfOutline={props.onPdfOutline}
@@ -87,6 +91,8 @@ export function ContinuousDocument(props: Props) {
             onPencilSqueeze={props.onPencilSqueeze}
             onStrokeAdded={(createdAt) => props.onStrokeAdded(item, createdAt)}
             onStrokeTapped={(createdAt) => props.onStrokeTapped(item, createdAt)}
+            onSelectionChange={(selection) => props.onSelectionChange(item, selection)}
+            onSelectionText={(result) => props.onSelectionText(item, result)}
             onPageCount={(count) => props.onPageCount(count, item)}
             onDrawingChange={(drawingData) => props.onDrawingChange(item, drawingData)}
           />

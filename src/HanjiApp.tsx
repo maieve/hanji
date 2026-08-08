@@ -9,7 +9,7 @@ import { CloudSyncPanel } from './components/CloudSyncPanel';
 import { Toolbar } from './components/Toolbar';
 import { blankPage, loadCategories, loadLibrary, makeId, newNotebook, pdfNotebook, saveCategories, saveLibrary } from './storage';
 import { C } from './theme';
-import type { AudioSession, ImageElement, Notebook, Sticker, ToolSpec } from './types';
+import type { AudioSession, ImageElement, Notebook, Sticker, TextElement, ToolSpec } from './types';
 import { exportLibrary, importLibraryBackup, writeAutomaticBackup } from './backup';
 import { recognizeDrawing } from './vision';
 import { exportNotebookPdf, exportPagePng } from './export';
@@ -35,6 +35,7 @@ import { StickerPanel } from './components/StickerPanel';
 import { loadStickers, saveStickers, stickerFromImage } from './stickers';
 import { mergeCloudRestore } from './cloudMerge';
 import { transcribeAudio } from './speech';
+import { SelectionBar } from './components/SelectionBar';
 
 export function HanjiApp() {
   const { height: windowHeight } = useWindowDimensions();
@@ -76,6 +77,9 @@ export function HanjiApp() {
     nonce: number;
   }>();
   const [replayCutoff, setReplayCutoff] = useState<number>();
+  const [selection,setSelection]=useState<{pageId:string;count:number}>({pageId:'',count:0});
+  const [selectionAction,setSelectionAction]=useState<{nonce:number;type:'delete'|'recolor'|'text'|'clear';color?:string}>();
+  const selectionUndoRef=useRef<{pageId:string;element:TextElement}|null>(null);const selectionRedoRef=useRef<{pageId:string;element:TextElement}|null>(null);
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [outlineOpen, setOutlineOpen] = useState(false);
@@ -417,6 +421,15 @@ export function HanjiApp() {
       audioSessions: n.audioSessions?.map((item) => item.createdAt === session.createdAt ? { ...item, transcript: result.text, transcriptSegments: result.segments, transcribedAt: new Date().toISOString() } : item),
     }));
   };
+  const handleSelection=(target:typeof page,value:{count:number})=>setSelection({pageId:target.id,count:value.count});
+  const handleSelectionText=(target:typeof page,result:{text:string;x:number;y:number;width:number;height:number})=>{
+    const element:TextElement={id:makeId(),kind:'text',text:result.text,x:Math.max(0,Math.min(.82,result.x)),y:Math.max(0,Math.min(.85,result.y)),width:Math.max(.18,Math.min(.8,result.width)),height:Math.max(.08,Math.min(.4,result.height)),fontSize:20,color:target.template==='dark'?'#F4F1E8':C.ink};
+    update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===target.id?{...p,elements:[...(p.elements??[]),element],updatedAt:new Date().toISOString()}:p)}));setElementMode(true);setSelection({pageId:'',count:0});
+    selectionUndoRef.current={pageId:target.id,element};selectionRedoRef.current=null;
+  };
+  const actOnSelection=(type:'delete'|'recolor'|'text'|'clear')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
+  const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
+  const performRedo=()=>{const conversion=selectionRedoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:[...(p.elements??[]),conversion.element]}:p)}));selectionUndoRef.current=conversion;selectionRedoRef.current=null}setRedoSignal(v=>v+1)};
   const handlePageCount = (count: number, source: typeof page) => {
     if (count <= current.pages.length) return;
     update(current.id, (n) => ({
@@ -499,8 +512,8 @@ export function HanjiApp() {
         <Toolbar
           tool={tool}
           setTool={setTool}
-          onUndo={() => setUndoSignal((v) => v + 1)}
-          onRedo={() => setRedoSignal((v) => v + 1)}
+          onUndo={performUndo}
+          onRedo={performRedo}
           fingerDrawingEnabled={fingerDrawingEnabled}
           onToggleFingerDrawing={() => setFingerDrawingEnabled((v) => !v)}
           zoomWindowEnabled={zoomWindowEnabled}
@@ -571,7 +584,7 @@ export function HanjiApp() {
       <View style={[s.editor, focusMode && { marginRight: -112 }]}>
         <View style={s.canvasArea}>
           {(current.viewMode ?? 'page') === 'continuous' ? (
-            <ContinuousDocument pages={current.pages} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
+            <ContinuousDocument pages={current.pages} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
           ) : (
             <RotatedPage
               rotation={page.rotation}
@@ -583,7 +596,7 @@ export function HanjiApp() {
               ]}
             >
               <Paper template={page.template} customTemplateUri={page.customTemplateUri} />
-              <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
+              <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onSelectionChange={(value)=>handleSelection(page,value)} onSelectionText={(result)=>handleSelectionText(page,result)} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
               <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} />
             </RotatedPage>
           )}
@@ -607,6 +620,7 @@ export function HanjiApp() {
             onReplayCutoffChange={setReplayCutoff}
             onTranscribe={transcribeSession}
           />
+          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
         </View>
         <View style={s.rail}>
           <Text style={s.railTitle}>페이지</Text>

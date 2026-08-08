@@ -14,6 +14,7 @@ type Props = {
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear'; color?: string };
   undoSignal?: number;
   redoSignal?: number;
   onDrawingChange: (v: string) => void;
@@ -25,6 +26,8 @@ type Props = {
   onEraserEnded?: () => void;
   onStrokeAdded?: (createdAt: number) => void;
   onStrokeTapped?: (createdAt: number) => void;
+  onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
+  onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
 };
 type E<T> = { nativeEvent: T };
 const Native = requireNativeViewManager('HanjiDocumentCanvas');
@@ -40,6 +43,7 @@ export function DocumentCanvas(p: Props) {
       zoomWindowEnabled={p.zoomWindowEnabled ?? false}
       interactionEnabled={p.interactionEnabled ?? true}
       replayCutoff={p.replayCutoff}
+      selectionAction={p.selectionAction}
       undoSignal={p.undoSignal ?? 0}
       redoSignal={p.redoSignal ?? 0}
       onDrawingChange={(e: E<{ drawingData: string }>) => p.onDrawingChange(e.nativeEvent.drawingData)}
@@ -54,6 +58,8 @@ export function DocumentCanvas(p: Props) {
       }}
       onStrokeAdded={(e: E<{ createdAt: number }>) => p.onStrokeAdded?.(e.nativeEvent.createdAt)}
       onStrokeTapped={(e: E<{ createdAt: number }>) => p.onStrokeTapped?.(e.nativeEvent.createdAt)}
+      onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number }>) => p.onSelectionChange?.(e.nativeEvent)}
+      onSelectionText={(e: E<{ text: string; x: number; y: number; width: number; height: number }>) => p.onSelectionText?.(e.nativeEvent)}
     />
   );
 }

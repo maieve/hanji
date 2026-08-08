@@ -1,12 +1,13 @@
 import ExpoModulesCore
 import PDFKit
 import PencilKit
+import Vision
 
 public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -19,6 +20,7 @@ public final class HanjiDocumentModule: Module {
       Prop("zoomWindowEnabled") { (view: HanjiDocumentView, value: Bool) in view.setZoomWindow(value) }
       Prop("interactionEnabled") { (view: HanjiDocumentView, value: Bool) in view.canvas.isUserInteractionEnabled = value }
       Prop("replayCutoff") { (view: HanjiDocumentView, value: Double?) in view.setReplayCutoff(value) }
+      Prop("selectionAction") { (view: HanjiDocumentView, value: [String: Any]?) in view.applySelectionAction(value) }
     }
   }
 }
@@ -36,6 +38,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   let onStrokeTapped = EventDispatcher()
   let onHistoryChange = EventDispatcher()
   let onEraserEnded = EventDispatcher()
+  let onSelectionChange = EventDispatcher()
+  let onSelectionText = EventDispatcher()
   private var document: PDFDocument?
   private var currentPage = 0
   private var loadedDrawing = ""
@@ -51,6 +55,11 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var zoomWindowEnabled = false
   private var sourceDrawing = PKDrawing()
   private var replayCutoff: Double?
+  private let selectionLayer = CAShapeLayer()
+  private var selectionStart = CGPoint.zero
+  private var selectedStrokeIndexes: [Int] = []
+  private var selectionBounds = CGRect.zero
+  private var lastSelectionAction = 0
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -69,6 +78,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     tap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
     canvas.addGestureRecognizer(tap)
     let pencilInteraction = UIPencilInteraction(); pencilInteraction.delegate = self; addInteraction(pencilInteraction)
+    selectionLayer.fillColor = UIColor.systemTeal.withAlphaComponent(0.08).cgColor
+    selectionLayer.strokeColor = UIColor.systemTeal.cgColor
+    selectionLayer.lineWidth = 1.5
+    selectionLayer.lineDashPattern = [6, 4]
+    canvas.layer.addSublayer(selectionLayer)
+    let selectionPan = UIPanGestureRecognizer(target: self, action: #selector(handleSelectionPan(_:)))
+    selectionPan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+    selectionPan.maximumNumberOfTouches = 1
+    selectionPan.cancelsTouchesInView = true
+    selectionPan.isEnabled = false
+    selectionPan.name = "hanji-rectangle-selection"
+    canvas.addGestureRecognizer(selectionPan)
     addSubview(pdfView)
     addSubview(canvas)
   }
@@ -97,6 +118,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     canvas.frame = bounds
     if canvas.contentSize.width < bounds.width || canvas.contentSize.height < bounds.height { canvas.contentSize = bounds.size }
   }
+
+  private var selectionPan: UIPanGestureRecognizer? { canvas.gestureRecognizers?.compactMap { $0 as? UIPanGestureRecognizer }.first { $0.name == "hanji-rectangle-selection" } }
 
   func setZoomWindow(_ enabled: Bool) {
     guard enabled != zoomWindowEnabled else { return }
@@ -180,6 +203,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   func setTool(_ value: [String: Any]) {
     let kind = value["kind"] as? String ?? "pen"
     activeKind = kind
+    selectionPan?.isEnabled = kind == "lasso"
+    if kind != "lasso" { clearSelection() }
     scratchEnabled = value["scratchEnabled"] as? Bool ?? true
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
@@ -229,6 +254,94 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     } else if let urlAction = action as? PDFActionURL, let url = urlAction.url {
       onPdfLink(["url": url.absoluteString])
     }
+  }
+
+  @objc private func handleSelectionPan(_ recognizer: UIPanGestureRecognizer) {
+    let point = recognizer.location(in: canvas)
+    switch recognizer.state {
+    case .began:
+      selectionStart = point
+      selectedStrokeIndexes = []
+    case .changed:
+      selectionBounds = CGRect(x: min(selectionStart.x, point.x), y: min(selectionStart.y, point.y), width: abs(point.x - selectionStart.x), height: abs(point.y - selectionStart.y))
+      selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+    case .ended:
+      selectedStrokeIndexes = canvas.drawing.strokes.enumerated().compactMap { index, stroke in
+        selectionBounds.intersects(stroke.renderBounds) ? index : nil
+      }
+      if selectedStrokeIndexes.isEmpty { clearSelection(); return }
+      emitSelection()
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    case .cancelled, .failed: clearSelection()
+    default: break
+    }
+  }
+
+  private func emitSelection() {
+    let width = max(canvas.bounds.width, 1), height = max(canvas.bounds.height, 1)
+    onSelectionChange(["count": selectedStrokeIndexes.count, "x": selectionBounds.minX / width, "y": selectionBounds.minY / height, "width": selectionBounds.width / width, "height": selectionBounds.height / height])
+  }
+
+  private func clearSelection() {
+    selectedStrokeIndexes = []
+    selectionBounds = .zero
+    selectionLayer.path = nil
+    onSelectionChange(["count": 0])
+  }
+
+  func applySelectionAction(_ value: [String: Any]?) {
+    guard let value, let nonce = (value["nonce"] as? NSNumber)?.intValue, nonce != lastSelectionAction else { return }
+    lastSelectionAction = nonce
+    let action = value["type"] as? String ?? ""
+    if action == "clear" { clearSelection(); return }
+    guard !selectedStrokeIndexes.isEmpty else { return }
+    if action == "text" { recognizeSelection(); return }
+    let original = canvas.drawing, selected = Set(selectedStrokeIndexes), strokes = original.strokes
+    var changed: [PKStroke]
+    if action == "delete" {
+      changed = strokes.enumerated().compactMap { selected.contains($0.offset) ? nil : $0.element }
+    } else if action == "recolor" {
+      let color = UIColor(hanjiHex: value["color"] as? String ?? "#20201E")
+      changed = strokes.enumerated().map { index, stroke in
+        guard selected.contains(index) else { return stroke }
+        return PKStroke(ink: PKInk(stroke.ink.inkType, color: color.withAlphaComponent(stroke.ink.color.cgColor.alpha)), path: stroke.path)
+      }
+    } else { return }
+    registerTransformUndo(original)
+    replaceDrawing(PKDrawing(strokes: changed))
+    clearSelection()
+  }
+
+  private func recognizeSelection() {
+    let strokes = canvas.drawing.strokes, selected = Set(selectedStrokeIndexes), chosen = strokes.enumerated().compactMap { selected.contains($0.offset) ? $0.element : nil }
+    guard !chosen.isEmpty else { return }
+    let drawing = PKDrawing(strokes: chosen), bounds = drawing.bounds.insetBy(dx: -12, dy: -12)
+    guard let image = drawing.image(from: bounds, scale: 3).cgImage else { return }
+    let request = VNRecognizeTextRequest { [weak self] request, _ in
+      guard let self else { return }
+      let text = (request.results as? [VNRecognizedTextObservation])?.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ") ?? ""
+      guard !text.isEmpty else { return }
+      DispatchQueue.main.async {
+        let original = self.canvas.drawing
+        let remaining = original.strokes.enumerated().compactMap { selected.contains($0.offset) ? nil : $0.element }
+        self.registerTransformUndo(original)
+        self.replaceDrawing(PKDrawing(strokes: remaining))
+        let width = max(self.canvas.bounds.width, 1), height = max(self.canvas.bounds.height, 1)
+        self.onSelectionText(["text": text, "x": self.selectionBounds.minX / width, "y": self.selectionBounds.minY / height, "width": self.selectionBounds.width / width, "height": self.selectionBounds.height / height])
+        self.clearSelection()
+      }
+    }
+    request.recognitionLevel = .accurate
+    request.recognitionLanguages = ["ko-KR", "en-US"]
+    request.usesLanguageCorrection = true
+    DispatchQueue.global(qos: .userInitiated).async { try? VNImageRequestHandler(cgImage: image).perform([request]) }
+  }
+
+  private func replaceDrawing(_ drawing: PKDrawing) {
+    applyingShape = true; canvas.drawing = drawing; applyingShape = false
+    sourceDrawing = drawing; knownStrokeCount = drawing.strokes.count
+    let encoded = drawing.dataRepresentation().base64EncodedString(); loadedDrawing = encoded
+    onDrawingChange(["drawingData": encoded])
   }
 
   func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
