@@ -33,6 +33,7 @@ import { RotatedPage } from './components/RotatedPage';
 import { PageGridPanel } from './components/PageGridPanel';
 import { StickerPanel } from './components/StickerPanel';
 import { loadStickers, saveStickers, stickerFromImage } from './stickers';
+import { mergeCloudRestore } from './cloudMerge';
 
 export function HanjiApp() {
   const { height: windowHeight } = useWindowDimensions();
@@ -195,11 +196,7 @@ export function HanjiApp() {
         onUpdate={(changed) => setItems((all) => all.map((n) => (n.id === changed.id ? changed : n)))}
         onCloudRestore={(restored) => {
           setCategories((all) => expandFolderPaths([...all, ...restored.map((n) => n.folder)]));
-          setItems((existing) => {
-            const merged = new Map(existing.map((n) => [n.id, n]));
-            restored.forEach((n) => merged.set(n.id, n));
-            return [...merged.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-          });
+          setItems((existing) => mergeCloudRestore(existing, restored));
         }}
         onAddCategory={(name) => setCategories((all) => expandFolderPaths([...all, name]))}
         onMoveCategory={(id, folder) =>
