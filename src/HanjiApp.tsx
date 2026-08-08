@@ -2128,6 +2128,9 @@ export function HanjiApp() {
             {current.pages.map((p, i) => (
               <Pressable
                 key={p.id}
+                accessibilityLabel={`페이지 ${i + 1}${p.bookmarked ? ", 북마크됨" : ""}${p.rotation ? `, ${p.rotation}도 회전` : ""}`}
+                accessibilityHint="두 번 탭하여 이 페이지로 이동"
+                accessibilityState={{ selected: i === pageIndex }}
                 onPress={() => navigatePage(i)}
                 style={[s.thumb, i === pageIndex && s.thumbActive]}
               >
@@ -3313,7 +3316,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
   },
   categoryChip: {
-    height: 32,
+    minHeight: 32,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: C.white,
@@ -3325,7 +3329,8 @@ const s = StyleSheet.create({
   categoryChipActive: { backgroundColor: C.accent, borderColor: C.accent },
   categoryChipText: { fontSize: 12, fontWeight: "700", color: C.muted },
   categoryInput: {
-    height: 38,
+    minHeight: 38,
+    paddingVertical: 5,
     marginTop: 8,
     borderWidth: 1,
     borderColor: C.line,
@@ -3384,7 +3389,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
   },
   sideItem: {
-    height: 42,
+    minHeight: 42,
+    paddingVertical: 8,
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
