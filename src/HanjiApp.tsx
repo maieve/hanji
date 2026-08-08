@@ -49,7 +49,7 @@ import {
   importLibraryBackup,
   writeAutomaticBackup,
 } from "./backup";
-import { recognizeDrawing } from "./vision";
+import { isLowPowerModeEnabled, recognizeDrawing } from "./vision";
 import { createPageFlashcardAssets, exportNotebookPdf, exportPagePng } from "./export";
 import { uploadArchiveIfEnabled } from "./cloudSync";
 import {
@@ -128,6 +128,7 @@ import {
 } from "./libraryView";
 import { FOCUS_TOOLBAR_IDLE_MS } from "./focusPolicy";
 import { configurePageHaptics, playPageHaptic } from "./pageHaptics";
+import { OCR_LOW_POWER_RETRY_MS, ocrJobDisposition } from "./ocrPolicy";
 
 const buildIdentity = `${Constants.expoConfig?.version ?? "0.1.0"} (${Constants.nativeBuildVersion ?? "dev"}) · ${String(Constants.expoConfig?.extra?.hanjiBuild ?? "dev")}`;
 
@@ -446,9 +447,25 @@ export function HanjiApp() {
     }
     const timer = setTimeout(() => {
       ocrTimers.current.delete(key);
-      ocrJobs.current.push(async () => {
+      const run = async () => {
         if (ocrRevisions.current.get(key) !== revision) return;
         try {
+          const disposition = ocrJobDisposition(
+            await isLowPowerModeEnabled(),
+            ocrRevisions.current.get(key),
+            revision,
+          );
+          if (disposition === "stale") return;
+          if (disposition === "defer") {
+            const retry = setTimeout(() => {
+              ocrTimers.current.delete(key);
+              if (ocrRevisions.current.get(key) !== revision) return;
+              ocrJobs.current.push(run);
+              drainOcr();
+            }, OCR_LOW_POWER_RETRY_MS);
+            ocrTimers.current.set(key, retry);
+            return;
+          }
           const result = await recognizeDrawing(drawingData);
           if (ocrRevisions.current.get(key) !== revision) return;
           update(notebookId, (n) => ({
@@ -464,7 +481,8 @@ export function HanjiApp() {
             ),
           }));
         } catch {}
-      });
+      };
+      ocrJobs.current.push(run);
       drainOcr();
     }, 1400);
     ocrTimers.current.set(key, timer);

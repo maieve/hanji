@@ -7,6 +7,7 @@ import Vision
 public final class HanjiVisionModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiVision")
+    AsyncFunction("isLowPowerModeEnabled") { ProcessInfo.processInfo.isLowPowerModeEnabled }
     AsyncFunction("recognizeDrawing") { (base64: String) throws -> [String: Any] in
       guard let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty else { return ["text": "", "words": []] }
       let bounds = drawing.bounds.insetBy(dx: -24, dy: -24)
@@ -22,12 +23,29 @@ public final class HanjiVisionModule: Module {
       request.recognitionLanguages = ["ko-KR", "en-US"]
       try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
       let observations = request.results ?? []
-      let words: [[String: Any]] = observations.compactMap { item in
-        guard let candidate = item.topCandidates(1).first else { return nil }
-        let box = item.boundingBox
-        return ["text": candidate.string, "confidence": candidate.confidence, "x": bounds.minX + box.minX * bounds.width, "y": bounds.minY + (1 - box.maxY) * bounds.height, "width": box.width * bounds.width, "height": box.height * bounds.height, "coordinateSpace": "canvas"]
+      let lines = observations.compactMap { observation -> (VNRecognizedTextObservation, VNRecognizedText)? in
+        guard let candidate = observation.topCandidates(1).first else { return nil }
+        return (observation, candidate)
       }
-      return ["text": words.compactMap { $0["text"] as? String }.joined(separator: " "), "words": words]
+      let words: [[String: Any]] = lines.flatMap { observation, candidate in
+        var result: [[String: Any]] = []
+        var cursor = candidate.string.startIndex
+        for token in candidate.string.split(whereSeparator: { $0.isWhitespace }) {
+          guard cursor < candidate.string.endIndex,
+                let range = candidate.string.range(of: String(token), range: cursor..<candidate.string.endIndex) else { continue }
+          cursor = range.upperBound
+          let rectangle: VNRectangleObservation?
+          do { rectangle = try candidate.boundingBox(for: range) } catch { rectangle = nil }
+          guard let box = rectangle?.boundingBox else { continue }
+          result.append(["text": String(token), "confidence": candidate.confidence, "x": bounds.minX + box.minX * bounds.width, "y": bounds.minY + (1 - box.maxY) * bounds.height, "width": box.width * bounds.width, "height": box.height * bounds.height, "coordinateSpace": "canvas"])
+        }
+        if result.isEmpty {
+          let box = observation.boundingBox
+          result.append(["text": candidate.string, "confidence": candidate.confidence, "x": bounds.minX + box.minX * bounds.width, "y": bounds.minY + (1 - box.maxY) * bounds.height, "width": box.width * bounds.width, "height": box.height * bounds.height, "coordinateSpace": "canvas"])
+        }
+        return result
+      }
+      return ["text": lines.map { $0.1.string }.joined(separator: "\n"), "words": words]
     }
     AsyncFunction("exportDrawingJSON") { (base64: String) throws -> String in
       guard let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data) else {
