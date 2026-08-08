@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, View, useWindowDimensions, type ViewToken } from 'react-native';
-import type { Page, PageElement, ToolSpec } from '../types';
+import type { ImageElement, Page, PageElement, ToolSpec } from '../types';
 import { C } from '../theme';
 import { DocumentCanvas, type PdfOutlineItem } from './DocumentCanvas';
 import { ElementsLayer } from './ElementsLayer';
@@ -20,6 +20,7 @@ type Props = {
   onActiveIndexChange: (index: number) => void;
   onDrawingChange: (page: Page, drawingData: string) => void;
   onElementsChange: (page: Page, elements: PageElement[]) => void;
+  onSaveSticker: (image: ImageElement) => void;
   onAddPage: () => void;
   onPageCount: (count: number, page: Page) => void;
   onPdfOutline: (items: PdfOutlineItem[]) => void;
@@ -38,7 +39,8 @@ export function ContinuousDocument(props: Props) {
   const visibleIndex = useRef(props.activeIndex);
   const [layoutWidth, setLayoutWidth] = useState(Math.min(900, width - 160));
   const pageWidth = Math.max(320, Math.min(900, layoutWidth - 48));
-  const dimensions = (page: Page) => (page.rotation === 90 || page.rotation === 270 ? { width: pageWidth / 1.414, height: pageWidth } : { width: pageWidth, height: pageWidth / 1.414 });
+  const dimensions = (page: Page) =>
+    page.rotation === 90 || page.rotation === 270 ? { width: pageWidth / 1.414, height: pageWidth } : { width: pageWidth, height: pageWidth / 1.414 };
   const itemHeight = (page: Page) => dimensions(page).height + 38;
   const itemOffset = (index: number) => props.pages.slice(0, index).reduce((sum, page) => sum + itemHeight(page), 0);
   useEffect(() => {
@@ -67,8 +69,33 @@ export function ContinuousDocument(props: Props) {
       <View style={[s.item, { height: itemHeight(item) }]}>
         <RotatedPage rotation={item.rotation} style={[s.paper, size]}>
           <Paper template={item.template} customTemplateUri={item.customTemplateUri} />
-          <DocumentCanvas key={item.id} pdfUri={item.pdfUri} pageIndex={item.pdfPageIndex ?? index} drawingData={item.drawingData} tool={props.tool} fingerDrawingEnabled={props.fingerDrawingEnabled} zoomWindowEnabled={props.zoomWindowEnabled && index === props.activeIndex} interactionEnabled={!props.elementMode && props.replayCutoff === undefined} replayCutoff={props.replayCutoff} undoSignal={index === props.activeIndex ? props.undoSignal : undefined} redoSignal={index === props.activeIndex ? props.redoSignal : undefined} onPdfOutline={props.onPdfOutline} onPdfLink={props.onPdfLink} onPencilDoubleTap={props.onPencilDoubleTap} onPencilSqueeze={props.onPencilSqueeze} onStrokeAdded={(createdAt) => props.onStrokeAdded(item, createdAt)} onStrokeTapped={(createdAt) => props.onStrokeTapped(item, createdAt)} onPageCount={(count) => props.onPageCount(count, item)} onDrawingChange={(drawingData) => props.onDrawingChange(item, drawingData)} />
-          <ElementsLayer editable={props.elementMode && index === props.activeIndex} elements={item.elements ?? []} onChange={(elements) => props.onElementsChange(item, elements)} />
+          <DocumentCanvas
+            key={item.id}
+            pdfUri={item.pdfUri}
+            pageIndex={item.pdfPageIndex ?? index}
+            drawingData={item.drawingData}
+            tool={props.tool}
+            fingerDrawingEnabled={props.fingerDrawingEnabled}
+            zoomWindowEnabled={props.zoomWindowEnabled && index === props.activeIndex}
+            interactionEnabled={!props.elementMode && props.replayCutoff === undefined}
+            replayCutoff={props.replayCutoff}
+            undoSignal={index === props.activeIndex ? props.undoSignal : undefined}
+            redoSignal={index === props.activeIndex ? props.redoSignal : undefined}
+            onPdfOutline={props.onPdfOutline}
+            onPdfLink={props.onPdfLink}
+            onPencilDoubleTap={props.onPencilDoubleTap}
+            onPencilSqueeze={props.onPencilSqueeze}
+            onStrokeAdded={(createdAt) => props.onStrokeAdded(item, createdAt)}
+            onStrokeTapped={(createdAt) => props.onStrokeTapped(item, createdAt)}
+            onPageCount={(count) => props.onPageCount(count, item)}
+            onDrawingChange={(drawingData) => props.onDrawingChange(item, drawingData)}
+          />
+          <ElementsLayer
+            editable={props.elementMode && index === props.activeIndex}
+            elements={item.elements ?? []}
+            onChange={(elements) => props.onElementsChange(item, elements)}
+            onSaveImage={props.onSaveSticker}
+          />
         </RotatedPage>
         <Text style={s.number}>
           {index + 1} / {props.pages.length}

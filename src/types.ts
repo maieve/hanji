@@ -5,6 +5,7 @@ export type ToolSpec={kind:ToolKind;color:string;width:number;opacity?:number;er
 export type OcrWord={text:string;confidence:number;x:number;y:number;width:number;height:number};
 export type TextElement={id:string;kind:'text';text:string;x:number;y:number;width:number;height:number;fontSize:number;color:string};
 export type ImageElement={id:string;kind:'image';uri:string;x:number;y:number;width:number;height:number;fit?:'contain'|'cover';rotation?:0|90|180|270};
+export type Sticker={id:string;name:string;uri:string;width:number;height:number;fit?:'contain'|'cover';rotation?:0|90|180|270;createdAt:string};
 export type PageElement=TextElement|ImageElement;
 export type Page={id:string;drawingData:string;template:'plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'dark';rotation?:PageRotation;customTemplateUri?:string;updatedAt:string;bookmarked?:boolean;elements?:PageElement[];pdfUri?:string;pdfName?:string;pdfPageIndex?:number;ocrText?:string;ocrWords?:OcrWord[]};
 export type StrokeSync={pageId:string;createdAt:number;seekSec:number};

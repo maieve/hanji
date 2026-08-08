@@ -9,7 +9,7 @@ import { CloudSyncPanel } from './components/CloudSyncPanel';
 import { Toolbar } from './components/Toolbar';
 import { blankPage, loadCategories, loadLibrary, makeId, newNotebook, pdfNotebook, saveCategories, saveLibrary } from './storage';
 import { C } from './theme';
-import type { Notebook, ToolSpec } from './types';
+import type { ImageElement, Notebook, Sticker, ToolSpec } from './types';
 import { exportLibrary, importLibraryBackup, writeAutomaticBackup } from './backup';
 import { recognizeDrawing } from './vision';
 import { exportNotebookPdf, exportPagePng } from './export';
@@ -31,6 +31,8 @@ import { PageTransferPanel } from './components/PageTransferPanel';
 import { transferPage as transferNotebookPage } from './pageTransfer';
 import { RotatedPage } from './components/RotatedPage';
 import { PageGridPanel } from './components/PageGridPanel';
+import { StickerPanel } from './components/StickerPanel';
+import { loadStickers, saveStickers, stickerFromImage } from './stickers';
 
 export function HanjiApp() {
   const { height: windowHeight } = useWindowDimensions();
@@ -83,12 +85,15 @@ export function HanjiApp() {
   const [focusMode, setFocusMode] = useState(false);
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
   const [pageGridOpen, setPageGridOpen] = useState(false);
+  const [stickerOpen, setStickerOpen] = useState(false);
+  const [stickers, setStickers] = useState<Sticker[]>([]);
   useEffect(() => {
     Promise.all([loadLibrary(), loadCategories()]).then(([notes, cats]) => {
       setItems(notes);
       setCategories(expandFolderPaths([...cats, ...notes.map((n) => n.folder)]));
       setReady(true);
     });
+    void loadStickers().then(setStickers);
   }, []);
   useEffect(() => {
     if (ready) saveCategories(categories);
@@ -282,6 +287,26 @@ export function HanjiApp() {
           : p,
       ),
     }));
+  };
+  const updateStickers = (next: Sticker[]) => {
+    setStickers(next);
+    void saveStickers(next);
+  };
+  const saveImageSticker = (image: ImageElement) => {
+    const existing = stickers.find((item) => item.uri === image.uri && item.fit === image.fit && item.rotation === image.rotation);
+    const next = existing ? [existing, ...stickers.filter((item) => item.id !== existing.id)] : [stickerFromImage(image), ...stickers];
+    updateStickers(next);
+  };
+  const importSticker = async () => {
+    const uri = await pickPersistentImage();
+    if (!uri) return;
+    updateStickers([stickerFromImage({ id: makeId(), kind: 'image', uri, x: 0.2, y: 0.2, width: 0.34, height: 0.34 }), ...stickers]);
+  };
+  const insertSticker = (sticker: Sticker) => {
+    setElementMode(true);
+    const element: ImageElement = { id: makeId(), kind: 'image', uri: sticker.uri, x: Math.max(0.02, (1 - sticker.width) / 2), y: Math.max(0.02, (1 - sticker.height) / 2), width: sticker.width, height: sticker.height, fit: sticker.fit, rotation: sticker.rotation };
+    update(current.id, (n) => ({ ...n, updatedAt: new Date().toISOString(), pages: n.pages.map((p) => (p.id === page.id ? { ...p, elements: [...(p.elements ?? []), element], updatedAt: new Date().toISOString() } : p)) }));
+    setStickerOpen(false);
   };
   const applyCustomTemplate = async () => {
     const uri = await pickPersistentImage();
@@ -515,6 +540,7 @@ export function HanjiApp() {
             }));
           }}
           onAddImage={() => void addImage()}
+          onStickers={() => setStickerOpen(true)}
           privacyEnabled={privacy.enabled}
           onPrivacyToggle={() => void privacy.toggle()}
           onFocusMode={() => setFocusMode(true)}
@@ -539,7 +565,7 @@ export function HanjiApp() {
       <View style={[s.editor, focusMode && { marginRight: -112 }]}>
         <View style={s.canvasArea}>
           {(current.viewMode ?? 'page') === 'continuous' ? (
-            <ContinuousDocument pages={current.pages} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
+            <ContinuousDocument pages={current.pages} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
           ) : (
             <RotatedPage
               rotation={page.rotation}
@@ -552,7 +578,7 @@ export function HanjiApp() {
             >
               <Paper template={page.template} customTemplateUri={page.customTemplateUri} />
               <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
-              <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} />
+              <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} />
             </RotatedPage>
           )}
           <AudioPanel
@@ -746,6 +772,7 @@ export function HanjiApp() {
           setTimeout(() => setPageTransferOpen(true), 0);
         }}
       />
+      <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
       <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={s.pageGrid}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>
