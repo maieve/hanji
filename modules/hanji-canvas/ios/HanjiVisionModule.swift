@@ -10,7 +10,12 @@ public final class HanjiVisionModule: Module {
     AsyncFunction("recognizeDrawing") { (base64: String) throws -> [String: Any] in
       guard let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty else { return ["text": "", "words": []] }
       let bounds = drawing.bounds.insetBy(dx: -24, dy: -24)
-      guard let cgImage = drawing.image(from: bounds, scale: 3).cgImage else { return ["text": "", "words": []] }
+      let inkImage = drawing.image(from: bounds, scale: 3), format = UIGraphicsImageRendererFormat()
+      format.scale = 3; format.opaque = true
+      let image = UIGraphicsImageRenderer(size: inkImage.size, format: format).image { context in
+        UIColor.white.setFill(); context.fill(CGRect(origin: .zero, size: inkImage.size)); inkImage.draw(at: .zero)
+      }
+      guard let cgImage = image.cgImage else { return ["text": "", "words": []] }
       let request = VNRecognizeTextRequest()
       request.recognitionLevel = .accurate
       request.usesLanguageCorrection = true

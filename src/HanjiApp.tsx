@@ -53,7 +53,9 @@ export function HanjiApp() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ocrTimers=useRef(new Map<string,ReturnType<typeof setTimeout>>());
+  const ocrRevisions=useRef(new Map<string,number>());
+  const ocrJobs=useRef<Array<()=>Promise<void>>>([]);const ocrRunning=useRef(0);
   const audioStartRef = useRef<number | null>(null);
   const audioStrokesRef = useRef<{ pageId: string; createdAt: number; seekSec: number }[]>([]);
   const [tool, setToolState] = useState<ToolSpec>({
@@ -104,6 +106,7 @@ export function HanjiApp() {
     void loadStickers().then(setStickers);
     void loadUiPreferences().then(value=>setLeftHanded(value.leftHanded));
   }, []);
+  useEffect(()=>()=>{for(const timer of ocrTimers.current.values())clearTimeout(timer);ocrTimers.current.clear();ocrJobs.current=[]},[]);
   useEffect(() => {
     if (ready) saveCategories(categories);
   }, [categories, ready]);
@@ -166,17 +169,24 @@ export function HanjiApp() {
     setOpenId(note.id);
     setPageIndex(0);
   };
+  const drainOcr=()=>{while(ocrRunning.current<2&&ocrJobs.current.length){const job=ocrJobs.current.shift();if(!job)break;ocrRunning.current+=1;void job().finally(()=>{ocrRunning.current-=1;drainOcr()})}};
   const queueOcr = (notebookId: string, pageId: string, drawingData: string) => {
-    if (ocrTimer.current) clearTimeout(ocrTimer.current);
-    if (!drawingData) return;
-    ocrTimer.current = setTimeout(async () => {
-      const result = await recognizeDrawing(drawingData);
-      if (!result.text) return;
-      update(notebookId, (n) => ({
-        ...n,
-        pages: n.pages.map((p) => (p.id === pageId ? { ...p, ocrText: result.text, ocrWords: result.words } : p)),
-      }));
-    }, 1400);
+    const key=`${notebookId}:${pageId}`,previous=ocrTimers.current.get(key);if(previous)clearTimeout(previous);
+    const revision=(ocrRevisions.current.get(key)??0)+1;ocrRevisions.current.set(key,revision);
+    if(!drawingData){update(notebookId,n=>({...n,pages:n.pages.map(p=>p.id===pageId?{...p,ocrText:undefined,ocrWords:undefined}:p)}));return}
+    const timer=setTimeout(()=>{
+      ocrTimers.current.delete(key);
+      ocrJobs.current.push(async()=>{
+       if(ocrRevisions.current.get(key)!==revision)return;
+       try{
+        const result=await recognizeDrawing(drawingData);
+        if(ocrRevisions.current.get(key)!==revision)return;
+        update(notebookId,n=>({...n,pages:n.pages.map(p=>p.id===pageId&&p.drawingData===drawingData?{...p,ocrText:result.text||undefined,ocrWords:result.words.length?result.words:undefined}:p)}));
+       }catch{}
+      });
+      drainOcr();
+    },1400);
+    ocrTimers.current.set(key,timer);
   };
   const current = items.find((x) => x.id === openId);
   const update = (id: string, fn: (n: Notebook) => Notebook) => setItems((all) => all.map((n) => (n.id === id ? fn(n) : n)));
