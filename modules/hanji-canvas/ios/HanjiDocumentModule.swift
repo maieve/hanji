@@ -51,6 +51,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var lastRedoSignal = 0
   private var shapeKind: String?
   private var shapeLineStyle = "solid"
+  private var shapeHoldRequired = true
   private var applyingShape = false
   private var activeKind = "pen"
   private var activeInkColor = UIColor.black
@@ -224,6 +225,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     shapeLineStyle = value["shapeLineStyle"] as? String ?? "solid"
+    shapeHoldRequired = value["shapeHoldRequired"] as? Bool ?? true
     let width = (value["width"] as? NSNumber)?.doubleValue ?? 2
     let opacity = (value["opacity"] as? NSNumber)?.doubleValue ?? 1
     canvas.isRulerActive = value["rulerActive"] as? Bool ?? false
@@ -546,7 +548,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
         UINotificationFeedbackGenerator().notificationOccurred(.success)
       }
     }
-    if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last {
+    if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last, !shapeHoldRequired || heldAtEnd(source) {
       let replacements = makeShapeStrokes(source, kind: shapeKind, dashed: shapeLineStyle == "dashed")
       if !replacements.isEmpty {
         registerTransformUndo(canvasView.drawing)

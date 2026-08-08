@@ -8,7 +8,7 @@
     "web": "expo start --web",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:device-checklist",
+    "test": "npm run test:cloud-merge && npm run test:document-search && npm run test:page-insert && npm run test:backup-policy && npm run test:folders && npm run test:notebook-privacy && npm run test:library-view && npm run test:focus-policy && npm run test:page-haptics && npm run test:shape-policy && npm run test:device-checklist",
     "test:cloud-merge": "node --no-warnings --experimental-strip-types scripts/verifyCloudMerge.mts",
     "test:document-search": "node --no-warnings --experimental-strip-types scripts/verifyDocumentSearch.mts",
     "test:page-insert": "node --no-warnings --experimental-strip-types scripts/verifyPageInsert.mts",
@@ -18,6 +18,7 @@
     "test:library-view": "node --no-warnings --experimental-strip-types scripts/verifyLibraryView.mts",
     "test:focus-policy": "node --no-warnings --experimental-strip-types scripts/verifyFocusPolicy.mts",
     "test:page-haptics": "node --no-warnings --experimental-strip-types scripts/verifyPageHaptics.mts",
+    "test:shape-policy": "node --no-warnings --experimental-strip-types scripts/verifyShapePolicy.mts",
     "test:device-checklist": "node scripts/createDeviceChecklist.mjs docs/NATIVE_VERIFICATION.md --check",
     "postinstall": "patch-package"
   },
