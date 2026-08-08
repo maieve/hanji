@@ -18,7 +18,9 @@ const [wrapper,bridge,native]=await Promise.all([
   readFile(new URL('../src/components/DocumentCanvas.tsx',import.meta.url),'utf8'),
   readFile(new URL('../modules/hanji-canvas/ios/HanjiDocumentModule.swift',import.meta.url),'utf8'),
 ]);
-assert.match(wrapper,/ZoomAutoAdvanceContext[\s\S]*zoomScale=\{zoomWindowEnabled\?2\.5:undefined\}/,'zoom window must scale the wrapper containing every page layer');
+assert.match(wrapper,/ZoomAutoAdvanceContext[\s\S]*zoomScale=\{zoomWindowEnabled\?zoomWindowScale:undefined\}/,'zoom window must scale the wrapper containing every page layer');
+assert.match(wrapper,/minimumZoomScale=\{zoomWindowEnabled\?zoomWindowScale[\s\S]*maximumZoomScale=\{zoomWindowEnabled\?zoomWindowScale[\s\S]*pinchGestureEnabled=\{!zoomWindowEnabled\}/,'zoom window must stay at the designed fixed scale');
+assert.match(wrapper,/accessibilityLabel="확대 창 페이지 미니맵"[\s\S]*navigateMinimap/,'zoom window must expose an accessible viewport navigator');
 assert.match(wrapper,/const autoAdvance=[\s\S]*scroll\.current\?\.scrollTo/,'auto-advance must pan the shared page wrapper');
 assert.match(bridge,/event\.maxX[\s\S]*autoAdvance\?\.\(event\.maxX,event\.maxY\)/,'native stroke bounds must drive wrapper auto-advance');
 const nativeZoom=native.match(/func setZoomWindow[\s\S]*?\n  \}/)?.[0]??'';
