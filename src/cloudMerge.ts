@@ -245,3 +245,20 @@ export function mergeCloudRestore(
     b.updatedAt.localeCompare(a.updatedAt),
   );
 }
+
+export function summarizeNewCloudConflicts(before: Notebook[], after: Notebook[]) {
+  const existing = new Set(
+    before
+      .filter((note) => note.conflictSignature)
+      .map((note) => `${note.conflictOf}:${note.conflictSignature}`),
+  );
+  const created = after.filter(
+    (note) =>
+      note.conflictSignature &&
+      !existing.has(`${note.conflictOf}:${note.conflictSignature}`),
+  );
+  return {
+    notebooks: created.length,
+    pages: created.reduce((count, note) => count + note.pages.length, 0),
+  };
+}

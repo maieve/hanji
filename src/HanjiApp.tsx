@@ -91,7 +91,7 @@ import { PageJumpPanel } from "./components/PageJumpPanel";
 import { resolvePdfPageIndex } from "./pdfNavigation";
 import { StickerPanel } from "./components/StickerPanel";
 import { loadStickers, saveStickers, stickerFromImage } from "./stickers";
-import { mergeCloudRestore } from "./cloudMerge";
+import { mergeCloudRestore, summarizeNewCloudConflicts } from "./cloudMerge";
 import { transcribeAudio } from "./speech";
 import { SelectionBar } from "./components/SelectionBar";
 import { SearchHighlight } from "./components/SearchHighlight";
@@ -576,7 +576,14 @@ export function HanjiApp() {
           setCategories((all) =>
             expandFolderPaths([...all, ...restored.map((n) => n.folder)]),
           );
-          setItems((existing) => mergeCloudRestore(existing, restored));
+          const merged = mergeCloudRestore(items, restored);
+          const conflicts = summarizeNewCloudConflicts(items, merged);
+          setItems(merged);
+          if (conflicts.notebooks)
+            Alert.alert(
+              "페이지 충돌을 보존했습니다",
+              `덮어쓰지 않은 이전 페이지 ${conflicts.pages}개를 충돌 사본 ${conflicts.notebooks}권에 보관했습니다. 서재의 빨간 배지에서 확인할 수 있습니다.`,
+            );
         }}
         onAddCategory={(name) =>
           setCategories((all) => expandFolderPaths([...all, name]))
@@ -2450,7 +2457,7 @@ function Library({
                   return (
                     <Pressable
                       key={n.id}
-                      accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked ? ", 잠김" : ""}`}
+                      accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked ? ", 잠김" : ""}${n.conflictOf ? ", 페이지 충돌 사본" : ""}`}
                       onPress={() =>
                         onOpen(n.id, hit?.pageIndex, hit ? query : undefined)
                       }
@@ -2474,6 +2481,7 @@ function Library({
                           {n.favorite && (
                             <Ionicons name="star" size={14} color="#B77A18" />
                           )}
+                          {n.conflictOf && <View style={s.conflictBadge}><Text style={s.conflictBadgeText}>충돌 사본</Text></View>}
                         </View>
                         <Text numberOfLines={1} style={s.listMeta}>
                           {folderBreadcrumb(n.folder)} · {n.pages.length}p ·{" "}
@@ -2587,6 +2595,7 @@ function Library({
                           />
                         </View>
                       )}
+                      {n.conflictOf && <View style={s.cardConflictBadge}><Ionicons name="git-compare-outline" size={12} color={C.white}/><Text style={s.cardConflictText}>충돌 사본</Text></View>}
                     </View>
                     <Text numberOfLines={1} style={s.cardTitle}>
                       {n.title}
@@ -3144,6 +3153,10 @@ const s = StyleSheet.create({
   tagLine: { fontSize: 10, color: C.accent, marginTop: 4 },
   hitSnippet: { fontSize: 10, lineHeight: 14, color: C.muted, marginTop: 4 },
   cardMeta: { marginTop: 4, color: C.muted, fontSize: 11 },
+  conflictBadge:{backgroundColor:C.danger,borderRadius:7,paddingHorizontal:7,paddingVertical:3},
+  conflictBadgeText:{fontSize:9,fontWeight:"800",color:C.white},
+  cardConflictBadge:{position:"absolute",left:8,top:8,flexDirection:"row",alignItems:"center",gap:4,backgroundColor:C.danger,borderRadius:8,paddingHorizontal:7,paddingVertical:4},
+  cardConflictText:{fontSize:9,fontWeight:"800",color:C.white},
   empty: {
     flex: 1,
     minHeight: 420,

@@ -1,4 +1,4 @@
-import {mergeCloudRestore} from '../src/cloudMerge.ts';
+import {mergeCloudRestore,summarizeNewCloudConflicts} from '../src/cloudMerge.ts';
 import type {Notebook,Page} from '../src/types.ts';
 
 const page=(id:string,drawingData:string,updatedAt:string):Page=>({id,drawingData,template:'line',updatedAt});
@@ -16,9 +16,11 @@ assert(primary?.pages.find(item=>item.id==='p2')?.drawingData==='remote-newer','
 assert(primary?.pages.some(item=>item.id==='p3'),'one-sided page must survive union');
 assert(conflict?.pages.length===2,'only the two divergent losing pages belong in the conflict copy');
 assert(conflict?.pages.every(item=>item.id.includes('-conflict-')),'conflict pages need fresh ids');
+assert(JSON.stringify(summarizeNewCloudConflicts([local],merged))===JSON.stringify({notebooks:1,pages:2}),'restore UI must report newly preserved pages');
 
 const deduped=mergeCloudRestore(merged,[remote]);
 assert(deduped.filter(item=>item.conflictOf==='n1').length===1,'restoring the same archive must not duplicate conflicts');
+assert(JSON.stringify(summarizeNewCloudConflicts(merged,deduped))===JSON.stringify({notebooks:0,pages:0}),'existing conflicts must not be reported as new');
 
 const deletedLocal={...note([page('keep','keep','2026-02-01')],'2026-02-05'),deletedPages:{gone:'2026-02-05'}};
 const staleRemote=note([page('keep','keep','2026-02-01'),page('gone','stale','2026-02-04')],'2026-02-04');
