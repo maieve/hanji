@@ -48,6 +48,7 @@ import {ExportPanel} from './components/ExportPanel';
 import {FolderManager} from './components/FolderManager';
 import {librarySearchMatches,mayRevealNotebookSnippet} from './notebookPrivacy';
 import Constants from 'expo-constants';
+import {sortNotebooks,type LibrarySort,type LibraryViewMode} from './libraryView';
 
 const buildIdentity=`${Constants.expoConfig?.version??'0.1.0'} (${Constants.nativeBuildVersion??'dev'}) · ${String(Constants.expoConfig?.extra?.hanjiBuild??'dev')}`;
 
@@ -236,6 +237,9 @@ export function HanjiApp() {
         query={query}
         searchHits={searchHits}
         backupRetention={uiPreferences.backupRetention}
+        librarySort={uiPreferences.librarySort}
+        libraryView={uiPreferences.libraryView}
+        onLibraryDisplayChange={(patch)=>{const next={...uiPreferences,...patch};setUiPreferences(next);void saveUiPreferences(next)}}
         setQuery={setQuery}
         onOpen={async(id, index = 0, searchQuery) => {
           const opening=items.find(note=>note.id===id);if(!opening||!await unlockNotebook(opening))return;
@@ -888,7 +892,7 @@ export function HanjiApp() {
   );
 }
 
-function Library({ items, categories, query, searchHits,backupRetention, setQuery, onOpen, onUpdate,onToggleNotebookLock, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory,onRenameCategory,onDeleteCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void|Promise<void>; onUpdate: (n: Notebook) => void;onToggleNotebookLock:(n:Notebook)=>Promise<boolean>; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void;onRenameCategory:(folder:string,name:string)=>boolean;onDeleteCategory:(folder:string)=>void; onMoveCategory: (id: string, category: string) => void }) {
+function Library({ items, categories, query, searchHits,backupRetention,librarySort,libraryView,onLibraryDisplayChange, setQuery, onOpen, onUpdate,onToggleNotebookLock, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory,onRenameCategory,onDeleteCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null;backupRetention:number;librarySort:LibrarySort;libraryView:LibraryViewMode;onLibraryDisplayChange:(patch:Partial<Pick<UiPreferences,'librarySort'|'libraryView'>>)=>void; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void|Promise<void>; onUpdate: (n: Notebook) => void;onToggleNotebookLock:(n:Notebook)=>Promise<boolean>; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void;onRenameCategory:(folder:string,name:string)=>boolean;onDeleteCategory:(folder:string)=>void; onMoveCategory: (id: string, category: string) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [selected, setSelected] = useState('전체');
@@ -897,7 +901,7 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
   const [managing, setManaging] = useState<Notebook | null>(null);
   const [managingFolder,setManagingFolder]=useState<string|null>(null);
   const hitMap = useMemo(() => new Map(searchHits?.map((hit) => [hit.notebookId, hit]) ?? []), [searchHits]);
-  const filtered = useMemo(() => items.filter((x) => (selected === '전체' || (selected === '즐겨찾기' && x.favorite) || (selected === '최근 문서' && x.lastOpenedAt) || folderContains(selected, x.folder)) && librarySearchMatches(x,query,searchHits?hitMap.has(x.id):false)).sort((a, b) => (selected === '최근 문서' ? (b.lastOpenedAt ?? '').localeCompare(a.lastOpenedAt ?? '') : b.updatedAt.localeCompare(a.updatedAt))), [items, query, selected, searchHits, hitMap]);
+  const filtered = useMemo(() => sortNotebooks(items.filter((x) => (selected === '전체' || (selected === '즐겨찾기' && x.favorite) || (selected === '최근 문서' && x.lastOpenedAt) || folderContains(selected, x.folder)) && librarySearchMatches(x,query,searchHits?hitMap.has(x.id):false)),librarySort,selected==='최근 문서'), [items, query, selected, searchHits, hitMap,librarySort]);
   const addCategory = () => {
     const name = draft.trim();
     if (!name) return;
@@ -966,12 +970,12 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
           </View>
         )}
         <View style={s.main}>
-          <View style={s.libraryTop}>
+          <View style={[s.libraryTop,compact&&s.libraryTopCompact]}>
             <View>
               <Text style={s.eyebrow}>나의 공간</Text>
               <Text style={s.heading}>{selected === '전체' ? '모든 노트' : categories.includes(selected) ? folderBreadcrumb(selected) : selected}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={compact?{width:'100%'}:undefined} contentContainerStyle={s.libraryActions}>
               <Pressable onPress={() => setCloudOpen(true)} style={[s.newButton, s.secondaryButton]}>
                 <Ionicons name="cloud-outline" size={20} color={C.accent} />
                 <Text style={[s.newText, { color: C.accent }]}>Cloudflare</Text>
@@ -992,9 +996,10 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
                 <Ionicons name="add" size={22} color="white" />
                 <Text style={s.newText}>새 노트</Text>
               </Pressable>
-            </View>
+            </ScrollView>
           </View>
           {compact && <View style={{ marginTop: 18 }}>{chips}</View>}
+          <View style={s.libraryControls}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.sortOptions}>{([{value:'updated',label:'최근 수정'},{value:'title',label:'이름'},{value:'created',label:'생성일'},{value:'pages',label:'페이지 수'}] as const).map(option=><Pressable key={option.value} accessibilityLabel={`${option.label} 순 정렬`} accessibilityState={{selected:librarySort===option.value}} onPress={()=>onLibraryDisplayChange({librarySort:option.value})} style={[s.sortButton,librarySort===option.value&&s.sortActive]}><Text style={[s.sortText,librarySort===option.value&&s.sortTextActive]}>{option.label}</Text></Pressable>)}</ScrollView><View style={s.viewToggle}><Pressable accessibilityLabel="카드 보기" accessibilityState={{selected:libraryView==='grid'}} onPress={()=>onLibraryDisplayChange({libraryView:'grid'})} style={[s.viewButton,libraryView==='grid'&&s.sortActive]}><Ionicons name="grid-outline" size={17} color={libraryView==='grid'?C.white:C.muted}/></Pressable><Pressable accessibilityLabel="목록 보기" accessibilityState={{selected:libraryView==='list'}} onPress={()=>onLibraryDisplayChange({libraryView:'list'})} style={[s.viewButton,libraryView==='list'&&s.sortActive]}><Ionicons name="list-outline" size={18} color={libraryView==='list'?C.white:C.muted}/></Pressable></View></View>
           <View style={s.search}>
             <Ionicons name="search" size={20} color={C.muted} />
             <TextInput value={query} onChangeText={setQuery} placeholder="제목·태그·손글씨 검색" placeholderTextColor="#99958C" style={s.searchInput} />
@@ -1008,9 +1013,10 @@ function Library({ items, categories, query, searchHits,backupRetention, setQuer
               <Text style={s.emptyBody}>새 노트를 만들거나 다른 폴더를 선택하세요.</Text>
             </Pressable>
           ) : (
-            <ScrollView contentContainerStyle={s.grid}>
+            <ScrollView contentContainerStyle={libraryView==='grid'?s.grid:s.list}>
               {filtered.map((n) => {
                 const hit = mayRevealNotebookSnippet(n)?hitMap.get(n.id):undefined;
+                if(libraryView==='list')return <Pressable key={n.id} accessibilityLabel={`${n.title}, ${n.pages.length}페이지${n.locked?', 잠김':''}`} onPress={()=>onOpen(n.id,hit?.pageIndex,hit?query:undefined)} onLongPress={()=>manage(n)} style={s.listRow}><View style={s.listIcon}><Ionicons name={n.locked?'lock-closed':'document-text-outline'} size={21} color={C.accent}/></View><View style={s.listBody}><View style={s.listTitleRow}><Text numberOfLines={1} style={s.listTitle}>{n.title}</Text>{n.favorite&&<Ionicons name="star" size={14} color="#B77A18"/>}</View><Text numberOfLines={1} style={s.listMeta}>{folderBreadcrumb(n.folder)} · {n.pages.length}p · {new Date(n.updatedAt).toLocaleDateString('ko-KR')}{n.tags.length?` · ${n.tags.map(tag=>`#${tag}`).join(' ')}`:''}</Text>{hit&&<Text numberOfLines={1} style={s.hitSnippet}>{hit.snippet.replace(/<\/?b>/g,'')}</Text>}</View><Pressable accessibilityLabel={n.favorite?'즐겨찾기 해제':'즐겨찾기'} onPress={()=>onUpdate({...n,favorite:!n.favorite,updatedAt:new Date().toISOString()})} style={s.listAction}><Ionicons name={n.favorite?'star':'star-outline'} size={18} color={n.favorite?'#B77A18':C.muted}/></Pressable><Pressable accessibilityLabel={`${n.title} 설정`} onPress={()=>manage(n)} style={s.listAction}><Ionicons name="ellipsis-horizontal" size={18} color={C.muted}/></Pressable></Pressable>;
                 return (
                   <Pressable key={n.id} onPress={() => onOpen(n.id, hit?.pageIndex,hit?query:undefined)} onLongPress={() => manage(n)} style={s.card}>
                     <View style={s.cover}>
@@ -1302,6 +1308,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  libraryTopCompact:{flexDirection:'column',alignItems:'flex-start',gap:14},libraryActions:{flexDirection:'row',gap:10},
+  libraryControls:{marginTop:20,flexDirection:'row',alignItems:'center',gap:10},
+  sortOptions:{gap:6},sortButton:{height:34,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.white,paddingHorizontal:11,alignItems:'center',justifyContent:'center'},sortActive:{backgroundColor:C.accent,borderColor:C.accent},sortText:{fontSize:10,fontWeight:'800',color:C.muted},sortTextActive:{color:C.white},viewToggle:{marginLeft:'auto',height:34,flexDirection:'row',borderRadius:10,borderWidth:1,borderColor:C.line,overflow:'hidden'},viewButton:{width:38,alignItems:'center',justifyContent:'center',backgroundColor:C.white},
   eyebrow: { color: C.muted, fontSize: 12, fontWeight: '600', marginBottom: 4 },
   heading: {
     color: C.ink,
@@ -1342,6 +1351,7 @@ const s = StyleSheet.create({
     gap: 24,
     paddingVertical: 28,
   },
+  list:{paddingVertical:22,gap:8},listRow:{minHeight:72,borderRadius:15,borderWidth:1,borderColor:C.line,backgroundColor:C.white,padding:11,flexDirection:'row',alignItems:'center',gap:11},listIcon:{width:43,height:50,borderRadius:9,backgroundColor:C.accentSoft,alignItems:'center',justifyContent:'center'},listBody:{flex:1,minWidth:0},listTitleRow:{flexDirection:'row',alignItems:'center',gap:6},listTitle:{fontSize:14,fontWeight:'800',color:C.ink,flexShrink:1},listMeta:{fontSize:10,color:C.muted,marginTop:5},listAction:{width:36,height:36,borderRadius:10,alignItems:'center',justifyContent:'center'},
   card: { width: 168 },
   cover: {
     width: 168,

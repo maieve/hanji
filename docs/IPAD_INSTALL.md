@@ -10,7 +10,7 @@ GitHub Actions가 만드는 `Hanji-unsigned.ipa`는 서명되지 않은 파일�
 4. ZIP을 풀면 다음 세 파일이 있다.
    - `Hanji-unsigned.ipa`: AltStore/SideStore가 다시 서명할 앱
    - `Hanji-build.txt`: 커밋 SHA, Actions 실행 번호, 앱 버전, Xcode 버전
-   - `Hanji-device-checklist.md`: 그 빌드의 G1–G47 실기기 검증 기록지
+   - `Hanji-device-checklist.md`: 그 빌드의 전체 실기기 검증 기록지
 5. 설치 후 Hanji 서재 왼쪽 아래의 빌드 표기가 `Hanji-build.txt`의 버전·짧은 커밋과 같은지 확인한다. 다르면 이전 IPA가 설치된 것이다.
 
 ## 2A. AltStore로 설치 — Windows PC가 자주 켜져 있을 때

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {sortNotebooks} from '../src/libraryView.ts';
+import type {Notebook} from '../src/types.ts';
+const note=(id:string,title:string,createdAt:string,updatedAt:string,pages:number,lastOpenedAt?:string):Notebook=>({id,title,folder:'내 노트',tags:[],favorite:false,createdAt,updatedAt,lastOpenedAt,pages:Array.from({length:pages},(_,i)=>({id:`${id}-${i}`,drawingData:'',template:'plain',updatedAt}))});
+const items=[note('a','노트 10','2026-01-01','2026-02-01',2,'2026-02-03'),note('b','노트 2','2026-03-01','2026-01-01',9,'2026-02-01'),note('c','가나다','2026-02-01','2026-04-01',4)];
+assert.deepEqual(sortNotebooks(items,'updated').map(x=>x.id),['c','a','b']);
+assert.deepEqual(sortNotebooks(items,'created').map(x=>x.id),['b','c','a']);
+assert.deepEqual(sortNotebooks(items,'pages').map(x=>x.id),['b','c','a']);
+assert.deepEqual(sortNotebooks(items,'title').map(x=>x.id),['c','b','a']);
+assert.deepEqual(sortNotebooks(items,'title',true).map(x=>x.id),['a','b','c']);
+assert.deepEqual(items.map(x=>x.id),['a','b','c']);
+console.log('library view verification passed');
