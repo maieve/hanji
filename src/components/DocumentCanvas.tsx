@@ -1,6 +1,7 @@
 import { requireNativeViewManager } from 'expo-modules-core';
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useContext, useImperativeHandle, useRef } from 'react';
 import type { DrawingViewport, NativeStroke, StrokeEvent, ToolSpec } from '../types';
+import {ZoomAutoAdvanceContext} from './ZoomablePage';
 export type PdfOutlineItem = {
   title: string;
   pageIndex: number;
@@ -49,6 +50,7 @@ export type DocumentCanvasHandle={
 const Native = requireNativeViewManager('HanjiDocumentCanvas') as React.ComponentType<any>;
 export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function DocumentCanvas(p,ref) {
   const nativeRef=useRef<DocumentCanvasHandle>(null);
+  const autoAdvance=useContext(ZoomAutoAdvanceContext);
   useImperativeHandle(ref,()=>({
     getStrokes:()=>nativeRef.current?.getStrokes()??Promise.resolve([]),
     replaceStrokes:(ids,replacements)=>nativeRef.current?.replaceStrokes(ids,replacements)??Promise.resolve(false),
@@ -86,7 +88,7 @@ export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function Do
       onEraserEnded={() => {
         if (p.tool.kind === 'eraser' && (p.tool.eraserAutoReturn ?? true)) p.onEraserEnded?.();
       }}
-      onStrokeAdded={(e: E<StrokeEvent>) => p.onStrokeAdded?.(e.nativeEvent)}
+      onStrokeAdded={(e: E<StrokeEvent>) => {const event=e.nativeEvent;if(event.maxX!==undefined&&event.maxY!==undefined)autoAdvance?.(event.maxX,event.maxY);p.onStrokeAdded?.(event)}}
       onStrokeTapped={(e: E<StrokeEvent>) => p.onStrokeTapped?.(e.nativeEvent)}
       onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number;moving?:boolean;moveCancelled?:boolean }>) => p.onSelectionChange?.(e.nativeEvent)}
       onSelectionText={(e: E<{ text: string; x: number; y: number; width: number; height: number }>) => p.onSelectionText?.(e.nativeEvent)}

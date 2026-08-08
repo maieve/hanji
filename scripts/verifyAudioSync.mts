@@ -22,6 +22,6 @@ const [native,app,bridge]=await Promise.all([
 ]);
 assert.match(native,/onStrokeAdded\(\["id": strokeIdentifier\(stroke\)/,"native add events must expose a stable stroke identifier");
 assert.match(native,/onStrokeTapped\(\["id": strokeIdentifier\(hit\)/,"native tap events must expose the same stable stroke identifier");
-assert.match(bridge,/onStrokeAdded\?\.\(e\.nativeEvent\)[\s\S]*onStrokeTapped\?\.\(e\.nativeEvent\)/,"the bridge must preserve stroke IDs");
+assert.match(bridge,/onStrokeAdded\?\.\(event\)[\s\S]*onStrokeTapped\?\.\(e\.nativeEvent\)/,"the bridge must preserve stroke IDs while forwarding zoom bounds");
 assert.match(app,/strokeId:event\.id[\s\S]*findAudioStroke\([\s\S]*event\.id/,"recording and playback must persist and query stroke IDs");
 console.log("audio stroke synchronization verification passed");

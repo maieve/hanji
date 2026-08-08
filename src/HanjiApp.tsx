@@ -1715,6 +1715,7 @@ export function HanjiApp() {
               rotation={page.rotation}
               canvasExtent={page.canvasExtent}
               fingerDrawingEnabled={fingerDrawingEnabled}
+              zoomWindowEnabled={zoomWindowEnabled}
               style={[
                 s.paper,
                 (page.rotation === 90 || page.rotation === 270) && {

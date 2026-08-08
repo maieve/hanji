@@ -339,11 +339,11 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     guard enabled != zoomWindowEnabled else { return }
     zoomWindowEnabled = enabled
     canvas.minimumZoomScale = 1
-    canvas.maximumZoomScale = enabled ? 5 : 1
-    canvas.pinchGestureRecognizer?.isEnabled = enabled
-    canvas.panGestureRecognizer.isEnabled = enabled
-    canvas.setZoomScale(enabled ? 2.5 : 1, animated: true)
-    if !enabled { canvas.setContentOffset(.zero, animated: true) }
+    canvas.maximumZoomScale = 1
+    canvas.pinchGestureRecognizer?.isEnabled = false
+    canvas.panGestureRecognizer.isEnabled = false
+    canvas.setZoomScale(1, animated: false)
+    canvas.setContentOffset(.zero, animated: false)
   }
 
   func loadPDF(_ uri: String?) {
@@ -871,8 +871,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       }
     }
     if strokes.count > knownStrokeCount, let stroke = strokes.last {
-      onStrokeAdded(["id": strokeIdentifier(stroke), "createdAt": stroke.path.creationDate.timeIntervalSince1970])
-      if zoomWindowEnabled { autoAdvance(after: stroke) }
+      onStrokeAdded(["id": strokeIdentifier(stroke), "createdAt": stroke.path.creationDate.timeIntervalSince1970, "maxX": stroke.renderBounds.maxX, "maxY": stroke.renderBounds.maxY])
     }
     knownStrokeCount = strokes.count
     sourceDrawing = canvasView.drawing
@@ -887,22 +886,6 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
 
   func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
     if activeKind == "eraser" { onEraserEnded([:]) }
-  }
-
-  private func autoAdvance(after stroke: PKStroke) {
-    let scale = max(canvas.zoomScale, 1), visibleWidth = canvas.bounds.width / scale, visibleHeight = canvas.bounds.height / scale
-    let visibleX = canvas.contentOffset.x / scale
-    guard stroke.renderBounds.maxX > visibleX + visibleWidth * 0.82 else { return }
-    let maxOffsetX = max(0, canvas.contentSize.width * scale - canvas.bounds.width)
-    let proposedX = canvas.contentOffset.x + canvas.bounds.width * 0.58
-    if proposedX <= maxOffsetX {
-      canvas.setContentOffset(CGPoint(x: proposedX, y: canvas.contentOffset.y), animated: true)
-    } else {
-      let maxOffsetY = max(0, canvas.contentSize.height * scale - canvas.bounds.height)
-      let nextY = min(maxOffsetY, canvas.contentOffset.y + visibleHeight * scale * 0.72)
-      canvas.setContentOffset(CGPoint(x: 0, y: nextY), animated: true)
-    }
-    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
 
   private func makeShapeStrokes(_ source: PKStroke, kind: String, dashed: Bool = false, fill: String = "none", connectingTo previous: [PKStroke] = []) -> [PKStroke] {
