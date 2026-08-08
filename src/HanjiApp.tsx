@@ -1283,6 +1283,8 @@ export function HanjiApp() {
               activeIndex={pageIndex}
               tool={tool}
               fingerDrawingEnabled={fingerDrawingEnabled}
+              twoFingerUndoEnabled={uiPreferences.twoFingerUndoEnabled}
+              threeFingerRedoEnabled={uiPreferences.threeFingerRedoEnabled}
               zoomWindowEnabled={zoomWindowEnabled}
               elementMode={elementMode}
               replayCutoff={replayCutoff}
@@ -1331,6 +1333,8 @@ export function HanjiApp() {
                 drawingData={page.drawingData}
                 tool={tool}
                 fingerDrawingEnabled={fingerDrawingEnabled}
+                twoFingerUndoEnabled={uiPreferences.twoFingerUndoEnabled}
+                threeFingerRedoEnabled={uiPreferences.threeFingerRedoEnabled}
                 zoomWindowEnabled={zoomWindowEnabled}
                 interactionEnabled={!elementMode && replayCutoff === undefined}
                 replayCutoff={replayCutoff}

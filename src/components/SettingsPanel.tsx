@@ -46,7 +46,9 @@ export function SettingsPanel({
         | "leftHanded"
         | "fingerDrawingEnabled"
         | "autoDarkInk"
-        | "pageTurnHaptics",
+        | "pageTurnHaptics"
+        | "twoFingerUndoEnabled"
+        | "threeFingerRedoEnabled",
     ) =>
     (enabled: boolean) =>
       onChange({ ...value, [key]: enabled });
@@ -85,12 +87,24 @@ export function SettingsPanel({
             value={value.leftHanded}
             onChange={toggle("leftHanded")}
           />
-          <SettingRow
-            label="페이지 넘김 햅틱"
+            <SettingRow
+              label="페이지 넘김 햅틱"
             help="직접 다른 페이지로 이동할 때 가벼운 선택 진동을 냅니다."
             value={value.pageTurnHaptics}
-            onChange={toggle("pageTurnHaptics")}
-          />
+              onChange={toggle("pageTurnHaptics")}
+            />
+            <SettingRow
+              label="두 손가락 탭으로 실행 취소"
+              help="캔버스를 두 손가락으로 한 번 탭하면 마지막 필기를 되돌립니다."
+              value={value.twoFingerUndoEnabled}
+              onChange={toggle("twoFingerUndoEnabled")}
+            />
+            <SettingRow
+              label="세 손가락 탭으로 다시 실행"
+              help="캔버스를 세 손가락으로 한 번 탭하면 되돌린 필기를 복원합니다."
+              value={value.threeFingerRedoEnabled}
+              onChange={toggle("threeFingerRedoEnabled")}
+            />
           <SettingRow
             label="다크 페이퍼 잉크 자동 반전"
             help="검정 잉크는 밝게, 다크 페이퍼를 떠날 때는 다시 검정으로 바꿉니다."

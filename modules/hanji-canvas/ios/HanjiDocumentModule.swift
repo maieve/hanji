@@ -14,6 +14,8 @@ public final class HanjiDocumentModule: Module {
       Prop("fingerDrawingEnabled") { (view: HanjiDocumentView, value: Bool) in
         view.canvas.drawingPolicy = value ? .anyInput : .pencilOnly
       }
+      Prop("twoFingerUndoEnabled") { (view: HanjiDocumentView, value: Bool) in view.twoFingerUndoTap.isEnabled = value }
+      Prop("threeFingerRedoEnabled") { (view: HanjiDocumentView, value: Bool) in view.threeFingerRedoTap.isEnabled = value }
       Prop("tool") { (view: HanjiDocumentView, value: [String: Any]) in view.setTool(value) }
       Prop("undoSignal") { (view: HanjiDocumentView, value: Int) in view.applyUndoSignal(value) }
       Prop("redoSignal") { (view: HanjiDocumentView, value: Int) in view.applyRedoSignal(value) }
@@ -69,6 +71,22 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var selectionMoveBounds = CGRect.zero
   private var clipboardPasteCount = 0
   private var lastSelectionAction = 0
+  fileprivate lazy var twoFingerUndoTap: UITapGestureRecognizer = {
+    let gesture = UITapGestureRecognizer(target: self, action: #selector(handleTwoFingerUndo))
+    gesture.numberOfTouchesRequired = 2
+    gesture.numberOfTapsRequired = 1
+    gesture.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
+    gesture.cancelsTouchesInView = false
+    return gesture
+  }()
+  fileprivate lazy var threeFingerRedoTap: UITapGestureRecognizer = {
+    let gesture = UITapGestureRecognizer(target: self, action: #selector(handleThreeFingerRedo))
+    gesture.numberOfTouchesRequired = 3
+    gesture.numberOfTapsRequired = 1
+    gesture.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
+    gesture.cancelsTouchesInView = false
+    return gesture
+  }()
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -86,6 +104,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     tap.cancelsTouchesInView = false
     tap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
     canvas.addGestureRecognizer(tap)
+    canvas.addGestureRecognizer(twoFingerUndoTap)
+    canvas.addGestureRecognizer(threeFingerRedoTap)
     let pdfTextPress = UILongPressGestureRecognizer(target: self, action: #selector(handlePDFTextPress(_:)))
     pdfTextPress.minimumPressDuration = 0.35
     pdfTextPress.allowableMovement = 12
@@ -112,6 +132,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
     onPencilDoubleTap(["preferredAction": String(describing: UIPencilInteraction.preferredTapAction)])
     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+  }
+
+  @objc private func handleTwoFingerUndo() {
+    guard canvas.undoManager?.canUndo == true else { return }
+    canvas.undoManager?.undo()
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+  }
+
+  @objc private func handleThreeFingerRedo() {
+    guard canvas.undoManager?.canRedo == true else { return }
+    canvas.undoManager?.redo()
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
   }
 
   @available(iOS 17.5, *)

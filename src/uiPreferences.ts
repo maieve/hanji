@@ -6,12 +6,15 @@ import {
 } from "./backupPolicy";
 import type { LibrarySort, LibraryViewMode } from "./libraryView";
 import { normalizePencilAction, type PencilAction } from "./pencilActions";
+import { normalizeEnabledPreference } from "./touchGestures";
 
 const KEY = "hanji.ui.preferences.v1";
 export type UiPreferences = {
   leftHanded: boolean;
   fingerDrawingEnabled: boolean;
   pageTurnHaptics: boolean;
+  twoFingerUndoEnabled: boolean;
+  threeFingerRedoEnabled: boolean;
   pencilDoubleTapAction: PencilAction;
   pencilSqueezeAction: PencilAction;
   defaultTemplate: PageTemplate;
@@ -26,6 +29,8 @@ export const defaultUiPreferences: UiPreferences = {
   leftHanded: false,
   fingerDrawingEnabled: false,
   pageTurnHaptics: true,
+  twoFingerUndoEnabled: true,
+  threeFingerRedoEnabled: true,
   pencilDoubleTapAction: "eraser",
   pencilSqueezeAction: "toolbar",
   defaultTemplate: "line",
@@ -71,6 +76,14 @@ export async function loadUiPreferences(): Promise<UiPreferences> {
       pencilSqueezeAction: normalizePencilAction(
         parsed.pencilSqueezeAction,
         defaultUiPreferences.pencilSqueezeAction,
+      ),
+      twoFingerUndoEnabled: normalizeEnabledPreference(
+        parsed.twoFingerUndoEnabled,
+        defaultUiPreferences.twoFingerUndoEnabled,
+      ),
+      threeFingerRedoEnabled: normalizeEnabledPreference(
+        parsed.threeFingerRedoEnabled,
+        defaultUiPreferences.threeFingerRedoEnabled,
       ),
     };
   } catch {

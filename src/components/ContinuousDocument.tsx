@@ -15,6 +15,8 @@ type Props = {
   activeIndex: number;
   tool: ToolSpec;
   fingerDrawingEnabled: boolean;
+  twoFingerUndoEnabled: boolean;
+  threeFingerRedoEnabled: boolean;
   zoomWindowEnabled: boolean;
   elementMode: boolean;
   replayCutoff?: number;
@@ -87,6 +89,8 @@ export function ContinuousDocument(props: Props) {
             drawingData={item.drawingData}
             tool={props.tool}
             fingerDrawingEnabled={props.fingerDrawingEnabled}
+            twoFingerUndoEnabled={props.twoFingerUndoEnabled}
+            threeFingerRedoEnabled={props.threeFingerRedoEnabled}
             zoomWindowEnabled={props.zoomWindowEnabled && index === props.activeIndex}
             interactionEnabled={!props.elementMode && props.replayCutoff === undefined}
             replayCutoff={props.replayCutoff}

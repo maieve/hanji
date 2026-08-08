@@ -59,6 +59,7 @@ Windows에서는 iOS 프로젝트 생성과 Swift 컴파일이 지원되지 않�
 ## Device test procedure
 
 - G52 Configurable Pencil gestures: 설정에서 Apple Pencil 더블 탭과 Pencil Pro 스퀴즈를 각각 `지우개 전환`, `실행 취소`, `다시 실행`, `도구 막대 표시`, `사용 안 함`으로 지정한다. 페이지 모드와 연속 모드에서 각 동작이 정확히 한 번만 실행되어야 하며, 집중 모드의 `도구 막대 표시`는 숨겨진 도구 막대를 다시 표시해야 한다. 앱을 강제 종료하고 다시 열어도 선택값이 유지되어야 한다. 스퀴즈를 지원하지 않는 Pencil에서는 오류나 오동작이 없어야 한다.
+- G53 Multi-touch history gestures: 설정에서 `두 손가락 탭으로 실행 취소`와 `세 손가락 탭으로 다시 실행`을 켠다. 페이지 모드와 연속 모드에서 필기 20획을 만든 뒤 두 손가락 탭 10회와 세 손가락 탭 10회를 수행하면 매번 정확히 한 획씩 제거·복원되어야 한다. 핀치 줌, 두 손가락 팬, 시스템 세 손가락 스와이프 실행 취소·다시 실행은 그대로 동작하고 손가락 탭이 잉크 획을 만들지 않아야 한다. 각 설정을 끄면 해당 탭만 무시되며 앱을 강제 종료한 뒤에도 선택값이 유지되어야 한다.
 
 1. `main`의 최신 `iOS Native Build`가 성공했는지 확인하고 unsigned IPA artifact를 내려받는다. 함께 들어 있는 `Hanji-build.txt`와 `Hanji-device-checklist.md`를 보존한다.
 2. [IPAD_INSTALL.md](./IPAD_INSTALL.md)에 따라 AltServer/SideStore로 동일 빌드를 설치한다.

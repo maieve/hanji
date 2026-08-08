@@ -11,6 +11,8 @@ type Props = {
   drawingData: string;
   tool: ToolSpec;
   fingerDrawingEnabled?: boolean;
+  twoFingerUndoEnabled?: boolean;
+  threeFingerRedoEnabled?: boolean;
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
@@ -43,6 +45,8 @@ export function DocumentCanvas(p: Props) {
       drawingData={p.drawingData}
       tool={p.tool}
       fingerDrawingEnabled={p.fingerDrawingEnabled ?? false}
+      twoFingerUndoEnabled={p.twoFingerUndoEnabled ?? true}
+      threeFingerRedoEnabled={p.threeFingerRedoEnabled ?? true}
       zoomWindowEnabled={p.zoomWindowEnabled ?? false}
       interactionEnabled={p.interactionEnabled ?? true}
       replayCutoff={p.replayCutoff}
