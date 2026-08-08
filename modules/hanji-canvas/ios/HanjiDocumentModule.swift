@@ -53,6 +53,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var lastRedoSignal = 0
   private var shapeKind: String?
   private var shapeLineStyle = "solid"
+  private var shapeFillStyle = "none"
   private var shapeHoldRequired = true
   private var applyingShape = false
   private var activeKind = "pen"
@@ -264,6 +265,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     markerStraightLine = value["markerStraightLine"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     shapeLineStyle = value["shapeLineStyle"] as? String ?? "solid"
+    shapeFillStyle = value["shapeFillStyle"] as? String ?? "none"
     shapeHoldRequired = value["shapeHoldRequired"] as? Bool ?? true
     let width = (value["width"] as? NSNumber)?.doubleValue ?? 2
     let opacity = (value["opacity"] as? NSNumber)?.doubleValue ?? 1
@@ -588,7 +590,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       }
     }
     if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last, !shapeHoldRequired || heldAtEnd(source) {
-      let replacements = makeShapeStrokes(source, kind: shapeKind, dashed: shapeLineStyle == "dashed", connectingTo: Array(strokes.dropLast()))
+      let replacements = makeShapeStrokes(source, kind: shapeKind, dashed: shapeLineStyle == "dashed", fill: shapeFillStyle, connectingTo: Array(strokes.dropLast()))
       if !replacements.isEmpty {
         registerTransformUndo(canvasView.drawing)
         strokes.removeLast(); strokes.append(contentsOf: replacements)
@@ -640,7 +642,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
 
-  private func makeShapeStrokes(_ source: PKStroke, kind: String, dashed: Bool = false, connectingTo previous: [PKStroke] = []) -> [PKStroke] {
+  private func makeShapeStrokes(_ source: PKStroke, kind: String, dashed: Bool = false, fill: String = "none", connectingTo previous: [PKStroke] = []) -> [PKStroke] {
     guard source.path.count > 1 else { return [source] }
     var start = source.path[0].location, end = source.path[source.path.count - 1].location
     if kind == "line" || kind == "arrow" {
@@ -669,10 +671,32 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     }
     let prototype = source.path[0]
     let paths = dashed ? locations.flatMap { dashedPaths($0) } : locations
-    return paths.map { points in
+    let outlines = paths.map { points in
       let controls = points.enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: prototype.size, opacity: prototype.opacity, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
       return PKStroke(ink: source.ink, path: PKStrokePath(controlPoints: controls, creationDate: source.path.creationDate))
     }
+    guard fill != "none", ["ellipse", "rectangle", "triangle"].contains(kind) else { return outlines }
+    let fillAlpha: CGFloat = fill == "solid" ? 0.72 : 0.20
+    let fillInk = PKInk(source.ink.inkType, color: source.ink.color.withAlphaComponent(source.ink.color.cgColor.alpha * fillAlpha))
+    let spacing = max(CGFloat(3), min(CGFloat(10), prototype.size.height * 0.85))
+    let fillSize = CGSize(width: max(prototype.size.width, spacing * 1.35), height: max(prototype.size.height, spacing * 1.35))
+    var fills: [PKStroke] = [], y = top + spacing
+    while y < top + height - spacing / 2 {
+      let progress = max(CGFloat(0), min(CGFloat(1), (y - top) / height))
+      var x1 = left, x2 = left + width
+      if kind == "ellipse" {
+        let normalized = (y - (top + height / 2)) / (height / 2), half = width / 2 * sqrt(max(0, 1 - normalized * normalized))
+        x1 = left + width / 2 - half; x2 = left + width / 2 + half
+      } else if kind == "triangle" {
+        x1 = left + width / 2 * (1 - progress); x2 = left + width / 2 * (1 + progress)
+      }
+      if x2 - x1 > spacing {
+        let points = [CGPoint(x:x1,y:y),CGPoint(x:x2,y:y)].enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: fillSize, opacity: 1, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
+        fills.append(PKStroke(ink: fillInk, path: PKStrokePath(controlPoints: points, creationDate: source.path.creationDate)))
+      }
+      y += spacing
+    }
+    return fills + outlines
   }
 
   private func nearestAnchor(to point: CGPoint, in anchors: [CGPoint], threshold: CGFloat) -> CGPoint? {

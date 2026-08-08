@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import type { HanjiCanvasProps } from './HanjiCanvas.types';
-import {SHAPE_HOLD_MS,shouldSnapShape} from '../shapePolicy';
+import {SHAPE_HOLD_MS,shouldSnapShape,supportsShapeFill} from '../shapePolicy';
 
-type Stroke = { d: string; color: string; width: number; opacity: number; dashed?: boolean };
+type Stroke = { d: string; color: string; width: number; opacity: number; dashed?: boolean; fill?: 'translucent'|'solid' };
 const decode = (raw: string): Stroke[] => { try { return raw ? JSON.parse(raw) : []; } catch { return []; } };
 const touches=(stroke:Stroke,x:number,y:number,radius:number)=>{const n=stroke.d.match(/-?\d+(?:\.\d+)?/g)??[];for(let i=0;i+1<n.length;i+=2)if(Math.hypot(Number(n[i])-x,Number(n[i+1])-y)<=radius+stroke.width/2)return true;return false};
 const shapePath=(kind:NonNullable<HanjiCanvasProps['tool']['shapeKind']>,sx:number,sy:number,x:number,y:number)=>{
@@ -49,12 +49,12 @@ export function HanjiCanvas({ drawingData, tool, onDrawingChange }: HanjiCanvasP
     onPanResponderRelease: () => {
       if (tool.kind === 'eraser'||tool.kind === 'lasso') return;
       if (!live.current) return;
-      if(tool.kind==='shape'&&shapeStart.current&&strokeEnd.current&&shouldSnapShape(tool.shapeHoldRequired??true,Date.now()-lastMoveAt.current>=SHAPE_HOLD_MS))live.current.d=shapePath(tool.shapeKind??'line',shapeStart.current.x,shapeStart.current.y,strokeEnd.current.x,strokeEnd.current.y);
+      if(tool.kind==='shape'&&shapeStart.current&&strokeEnd.current&&shouldSnapShape(tool.shapeHoldRequired??true,Date.now()-lastMoveAt.current>=SHAPE_HOLD_MS)){live.current.d=shapePath(tool.shapeKind??'line',shapeStart.current.x,shapeStart.current.y,strokeEnd.current.x,strokeEnd.current.y);if(supportsShapeFill(tool.shapeKind??'line')&&tool.shapeFillStyle&&tool.shapeFillStyle!=='none')live.current.fill=tool.shapeFillStyle}
       if(tool.kind==='marker'&&(tool.markerStraightLine??true)&&Date.now()-lastMoveAt.current>=350&&strokeStart.current&&strokeEnd.current)live.current.d=shapePath('line',strokeStart.current.x,strokeStart.current.y,strokeEnd.current.x,strokeEnd.current.y);
       const next = [...strokes, live.current]; live.current = null; shapeStart.current=null;rawShapePath.current=''; setStrokes(next); onDrawingChange(JSON.stringify(next));
     },
   }), [onDrawingChange, strokes, tool]);
-  return <View style={s.fill} {...responder.panHandlers}><Svg width="100%" height="100%">{[...strokes, ...(live.current ? [live.current] : [])].map((x, i) => <Path key={i} d={x.d} stroke={x.color} strokeWidth={x.width} strokeDasharray={x.dashed?'12 7':undefined} opacity={x.opacity} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg></View>;
+  return <View style={s.fill} {...responder.panHandlers}><Svg width="100%" height="100%">{[...strokes, ...(live.current ? [live.current] : [])].map((x, i) => <Path key={i} d={x.d} stroke={x.color} strokeWidth={x.width} strokeDasharray={x.dashed?'12 7':undefined} opacity={x.opacity} fill={x.fill?x.color:'none'} fillOpacity={x.fill==='solid'?.72:x.fill==='translucent'?.2:undefined} strokeLinecap="round" strokeLinejoin="round" />)}</Svg></View>;
 }
 const s = StyleSheet.create({ fill: { ...StyleSheet.absoluteFill } });
 

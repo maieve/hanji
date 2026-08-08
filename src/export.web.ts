@@ -8,6 +8,7 @@ type Stroke = {
   width: number;
   opacity: number;
   dashed?: boolean;
+  fill?: "translucent" | "solid";
 };
 const esc = (v: string) =>
   v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
@@ -21,7 +22,7 @@ export async function exportNotebookPdf(note: Notebook) {
       const paths = strokes
         .map(
           (x) =>
-            `<path d="${esc(x.d)}" stroke="${esc(x.color)}" stroke-width="${x.width}" ${x.dashed ? 'stroke-dasharray="12 7"' : ""} opacity="${x.opacity}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+            `<path d="${esc(x.d)}" stroke="${esc(x.color)}" stroke-width="${x.width}" ${x.dashed ? 'stroke-dasharray="12 7"' : ""} opacity="${x.opacity}" fill="${x.fill ? esc(x.color) : "none"}" ${x.fill ? `fill-opacity="${x.fill === "solid" ? .72 : .2}"` : ""} stroke-linecap="round" stroke-linejoin="round"/>`,
         )
         .join("");
       const elements = (page.elements ?? [])
@@ -64,7 +65,7 @@ export async function exportPagePng(
   const paths = strokes
     .map(
       (x) =>
-        `<path d="${esc(x.d)}" stroke="${esc(x.color)}" stroke-width="${x.width}" ${x.dashed ? 'stroke-dasharray="12 7"' : ""} opacity="${x.opacity}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+        `<path d="${esc(x.d)}" stroke="${esc(x.color)}" stroke-width="${x.width}" ${x.dashed ? 'stroke-dasharray="12 7"' : ""} opacity="${x.opacity}" fill="${x.fill ? esc(x.color) : "none"}" ${x.fill ? `fill-opacity="${x.fill === "solid" ? .72 : .2}"` : ""} stroke-linecap="round" stroke-linejoin="round"/>`,
     )
     .join("");
   const labels = (page.elements ?? [])
