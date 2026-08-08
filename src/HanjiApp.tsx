@@ -81,7 +81,7 @@ import {
   replaceFolderRoot,
 } from "./folders";
 import { PageTransferPanel } from "./components/PageTransferPanel";
-import { transferPage as transferNotebookPage } from "./pageTransfer";
+import { duplicateNotebookPage, transferPage as transferNotebookPage } from "./pageTransfer";
 import { loadUiPreferences, saveUiPreferences } from "./uiPreferences";
 import { appearanceOverride } from "./themePolicy";
 import { ZoomablePage } from "./components/ZoomablePage";
@@ -1260,30 +1260,9 @@ export function HanjiApp() {
     }));
     if (active >= 0) setPageIndex(active);
   };
-  const duplicatePage = (id: string) =>
-    update(current.id, (n) => {
-      const index = n.pages.findIndex((p) => p.id === id),
-        source = n.pages[index];
-      if (!source) return n;
-      const copy = {
-        ...source,
-        id: makeId(),
-        updatedAt: new Date().toISOString(),
-        elements: source.elements?.map((element) => ({
-          ...element,
-          id: makeId(),
-        })),
-      };
-      return {
-        ...n,
-        pages: [
-          ...n.pages.slice(0, index + 1),
-          copy,
-          ...n.pages.slice(index + 1),
-        ],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+  const duplicatePage = (id: string) => update(current.id,n=>duplicateNotebookPage(n,id));
+  const rotatePageById=(id:string)=>update(current.id,n=>{const timestamp=new Date().toISOString();return{...n,updatedAt:timestamp,pages:n.pages.map(p=>p.id===id?{...p,rotation:(((p.rotation??0)+90)%360) as 0|90|180|270,updatedAt:timestamp}:p)}});
+  const togglePageBookmark=(id:string)=>update(current.id,n=>{const timestamp=new Date().toISOString();return{...n,updatedAt:timestamp,pages:n.pages.map(p=>p.id===id?{...p,bookmarked:!p.bookmarked,updatedAt:timestamp}:p)}});
   const deletePageFromGrid = (id: string) => {
     if (current.pages.length === 1) return;
     const index = current.pages.findIndex((p) => p.id === id);
@@ -1743,14 +1722,7 @@ export function HanjiApp() {
             </Pressable>
             <Pressable
               accessibilityLabel="페이지 북마크"
-              onPress={() =>
-                update(current.id, (n) => ({
-                  ...n,
-                  pages: n.pages.map((p) =>
-                    p.id === page.id ? { ...p, bookmarked: !p.bookmarked } : p,
-                  ),
-                }))
-              }
+              onPress={() => togglePageBookmark(page.id)}
               style={[s.railAction, page.bookmarked && s.templateActive]}
             >
               <Ionicons
@@ -1959,15 +1931,8 @@ export function HanjiApp() {
         onReorder={reorderPages}
         onDuplicate={duplicatePage}
         onDelete={deletePageFromGrid}
-        onBookmark={(id) =>
-          update(current.id, (n) => ({
-            ...n,
-            pages: n.pages.map((p) =>
-              p.id === id ? { ...p, bookmarked: !p.bookmarked } : p,
-            ),
-            updatedAt: new Date().toISOString(),
-          }))
-        }
+        onBookmark={togglePageBookmark}
+        onRotate={rotatePageById}
         onTransfer={(id) => {
           const index = current.pages.findIndex((p) => p.id === id);
           if (index >= 0) navigatePage(index);
