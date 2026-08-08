@@ -155,6 +155,7 @@ export function HanjiApp() {
     eraserAutoReturn: true,
   });
   const previousPencilTool = useRef<ToolSpec>(tool);
+  const squeezeTemporaryTool = useRef<ToolSpec | undefined>(undefined);
   const setTool = (value: ToolSpec | ((active: ToolSpec) => ToolSpec)) =>
     setToolState((active) => {
       const next = typeof value === "function" ? value(active) : value;
@@ -1082,8 +1083,23 @@ export function HanjiApp() {
   };
   const handlePencilDoubleTap = () =>
     performPencilAction(uiPreferences.pencilDoubleTapAction);
-  const handlePencilSqueeze = () =>
-    performPencilAction(uiPreferences.pencilSqueezeAction);
+  const handlePencilSqueeze = (phase: "began" | "ended") => {
+    if (uiPreferences.pencilSqueezeAction !== "temporaryEraser") {
+      if (phase === "began") performPencilAction(uiPreferences.pencilSqueezeAction);
+      return;
+    }
+    if (phase === "began") {
+      setTool((active) => {
+        if (active.kind === "eraser") return active;
+        squeezeTemporaryTool.current = active;
+        return { ...active, kind: "eraser", eraserMode: "vector" };
+      });
+    } else if (squeezeTemporaryTool.current) {
+      const original = squeezeTemporaryTool.current;
+      squeezeTemporaryTool.current = undefined;
+      setTool((active) => (active.kind === "eraser" ? original : active));
+    }
+  };
   const handlePageCount = (count: number, source: typeof page) => {
     if (count <= current.pages.length) return;
     update(current.id, (n) => ({

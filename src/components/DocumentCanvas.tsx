@@ -25,7 +25,7 @@ type Props = {
   onPdfLink?: (link: { pageIndex?: number; url?: string }) => void;
   onPdfExcerpt?: (excerpt:{text:string;pageIndex:number})=>void;
   onPencilDoubleTap?: () => void;
-  onPencilSqueeze?: () => void;
+  onPencilSqueeze?: (phase: 'began' | 'ended') => void;
   onEraserEnded?: () => void;
   onStrokeAdded?: (createdAt: number) => void;
   onStrokeTapped?: (createdAt: number) => void;
@@ -59,7 +59,7 @@ export function DocumentCanvas(p: Props) {
       onPdfLink={(e: E<{ pageIndex?: number; url?: string }>) => p.onPdfLink?.(e.nativeEvent)}
       onPdfExcerpt={(e:E<{text:string;pageIndex:number}>)=>p.onPdfExcerpt?.(e.nativeEvent)}
       onPencilDoubleTap={() => p.onPencilDoubleTap?.()}
-      onPencilSqueeze={() => p.onPencilSqueeze?.()}
+      onPencilSqueeze={(e:E<{phase?:'began'|'ended'}>) => p.onPencilSqueeze?.(e.nativeEvent.phase ?? 'began')}
       onEraserEnded={() => {
         if (p.onEraserEnded) p.onEraserEnded();
         else if (p.tool.kind === 'eraser' && (p.tool.eraserAutoReturn ?? true)) p.onPencilDoubleTap?.();

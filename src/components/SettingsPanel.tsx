@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { pencilActions } from "../pencilActions";
+import { pencilDoubleTapActions, pencilSqueezeActions } from "../pencilActions";
 import type { PencilAction } from "../pencilActions";
 import { C } from "../theme";
 import type { PageTemplate } from "../types";
@@ -114,6 +114,7 @@ export function SettingsPanel({
           <Text style={s.section}>Apple Pencil 제스처</Text>
           <ActionPicker
             label="더블 탭"
+            actions={pencilDoubleTapActions}
             value={value.pencilDoubleTapAction}
             onChange={(pencilDoubleTapAction) =>
               onChange({ ...value, pencilDoubleTapAction })
@@ -121,6 +122,7 @@ export function SettingsPanel({
           />
           <ActionPicker
             label="Pencil Pro 스퀴즈"
+            actions={pencilSqueezeActions}
             value={value.pencilSqueezeAction}
             onChange={(pencilSqueezeAction) =>
               onChange({ ...value, pencilSqueezeAction })
@@ -330,17 +332,19 @@ function ActionPicker({
   label,
   value,
   onChange,
+  actions,
 }: {
   label: string;
   value: PencilAction;
   onChange: (value: PencilAction) => void;
+  actions: { value: PencilAction; label: string }[];
 }) {
   return (
     <View style={s.row}>
       <View style={s.grow}>
         <Text style={s.label}>{label}</Text>
         <View style={s.templates}>
-          {pencilActions.map((item) => (
+          {actions.map((item) => (
             <Pressable
               key={item.value}
               accessibilityRole="button"

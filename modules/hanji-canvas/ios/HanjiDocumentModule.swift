@@ -154,9 +154,12 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
 
   @available(iOS 17.5, *)
   func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveSqueeze squeeze: UIPencilInteraction.Squeeze) {
-    guard squeeze.phase == .began else { return }
-    onPencilSqueeze(["preferredAction": String(describing: UIPencilInteraction.preferredSqueezeAction)])
-    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    if squeeze.phase == .began {
+      onPencilSqueeze(["phase": "began", "preferredAction": String(describing: UIPencilInteraction.preferredSqueezeAction)])
+      UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    } else if squeeze.phase == .ended || squeeze.phase == .cancelled {
+      onPencilSqueeze(["phase": "ended", "preferredAction": String(describing: UIPencilInteraction.preferredSqueezeAction)])
+    }
   }
 
   override func layoutSubviews() {

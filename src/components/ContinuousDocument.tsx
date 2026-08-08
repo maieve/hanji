@@ -38,7 +38,7 @@ type Props = {
   onPdfExcerpt:(page:Page,excerpt:{text:string;pageIndex:number})=>void;
   onNavigateSource:(source:NonNullable<import('../types').TextElement['source']>)=>void;
   onPencilDoubleTap: () => void;
-  onPencilSqueeze: () => void;
+  onPencilSqueeze: (phase: 'began' | 'ended') => void;
   onStrokeAdded: (page: Page, createdAt: number) => void;
   onStrokeTapped: (page: Page, createdAt: number) => void;
 };

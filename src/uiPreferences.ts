@@ -5,7 +5,11 @@ import {
   normalizeBackupRetention,
 } from "./backupPolicy";
 import type { LibrarySort, LibraryViewMode } from "./libraryView";
-import { normalizePencilAction, type PencilAction } from "./pencilActions";
+import {
+  normalizePencilAction,
+  pencilDoubleTapActions,
+  type PencilAction,
+} from "./pencilActions";
 import { normalizeEnabledPreference } from "./touchGestures";
 
 const KEY = "hanji.ui.preferences.v1";
@@ -72,6 +76,7 @@ export async function loadUiPreferences(): Promise<UiPreferences> {
       pencilDoubleTapAction: normalizePencilAction(
         parsed.pencilDoubleTapAction,
         defaultUiPreferences.pencilDoubleTapAction,
+        pencilDoubleTapActions,
       ),
       pencilSqueezeAction: normalizePencilAction(
         parsed.pencilSqueezeAction,
