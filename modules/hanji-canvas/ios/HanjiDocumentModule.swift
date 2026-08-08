@@ -6,7 +6,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onStrokeAdded", "onStrokeTapped", "onHistoryChange")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -26,6 +26,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   let onDrawingChange = EventDispatcher()
   let onPageCount = EventDispatcher()
   let onPdfOutline = EventDispatcher()
+  let onPdfLink = EventDispatcher()
   let onStrokeAdded = EventDispatcher()
   let onStrokeTapped = EventDispatcher()
   let onHistoryChange = EventDispatcher()
@@ -158,7 +159,16 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   @objc private func handleCanvasTap(_ recognizer: UITapGestureRecognizer) {
     let point = recognizer.location(in: canvas)
     let hit = canvas.drawing.strokes.reversed().first { $0.renderBounds.insetBy(dx: -14, dy: -14).contains(point) }
-    if let hit { onStrokeTapped(["createdAt": hit.path.creationDate.timeIntervalSince1970]) }
+    if let hit { onStrokeTapped(["createdAt": hit.path.creationDate.timeIntervalSince1970]); return }
+    guard let page = document?.page(at: currentPage) else { return }
+    let pagePoint = pdfView.convert(point, to: page)
+    guard let annotation = page.annotation(at: pagePoint), let action = annotation.action else { return }
+    if let goTo = action as? PDFActionGoTo, let targetPage = goTo.destination.page, let document {
+      let index = document.index(for: targetPage)
+      if index != NSNotFound { onPdfLink(["pageIndex": index]); UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    } else if let urlAction = action as? PDFActionURL, let url = urlAction.url {
+      onPdfLink(["url": url.absoluteString])
+    }
   }
 
   func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
