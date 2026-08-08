@@ -1727,10 +1727,10 @@ export function HanjiApp() {
                 template={page.template}
                 templateSpacing={page.templateSpacing}
                 customTemplateUri={page.customTemplateUri}
-                backgroundColor={page.backgroundColor}
-                backgroundColor2={page.backgroundColor2}
+                backgroundColor={page.pdfUri?undefined:page.backgroundColor}
+                backgroundColor2={page.pdfUri?undefined:page.backgroundColor2}
                 backgroundGradientDirection={page.backgroundGradientDirection}
-                backgroundOpacity={page.backgroundOpacity}
+                backgroundOpacity={page.pdfUri?0:page.backgroundOpacity}
               />
               <DocumentCanvas
                 key={page.id}
@@ -1742,6 +1742,7 @@ export function HanjiApp() {
                 twoFingerUndoEnabled={uiPreferences.twoFingerUndoEnabled}
                 threeFingerRedoEnabled={uiPreferences.threeFingerRedoEnabled}
                 zoomWindowEnabled={zoomWindowEnabled}
+                pagePaint={{color:page.backgroundColor,color2:page.backgroundColor2,direction:page.backgroundGradientDirection,opacity:page.backgroundOpacity}}
                 interactionEnabled={!elementMode && replayCutoff === undefined}
                 replayCutoff={replayCutoff}
                 selectionAction={selectionAction}

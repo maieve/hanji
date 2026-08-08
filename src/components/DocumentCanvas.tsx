@@ -16,6 +16,7 @@ type Props = {
   twoFingerUndoEnabled?: boolean;
   threeFingerRedoEnabled?: boolean;
   zoomWindowEnabled?: boolean;
+  pagePaint?: {color?:string;color2?:string;direction?:string;opacity?:number};
   interactionEnabled?: boolean;
   replayCutoff?: number;
   selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'flashcard' | 'imageFlashcard' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
@@ -71,6 +72,7 @@ export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function Do
       twoFingerUndoEnabled={p.twoFingerUndoEnabled ?? true}
       threeFingerRedoEnabled={p.threeFingerRedoEnabled ?? true}
       zoomWindowEnabled={p.zoomWindowEnabled ?? false}
+      pagePaint={p.pagePaint}
       interactionEnabled={p.interactionEnabled ?? true}
       replayCutoff={p.replayCutoff}
       selectionAction={p.selectionAction}

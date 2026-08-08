@@ -20,6 +20,7 @@ public final class HanjiDocumentModule: Module {
       Prop("undoSignal") { (view: HanjiDocumentView, value: Int) in view.applyUndoSignal(value) }
       Prop("redoSignal") { (view: HanjiDocumentView, value: Int) in view.applyRedoSignal(value) }
       Prop("zoomWindowEnabled") { (view: HanjiDocumentView, value: Bool) in view.setZoomWindow(value) }
+      Prop("pagePaint") { (view: HanjiDocumentView, value: [String: Any]?) in view.setPagePaint(value) }
       Prop("interactionEnabled") { (view: HanjiDocumentView, value: Bool) in view.canvas.isUserInteractionEnabled = value }
       Prop("replayCutoff") { (view: HanjiDocumentView, value: Double?) in view.setReplayCutoff(value) }
       Prop("selectionAction") { (view: HanjiDocumentView, value: [String: Any]?) in view.applySelectionAction(value) }
@@ -80,6 +81,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var sourceDrawing = PKDrawing()
   private var replayCutoff: Double?
   private let selectionLayer = CAShapeLayer()
+  private let pagePaintLayer = CAGradientLayer()
+  private var pagePaintValue: [String: Any]?
   private let pdfTextSelectionLayer = CAShapeLayer()
   private weak var pdfTextSelectionPage: PDFPage?
   private var pdfTextSelectionStart: CGPoint?
@@ -155,6 +158,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     selectionPan.name = "hanji-rectangle-selection"
     canvas.addGestureRecognizer(selectionPan)
     addSubview(pdfView)
+    pagePaintLayer.isHidden = true
+    layer.addSublayer(pagePaintLayer)
     addSubview(canvas)
   }
 
@@ -294,9 +299,42 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     super.layoutSubviews()
     pdfView.frame = bounds
     canvas.frame = bounds
+    updatePagePaintFrame()
     if canvas.contentSize.width < bounds.width || canvas.contentSize.height < bounds.height { canvas.contentSize = bounds.size }
     rescaleDrawingIfNeeded(to: bounds.size)
     if !zoomWindowEnabled { DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() } }
+  }
+
+  func setPagePaint(_ value: [String: Any]?) {
+    pagePaintValue = value
+    guard document != nil,
+          let value,
+          let first = value["color"] as? String,
+          !first.isEmpty,
+          let opacity = value["opacity"] as? Double,
+          opacity > 0 else { pagePaintLayer.isHidden = true; return }
+    let second = (value["color2"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? first
+    pagePaintLayer.colors = [UIColor(hanjiHex: first).cgColor, UIColor(hanjiHex: second).cgColor]
+    pagePaintLayer.locations = [0, 1]
+    pagePaintLayer.opacity = Float(min(1, max(0, opacity)))
+    let direction = value["direction"] as? String ?? "vertical"
+    pagePaintLayer.type = direction == "radial" ? .radial : .axial
+    switch direction {
+    case "horizontal": pagePaintLayer.startPoint = CGPoint(x: 0, y: 0.5); pagePaintLayer.endPoint = CGPoint(x: 1, y: 0.5)
+    case "diagonalDown": pagePaintLayer.startPoint = CGPoint(x: 0, y: 0); pagePaintLayer.endPoint = CGPoint(x: 1, y: 1)
+    case "diagonalUp": pagePaintLayer.startPoint = CGPoint(x: 0, y: 1); pagePaintLayer.endPoint = CGPoint(x: 1, y: 0)
+    case "radial": pagePaintLayer.startPoint = CGPoint(x: 0.5, y: 0.5); pagePaintLayer.endPoint = CGPoint(x: 1, y: 1)
+    default: pagePaintLayer.startPoint = CGPoint(x: 0.5, y: 0); pagePaintLayer.endPoint = CGPoint(x: 0.5, y: 1)
+    }
+    pagePaintLayer.isHidden = false
+    updatePagePaintFrame()
+  }
+
+  private func updatePagePaintFrame() {
+    guard !pagePaintLayer.isHidden, let page = document?.page(at: currentPage) else { return }
+    pdfView.layoutDocumentView()
+    let pageRect = pdfView.convert(page.bounds(for: .mediaBox), from: page)
+    pagePaintLayer.frame = convert(pageRect, from: pdfView).intersection(bounds)
   }
 
   private func rescaleDrawingIfNeeded(to size: CGSize) {
@@ -351,6 +389,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     guard let uri, !uri.isEmpty else {
       document = nil
       pdfView.document = nil
+      pagePaintLayer.isHidden = true
       return
     }
     let url: URL?
@@ -359,6 +398,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     document = pdf
     pdfView.document = pdf
     pdfView.autoScales = true
+    setPagePaint(pagePaintValue)
     onPageCount(["count": pdf.pageCount])
     onPdfOutline(["items": outlineItems(pdf)])
     showPage(currentPage)
@@ -387,7 +427,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     guard let page = document?.page(at: currentPage) else { return }
     pdfView.go(to: page)
     pdfView.autoScales = true
-    DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() }
+    DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics(); self?.updatePagePaintFrame() }
   }
 
   @discardableResult func loadDrawing(_ base64: String) -> Bool {

@@ -158,10 +158,10 @@ export function ContinuousDocument(props: Props) {
             template={item.template}
             templateSpacing={item.templateSpacing}
             customTemplateUri={item.customTemplateUri}
-            backgroundColor={item.backgroundColor}
-            backgroundColor2={item.backgroundColor2}
+            backgroundColor={item.pdfUri?undefined:item.backgroundColor}
+            backgroundColor2={item.pdfUri?undefined:item.backgroundColor2}
             backgroundGradientDirection={item.backgroundGradientDirection}
-            backgroundOpacity={item.backgroundOpacity}
+            backgroundOpacity={item.pdfUri?0:item.backgroundOpacity}
           />
           <DocumentCanvas
             key={item.id}
@@ -175,6 +175,7 @@ export function ContinuousDocument(props: Props) {
             zoomWindowEnabled={
               props.zoomWindowEnabled && index === props.activeIndex
             }
+            pagePaint={{color:item.backgroundColor,color2:item.backgroundColor2,direction:item.backgroundGradientDirection,opacity:item.backgroundOpacity}}
             interactionEnabled={
               !props.elementMode && props.replayCutoff === undefined
             }
