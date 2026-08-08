@@ -6,6 +6,7 @@ import type {Notebook} from './types';
 import {normalizeBackupRetention} from './backupPolicy';
 import {requireNativeModule} from 'expo-modules-core';
 import {escapePdfPath,escapePngPath,escapeStrokePath,fallbackStrokeDump,isSupportedArchiveVersion,notebookExportPayload,pageExportPayload,type EscapeCopy} from './archiveEscape';
+import {notebookAssetReferences} from './archiveAssets';
 
 type ArchiveManifest={format:'hanji-archive';version:2|3|4;createdAt:string;assets:Record<string,string>;escapeCopies?:EscapeCopy[]};
 const clean=(value:string)=>value.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-90)||'asset';
@@ -32,17 +33,12 @@ async function addEscapeCopies(zip:JSZip,items:Notebook[],strict:boolean){
 
 async function exportArchive(items:Notebook[],prefix:string,dialogTitle:string){
   const zip=new JSZip(); const assets:Record<string,string>={}; let assetIndex=0;
-  const addAsset=async(uri:string,folder:string)=>{if(!uri||assets[uri])return;try{const path=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(path,await bytes(uri));assets[uri]=path}catch{}};
+  const addAsset=async(uri:string,folder:string)=>{if(assets[uri])return;try{const path=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(path,await bytes(uri));assets[uri]=path}catch(error){throw new Error(`백업 자산을 읽을 수 없습니다 (${folder}): ${error instanceof Error?error.message:String(error)}`)}};
+  for(const asset of notebookAssetReferences(items))await addAsset(asset.uri,asset.kind);
   for(const note of items){
-    if(note.coverUri)await addAsset(note.coverUri,'cover');
     for(const page of note.pages){
-      if(page.pdfUri)await addAsset(page.pdfUri,'pdf');
-      if(page.customTemplateUri)await addAsset(page.customTemplateUri,'template');
-      for(const element of page.elements??[])if(element.kind==='image')await addAsset(element.uri,'image');
       if(page.drawingData){const path=`notebooks/${note.id}/pages/${page.id}.${page.drawingData.trimStart().startsWith('[')?'drawing.json':'pkdrawing'}`;zip.file(path,page.drawingData.trimStart().startsWith('[')?page.drawingData:page.drawingData,{base64:!page.drawingData.trimStart().startsWith('[')});}
     }
-    for(const card of note.flashcards??[]){if(card.questionImageUri)await addAsset(card.questionImageUri,'flashcard');if(card.answerImageUri)await addAsset(card.answerImageUri,'flashcard');}
-    for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio');
   }
   const escapeCopies=await addEscapeCopies(zip,items,true);
   const manifest:ArchiveManifest={format:'hanji-archive',version:4,createdAt:new Date().toISOString(),assets,escapeCopies};
@@ -61,8 +57,9 @@ export async function writeAutomaticBackup(items:Notebook[],keep=5,minIntervalMs
   const existing=directory.list().filter((entry):entry is File=>entry instanceof File&&entry.extension==='.hanji').sort((a,b)=>(b.modificationTime??0)-(a.modificationTime??0));
   if(existing[0]?.modificationTime&&Date.now()-existing[0].modificationTime<minIntervalMs){for(const old of existing.slice(retention))if(old.exists)old.delete();return null;}
   const zip=new JSZip();const assets:Record<string,string>={};let assetIndex=0;
-  const addAsset=async(uri:string,folder:string)=>{if(!uri||assets[uri])return;try{const archived=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(archived,await bytes(uri));assets[uri]=archived}catch{}};
-  for(const note of items){if(note.coverUri)await addAsset(note.coverUri,'cover');for(const page of note.pages){if(page.pdfUri)await addAsset(page.pdfUri,'pdf');if(page.customTemplateUri)await addAsset(page.customTemplateUri,'template');for(const element of page.elements??[])if(element.kind==='image')await addAsset(element.uri,'image');if(page.drawingData){const json=page.drawingData.trimStart().startsWith('[');zip.file(`notebooks/${note.id}/pages/${page.id}.${json?'drawing.json':'pkdrawing'}`,page.drawingData,{base64:!json})}}for(const card of note.flashcards??[]){if(card.questionImageUri)await addAsset(card.questionImageUri,'flashcard');if(card.answerImageUri)await addAsset(card.answerImageUri,'flashcard')}for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio')}
+  const addAsset=async(uri:string,folder:string)=>{if(assets[uri])return;try{const archived=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(archived,await bytes(uri));assets[uri]=archived}catch(error){throw new Error(`자동 백업 자산을 읽을 수 없습니다 (${folder}): ${error instanceof Error?error.message:String(error)}`)}};
+  for(const asset of notebookAssetReferences(items))await addAsset(asset.uri,asset.kind);
+  for(const note of items){for(const page of note.pages){if(page.drawingData){const json=page.drawingData.trimStart().startsWith('[');zip.file(`notebooks/${note.id}/pages/${page.id}.${json?'drawing.json':'pkdrawing'}`,page.drawingData,{base64:!json})}}}
   const escapeCopies=await addEscapeCopies(zip,items,false);
   zip.file('manifest.json',JSON.stringify({format:'hanji-archive',version:4,createdAt:new Date().toISOString(),assets,escapeCopies},null,2));zip.file('library.json',JSON.stringify(items,null,2));
   const file=new File(directory,`hanji-auto-${new Date().toISOString().replace(/[:.]/g,'-')}.hanji`);file.create();file.write(await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}}));
@@ -79,6 +76,7 @@ export async function importLibraryBackupFromUri(uri:string):Promise<Notebook[]>
   const restored=JSON.parse(await libraryFile.async('string')) as Notebook[];
   const root=new Directory(Paths.document,'Hanji','restored',String(Date.now()));root.create({intermediates:true});
   const uriMap:Record<string,string>={};
-  for(const [oldUri,path] of Object.entries(manifest.assets)){const entry=zip.file(path);if(!entry)continue;const file=new File(root,clean(path.split('/').pop()||'asset'));file.create();file.write(await entry.async('uint8array'));uriMap[oldUri]=file.uri;}
+  for(const [oldUri,path] of Object.entries(manifest.assets)){const entry=zip.file(path);if(!entry)throw new Error(`백업 자산이 누락되었습니다: ${path}`);const file=new File(root,clean(path.split('/').pop()||'asset'));file.create();file.write(await entry.async('uint8array'));uriMap[oldUri]=file.uri;}
+  if(manifest.version===4)for(const asset of notebookAssetReferences(restored))if(!uriMap[asset.uri])throw new Error(`백업 manifest에 ${asset.kind} 자산이 누락되었습니다.`);
   return restored.map(note=>({...note,coverUri:note.coverUri?uriMap[note.coverUri]??note.coverUri:undefined,pages:note.pages.map((page,index)=>({...page,pdfUri:page.pdfUri?uriMap[page.pdfUri]??page.pdfUri:undefined,pdfPageIndex:page.pdfUri?(page.pdfPageIndex??index):undefined,customTemplateUri:page.customTemplateUri?uriMap[page.customTemplateUri]??page.customTemplateUri:undefined,elements:page.elements?.map(element=>element.kind==='image'?{...element,uri:uriMap[element.uri]??element.uri}:element)})),flashcards:note.flashcards?.map(card=>({...card,questionImageUri:card.questionImageUri?uriMap[card.questionImageUri]??card.questionImageUri:undefined,answerImageUri:card.answerImageUri?uriMap[card.answerImageUri]??card.answerImageUri:undefined})),audioSessions:note.audioSessions?.map(audio=>({...audio,uri:uriMap[audio.uri]??audio.uri}))}));
 }
