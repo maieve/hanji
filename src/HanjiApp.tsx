@@ -64,7 +64,7 @@ import type { PdfOutlineItem } from "./components/DocumentCanvas";
 import { DocumentTabs } from "./components/DocumentTabs";
 import {ReferencePanel} from './components/ReferencePanel';
 import { ElementsLayer } from "./components/ElementsLayer";
-import { pickPersistentImage } from "./imageAssets";
+import { pickPersistentImage, pickPersistentTemplate } from "./imageAssets";
 import { usePrivacyLock } from "./privacyLock";
 import { LockScreen } from "./components/LockScreen";
 import { ContinuousDocument } from "./components/ContinuousDocument";
@@ -754,7 +754,8 @@ export function HanjiApp() {
     setStickerOpen(false);
   };
   const applyCustomTemplate = async () => {
-    const uri = await pickPersistentImage();
+    let uri:string|null=null;
+    try{uri=await pickPersistentTemplate()}catch(error){Alert.alert("템플릿을 가져올 수 없음",error instanceof Error?error.message:"파일을 확인해 주세요.");return}
     if (!uri) return;
     update(current.id, (n) => ({
       ...n,
@@ -1756,7 +1757,7 @@ export function HanjiApp() {
               accessibilityLabel={
                 page.customTemplateUri
                   ? "커스텀 템플릿 변경 또는 제거"
-                  : "커스텀 템플릿 가져오기"
+                  : "이미지 또는 단일 페이지 PDF 템플릿 가져오기"
               }
               onPress={manageCustomTemplate}
               style={[s.railAction, page.customTemplateUri && s.templateActive]}

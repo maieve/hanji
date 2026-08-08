@@ -29,6 +29,32 @@ public final class HanjiVisionModule: Module {
       }
       return ["text": words.compactMap { $0["text"] as? String }.joined(separator: " "), "words": words]
     }
+    AsyncFunction("renderPDFTemplate") { (inputUri: String, outputUri: String) throws -> String in
+      let inputURL = inputUri.hasPrefix("file://") ? URL(string: inputUri)! : URL(fileURLWithPath: inputUri)
+      let outputURL = outputUri.hasPrefix("file://") ? URL(string: outputUri)! : URL(fileURLWithPath: outputUri)
+      guard let document = PDFDocument(url: inputURL), document.pageCount == 1, let page = document.page(at: 0) else {
+        throw NSError(domain: "HanjiTemplate", code: 1, userInfo: [NSLocalizedDescriptionKey: "단일 페이지 PDF만 템플릿으로 사용할 수 있습니다."])
+      }
+      let outputSize = CGSize(width: 900, height: 636), pageBounds = page.bounds(for: .mediaBox)
+      guard pageBounds.width > 0, pageBounds.height > 0 else {
+        throw NSError(domain: "HanjiTemplate", code: 2, userInfo: [NSLocalizedDescriptionKey: "PDF 페이지 크기가 올바르지 않습니다."])
+      }
+      let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
+      let image = UIGraphicsImageRenderer(size: outputSize, format: format).image { context in
+        UIColor.white.setFill(); context.fill(CGRect(origin: .zero, size: outputSize))
+        let scale = min(outputSize.width / pageBounds.width, outputSize.height / pageBounds.height)
+        let fitted = CGSize(width: pageBounds.width * scale, height: pageBounds.height * scale)
+        context.cgContext.saveGState()
+        context.cgContext.translateBy(x: (outputSize.width - fitted.width) / 2, y: (outputSize.height + fitted.height) / 2)
+        context.cgContext.scaleBy(x: scale, y: -scale)
+        context.cgContext.translateBy(x: -pageBounds.minX, y: -pageBounds.minY)
+        page.draw(with: .mediaBox, to: context.cgContext)
+        context.cgContext.restoreGState()
+      }
+      guard let data = image.pngData() else { throw NSError(domain: "HanjiTemplate", code: 3, userInfo: [NSLocalizedDescriptionKey: "PDF 템플릿 이미지를 만들 수 없습니다."]) }
+      try data.write(to: outputURL, options: .atomic)
+      return outputURL.absoluteString
+    }
     AsyncFunction("exportPDF") { (pages: [[String: String]], outputUri: String) throws -> String in
       let outputURL = outputUri.hasPrefix("file://") ? URL(string: outputUri)! : URL(fileURLWithPath: outputUri)
       let defaultBounds = CGRect(x: 0, y: 0, width: 900, height: 636)
