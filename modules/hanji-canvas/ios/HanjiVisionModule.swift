@@ -46,6 +46,7 @@ public final class HanjiVisionModule: Module {
           if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
             drawing.image(from: bounds, scale: 3).draw(in: bounds)
           }
+          drawTextElements(item["elements"] ?? "[]", in: bounds)
         }
       }
       return outputURL.absoluteString
@@ -70,11 +71,24 @@ public final class HanjiVisionModule: Module {
         if let encoded = item["drawingData"], let data = Data(base64Encoded: encoded), let drawing = try? PKDrawing(data: data), !drawing.strokes.isEmpty {
           drawing.image(from: bounds, scale: 3).draw(in: bounds)
         }
+        drawTextElements(item["elements"] ?? "[]", in: bounds)
       }
       guard let data = image.pngData() else { throw NSError(domain: "HanjiExport", code: 1, userInfo: [NSLocalizedDescriptionKey: "PNG encoding failed"]) }
       try data.write(to: outputURL, options: .atomic)
       return outputURL.absoluteString
     }
+  }
+}
+
+private func drawTextElements(_ json: String, in bounds: CGRect) {
+  guard let data = json.data(using: .utf8), let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+  for item in items {
+    guard let text = item["text"] as? String else { continue }
+    let x = (item["x"] as? NSNumber)?.doubleValue ?? 0, y = (item["y"] as? NSNumber)?.doubleValue ?? 0
+    let width = (item["width"] as? NSNumber)?.doubleValue ?? 0.4, height = (item["height"] as? NSNumber)?.doubleValue ?? 0.12
+    let size = (item["fontSize"] as? NSNumber)?.doubleValue ?? 20
+    let style = NSMutableParagraphStyle(); style.lineBreakMode = .byWordWrapping
+    text.draw(in: CGRect(x: bounds.width * x, y: bounds.height * y, width: bounds.width * width, height: bounds.height * height), withAttributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: UIColor(hanjiHex: item["color"] as? String ?? "#20201E"), .paragraphStyle: style])
   }
 }
 
