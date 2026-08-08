@@ -40,6 +40,7 @@ import { SelectionBar } from './components/SelectionBar';
 import {SearchHighlight} from './components/SearchHighlight';
 import {SettingsPanel} from './components/SettingsPanel';
 import {defaultUiPreferences,type UiPreferences} from './uiPreferences';
+import {DocumentSearchPanel} from './components/DocumentSearchPanel';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -98,6 +99,7 @@ export function HanjiApp() {
   const [focusMode, setFocusMode] = useState(false);
   const [uiPreferences,setUiPreferences]=useState<UiPreferences>(defaultUiPreferences);
   const [settingsOpen,setSettingsOpen]=useState(false);
+  const [documentSearchOpen,setDocumentSearchOpen]=useState(false);
   const {leftHanded,fingerDrawingEnabled}=uiPreferences;
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
   const [pageGridOpen, setPageGridOpen] = useState(false);
@@ -428,6 +430,7 @@ export function HanjiApp() {
   const capturePdfExcerpt=(sourcePage:typeof page,excerpt:{text:string;pageIndex:number})=>setPendingExcerpt({text:excerpt.text,source:{notebookId:current.id,pageId:sourcePage.id,pageIndex:excerpt.pageIndex,pdfName:sourcePage.pdfName}});
   const pastePdfExcerpt=()=>{if(!pendingExcerpt)return;const element:TextElement={id:makeId(),kind:'text',text:pendingExcerpt.text,x:.58,y:.12,width:.34,height:.18,fontSize:16,color:C.ink,source:pendingExcerpt.source};changeElements(page,[...(page.elements??[]),element]);setPendingExcerpt(undefined);setElementMode(true)};
   const navigateExcerptSource=(source:NonNullable<TextElement['source']>)=>{const note=items.find(item=>item.id===source.notebookId);if(!note)return;const index=note.pages.findIndex(item=>item.id===source.pageId);setOpenId(note.id);setPageIndex(index>=0?index:Math.max(0,Math.min(source.pageIndex,note.pages.length-1)))};
+  const navigateDocumentSearch=(index:number,searchQuery:string)=>{const target=current.pages[index];if(!target)return;setPageIndex(index);setSearchFocus({pageId:target.id,query:searchQuery,nonce:Date.now()});if(target.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(current.id,target.id,target.drawingData)};
   const handleStrokeAdded = (target: typeof page, createdAt: number) => {
     const started = audioStartRef.current;
     if (started === null) return;
@@ -595,6 +598,7 @@ export function HanjiApp() {
           onPrivacyToggle={() => void privacy.toggle()}
           onFocusMode={() => setFocusMode(true)}
           onSettings={() => setSettingsOpen(true)}
+          onSearch={() => setDocumentSearchOpen(true)}
           onExportPdf={() => exportNotebookPdf(current)}
           onFlashcards={() => setFlashcardsOpen(true)}
           dueCards={dueFlashcards(current.flashcards ?? []).length}
@@ -832,6 +836,7 @@ export function HanjiApp() {
       />
       <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
       <SettingsPanel visible={settingsOpen} value={uiPreferences} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
+      <DocumentSearchPanel visible={documentSearchOpen} notebook={current} activePageIndex={pageIndex} onSelect={navigateDocumentSearch} onClose={()=>setDocumentSearchOpen(false)}/>
       <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>
