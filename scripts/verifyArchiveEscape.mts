@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {escapePdfPath,escapePngPath,isSupportedArchiveVersion,pageExportPayload} from '../src/archiveEscape.ts';
+
+assert.equal(escapePdfPath('note-a'),'escape/note-a/notebook.pdf');
+assert.equal(escapePngPath('note-a',0),'escape/note-a/pages/0001.png');
+assert.equal(escapePngPath('note-a',199),'escape/note-a/pages/0200.png');
+assert.equal(new Set(Array.from({length:200},(_,index)=>escapePngPath('note-a',index))).size,200);
+assert.equal(isSupportedArchiveVersion(2),true);
+assert.equal(isSupportedArchiveVersion(3),true);
+assert.equal(isSupportedArchiveVersion(4),false);
+const payload=pageExportPayload({id:'page',drawingData:'drawing',template:'grid',templateSpacing:'wide',rotation:90,canvasExtent:{columns:4,rows:3},updatedAt:'now',elements:[]},7);
+assert.deepEqual({page:payload.pdfPageIndex,spacing:payload.templateSpacing,rotation:payload.rotation,columns:payload.canvasColumns,rows:payload.canvasRows},{page:'7',spacing:'wide',rotation:'90',columns:'4',rows:'3'});
+console.log('Archive escape-copy verification passed.');
