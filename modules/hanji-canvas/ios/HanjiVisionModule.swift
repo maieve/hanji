@@ -115,7 +115,7 @@ private func drawTextElements(_ json: String, in bounds: CGRect) {
     let rect = CGRect(x: bounds.width * x, y: bounds.height * y, width: bounds.width * width, height: bounds.height * height)
     if item["kind"] as? String == "image", let uri = item["uri"] as? String {
       let url = uri.hasPrefix("file://") ? URL(string: uri) : URL(fileURLWithPath: uri)
-      if let path = url?.path, let image = UIImage(contentsOfFile: path) { image.draw(in: rect) }
+      if let path = url?.path, let image = UIImage(contentsOfFile: path) { drawHanjiImage(image, in: rect, fit: item["fit"] as? String ?? "contain", rotation: (item["rotation"] as? NSNumber)?.intValue ?? 0) }
       continue
     }
     guard let text = item["text"] as? String else { continue }
@@ -123,6 +123,18 @@ private func drawTextElements(_ json: String, in bounds: CGRect) {
     let style = NSMutableParagraphStyle(); style.lineBreakMode = .byWordWrapping
     text.draw(in: rect, withAttributes: [.font: UIFont.systemFont(ofSize: size), .foregroundColor: UIColor(hanjiHex: item["color"] as? String ?? "#20201E"), .paragraphStyle: style])
   }
+}
+
+private func drawHanjiImage(_ image: UIImage, in rect: CGRect, fit: String, rotation: Int) {
+  guard let context = UIGraphicsGetCurrentContext(), image.size.width > 0, image.size.height > 0 else { return }
+  let normalized = ((rotation % 360) + 360) % 360, odd = normalized == 90 || normalized == 270
+  let targetSize = odd ? CGSize(width: rect.height, height: rect.width) : rect.size
+  let scaleX = targetSize.width / image.size.width, scaleY = targetSize.height / image.size.height
+  let scale = fit == "cover" ? max(scaleX, scaleY) : min(scaleX, scaleY)
+  let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+  context.saveGState(); context.clip(to: rect); context.translateBy(x: rect.midX, y: rect.midY); context.rotate(by: CGFloat(normalized) * .pi / 180)
+  image.draw(in: CGRect(x: -drawSize.width / 2, y: -drawSize.height / 2, width: drawSize.width, height: drawSize.height))
+  context.restoreGState()
 }
 
 private func drawHanjiTemplate(_ template: String, in bounds: CGRect, context: CGContext) {
