@@ -6,9 +6,11 @@ import { DocumentCanvas, type PdfOutlineItem } from './DocumentCanvas';
 import { ElementsLayer } from './ElementsLayer';
 import { Paper } from './Paper';
 import { RotatedPage } from './RotatedPage';
+import {SearchHighlight} from './SearchHighlight';
 
 type Props = {
   pages: Page[];
+  searchFocus?:{pageId:string;query:string;nonce:number};
   activeIndex: number;
   tool: ToolSpec;
   fingerDrawingEnabled: boolean;
@@ -104,6 +106,7 @@ export function ContinuousDocument(props: Props) {
             onChange={(elements) => props.onElementsChange(item, elements)}
             onSaveImage={props.onSaveSticker}
           />
+          {props.searchFocus?.pageId===item.id&&<SearchHighlight words={item.ocrWords??[]} query={props.searchFocus.query}/>}
         </RotatedPage>
         <Text style={s.number}>
           {index + 1} / {props.pages.length}

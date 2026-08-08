@@ -37,6 +37,7 @@ import { loadStickers, saveStickers, stickerFromImage } from './stickers';
 import { mergeCloudRestore } from './cloudMerge';
 import { transcribeAudio } from './speech';
 import { SelectionBar } from './components/SelectionBar';
+import {SearchHighlight} from './components/SearchHighlight';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -50,6 +51,7 @@ export function HanjiApp() {
   const tabPages = useRef<Record<string, number>>({});
   const [query, setQuery] = useState('');
   const [searchHits, setSearchHits] = useState<SearchHit[] | null>(null);
+  const [searchFocus,setSearchFocus]=useState<{pageId:string;query:string;nonce:number}>();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,6 +152,7 @@ export function HanjiApp() {
     }, 180);
     return () => clearTimeout(timer);
   }, [query]);
+  useEffect(()=>{if(!searchFocus)return;const timer=setTimeout(()=>setSearchFocus(undefined),5000);return()=>clearTimeout(timer)},[searchFocus?.nonce]);
   useEffect(() => {
     if (openId) tabPages.current[openId] = pageIndex;
   }, [openId, pageIndex]);
@@ -206,8 +209,9 @@ export function HanjiApp() {
         query={query}
         searchHits={searchHits}
         setQuery={setQuery}
-        onOpen={(id, index = 0) => {
+        onOpen={(id, index = 0, searchQuery) => {
           update(id, (n) => ({ ...n, lastOpenedAt: new Date().toISOString() }));
+          const target=items.find(note=>note.id===id)?.pages[index];setSearchFocus(searchQuery&&target?{pageId:target.id,query:searchQuery,nonce:Date.now()}:undefined);if(searchQuery&&target?.drawingData&&!target.ocrWords?.some(word=>word.coordinateSpace==='canvas'))queueOcr(id,target.id,target.drawingData);
           setOpenId(id);
           setPageIndex(index);
         }}
@@ -598,7 +602,7 @@ export function HanjiApp() {
       <View style={[s.editor,leftHanded&&s.editorLeftHanded,focusMode&&(leftHanded?{marginLeft:-112}:{marginRight:-112})]}>
         <View style={s.canvasArea}>
           {(current.viewMode ?? 'page') === 'continuous' ? (
-            <ContinuousDocument pages={current.pages} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onCircleLasso={activateLasso} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
+            <ContinuousDocument pages={current.pages} searchFocus={searchFocus} activeIndex={pageIndex} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} elementMode={elementMode} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onActiveIndexChange={setPageIndex} onDrawingChange={changeDrawing} onElementsChange={changeElements} onSaveSticker={saveImageSticker} onSelectionChange={handleSelection} onSelectionText={handleSelectionText} onCircleLasso={activateLasso} onAddPage={addPage} onPageCount={handlePageCount} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={handleStrokeAdded} onStrokeTapped={handleStrokeTapped} />
           ) : (
             <RotatedPage
               rotation={page.rotation}
@@ -612,6 +616,7 @@ export function HanjiApp() {
               <Paper template={page.template} customTemplateUri={page.customTemplateUri} />
               <DocumentCanvas key={page.id} pdfUri={page.pdfUri} pageIndex={page.pdfPageIndex ?? pageIndex} drawingData={page.drawingData} tool={tool} fingerDrawingEnabled={fingerDrawingEnabled} zoomWindowEnabled={zoomWindowEnabled} interactionEnabled={!elementMode && replayCutoff === undefined} replayCutoff={replayCutoff} selectionAction={selectionAction} undoSignal={undoSignal} redoSignal={redoSignal} onPdfOutline={setPdfOutline} onPdfLink={handlePdfLink} onPencilDoubleTap={togglePencilEraser} onPencilSqueeze={togglePencilEraser} onStrokeAdded={(createdAt) => handleStrokeAdded(page, createdAt)} onStrokeTapped={(createdAt) => handleStrokeTapped(page, createdAt)} onSelectionChange={(value)=>handleSelection(page,value)} onSelectionText={(result)=>handleSelectionText(page,result)} onCircleLasso={activateLasso} onPageCount={(count) => handlePageCount(count, page)} onDrawingChange={(drawingData) => changeDrawing(page, drawingData)} />
               <ElementsLayer editable={elementMode} elements={page.elements ?? []} onChange={(elements) => changeElements(page, elements)} onSaveImage={saveImageSticker} />
+              {searchFocus?.pageId===page.id&&<SearchHighlight words={page.ocrWords??[]} query={searchFocus.query}/>}
             </RotatedPage>
           )}
           <AudioPanel
@@ -822,7 +827,7 @@ export function HanjiApp() {
   );
 }
 
-function Library({ items, categories, query, searchHits, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void; onMoveCategory: (id: string, category: string) => void }) {
+function Library({ items, categories, query, searchHits, setQuery, onOpen, onUpdate, onCloudRestore, onCreate, onImport, onExport, onRestore, onDelete, onAddCategory, onMoveCategory }: { items: Notebook[]; categories: string[]; query: string; searchHits: SearchHit[] | null; setQuery: (x: string) => void; onOpen: (id: string, pageIndex?: number, searchQuery?:string) => void; onUpdate: (n: Notebook) => void; onCloudRestore: (items: Notebook[]) => void; onCreate: (folder?: string) => void; onImport: () => void; onExport: () => void; onRestore: () => void; onDelete: (id: string) => void; onAddCategory: (name: string) => void; onMoveCategory: (id: string, category: string) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [selected, setSelected] = useState('전체');
@@ -945,7 +950,7 @@ function Library({ items, categories, query, searchHits, setQuery, onOpen, onUpd
               {filtered.map((n) => {
                 const hit = hitMap.get(n.id);
                 return (
-                  <Pressable key={n.id} onPress={() => onOpen(n.id, hit?.pageIndex)} onLongPress={() => manage(n)} style={s.card}>
+                  <Pressable key={n.id} onPress={() => onOpen(n.id, hit?.pageIndex,hit?query:undefined)} onLongPress={() => manage(n)} style={s.card}>
                     <View style={s.cover}>
                       <View style={s.coverBand} />
                       {Array.from({ length: 6 }, (_, i) => (

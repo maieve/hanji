@@ -24,7 +24,8 @@ public final class HanjiVisionModule: Module {
       let observations = request.results ?? []
       let words: [[String: Any]] = observations.compactMap { item in
         guard let candidate = item.topCandidates(1).first else { return nil }
-        return ["text": candidate.string, "confidence": candidate.confidence, "x": item.boundingBox.origin.x, "y": item.boundingBox.origin.y, "width": item.boundingBox.width, "height": item.boundingBox.height]
+        let box = item.boundingBox
+        return ["text": candidate.string, "confidence": candidate.confidence, "x": bounds.minX + box.minX * bounds.width, "y": bounds.minY + (1 - box.maxY) * bounds.height, "width": box.width * bounds.width, "height": box.height * bounds.height, "coordinateSpace": "canvas"]
       }
       return ["text": words.compactMap { $0["text"] as? String }.joined(separator: " "), "words": words]
     }
