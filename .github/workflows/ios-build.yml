@@ -51,6 +51,15 @@ jobs:
           test -n "$HANJI_LIBRARY"
           nm "$HANJI_LIBRARY" > hanji-native-symbols.txt
           grep -q 'HanjiVisionModule' hanji-native-symbols.txt
+          EXPO_PROVIDER="Pods/Target Support Files/Pods-yoojinnote/ExpoModulesProvider.swift"
+          test -f "$EXPO_PROVIDER"
+          for module in HanjiCanvasModule HanjiColorPickerModule HanjiDocumentModule HanjiSpeechModule HanjiVisionModule; do
+            grep -q "$module" "$EXPO_PROVIDER"
+          done
+          APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          test -f "$APP_PATH/main.jsbundle"
+          EXPECTED_VERSION="$(node -p "require('../app.json').expo.version")"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "$EXPECTED_VERSION"
       - name: Package unsigned IPA
         working-directory: ios
         run: |
@@ -60,6 +69,7 @@ jobs:
           mkdir Payload
           ditto "$APP_PATH" "Payload/YoojinNote.app"
           zip -qry YoojinNote-unsigned.ipa Payload
+          unzip -tq YoojinNote-unsigned.ipa
           {
             echo "yoojin note build"
             echo "commit=${GITHUB_SHA}"

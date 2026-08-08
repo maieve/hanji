@@ -4,8 +4,8 @@ GitHub Release와 Actions가 제공하는 `YoojinNote-unsigned.ipa`는 서명되
 
 ## 1. IPA 받기
 
-1. GitHub 저장소의 **Releases → yoojin note v0.1.0**을 연다. Release가 보이지 않을 때만 **Actions → iOS Native Build**의 최신 성공 실행을 연다.
-2. `YoojinNote-v0.1.0-unsigned.ipa` 또는 Actions의 `YoojinNote-unsigned-ipa` ZIP을 내려받는다.
+1. GitHub 저장소의 **Releases → yoojin note v0.1.1 - iPad startup fix**를 연다. Release가 보이지 않을 때만 **Actions → iOS Native Build**의 최신 성공 실행을 연다.
+2. `YoojinNote-v0.1.1-unsigned.ipa` 또는 Actions의 `YoojinNote-unsigned-ipa` ZIP을 내려받는다. 흰 화면이 발생했던 v0.1.0 IPA는 설치하지 않는다.
 3. Actions ZIP을 받았다면 압축을 푼다.
 4. ZIP을 풀면 다음 세 파일이 있다.
    - `YoojinNote-unsigned.ipa`: AltStore/SideStore가 다시 서명할 앱
@@ -23,6 +23,12 @@ GitHub Release와 Actions가 제공하는 `YoojinNote-unsigned.ipa`는 서명되
 6. **설정 → 개인정보 보호 및 보안 → 개발자 모드**를 켜고 재시동한다.
 7. AltStore → My Apps → **+** → 내려받은 `YoojinNote-…unsigned.ipa`를 선택한다.
 8. 무료 계정은 7일마다 AltServer와 같은 Wi-Fi에서 Refresh All이 필요하다.
+
+### v0.1.0에서 업데이트할 때
+
+1. 먼저 v0.1.1 IPA를 기존 앱 위에 설치한다. 같은 번들 ID라 노트 컨테이너를 유지하면서 갱신할 수 있다.
+2. 설치 후에도 흰 화면이거나 AltStore가 갱신을 거부하면 기존 앱을 삭제하고 v0.1.1을 새로 설치한다. 앱 삭제는 로컬 노트를 지울 수 있으므로, v0.1.0에서 서재가 열리는 경우에는 먼저 전체 백업을 만든다.
+3. 흰 화면 대신 `앱을 시작하지 못했습니다` 화면이 나오면 오류 문구와 서재의 빌드 문자열을 함께 캡처한다. v0.1.1에는 시작 오류를 표시하는 복구 화면이 포함되어 있다.
 
 공식 문서: https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows
 
