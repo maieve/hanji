@@ -100,6 +100,7 @@ export function HanjiApp() {
   const [uiPreferences,setUiPreferences]=useState<UiPreferences>(defaultUiPreferences);
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [documentSearchOpen,setDocumentSearchOpen]=useState(false);
+  const [indexStatus,setIndexStatus]=useState<'idle'|'running'|'success'|'error'>('idle');
   const {leftHanded,fingerDrawingEnabled}=uiPreferences;
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
   const [pageGridOpen, setPageGridOpen] = useState(false);
@@ -142,7 +143,7 @@ export function HanjiApp() {
     if (!ready) return;
     if (indexTimer.current) clearTimeout(indexTimer.current);
     indexTimer.current = setTimeout(() => {
-      void rebuildSearchIndex(items);
+      void rebuildSearchIndex(items).catch(()=>undefined);
     }, 800);
     return () => {
       if (indexTimer.current) clearTimeout(indexTimer.current);
@@ -461,6 +462,7 @@ export function HanjiApp() {
   };
   const actOnSelection=(type:'delete'|'recolor'|'text'|'clear'|'copy'|'cut'|'paste'|'duplicate'|'shrink'|'grow'|'rotate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
   const changeUiPreferences=(value:UiPreferences)=>{setUiPreferences(value);void saveUiPreferences(value)};
+  const rebuildIndex=()=>{if(indexStatus==='running')return;setIndexStatus('running');void rebuildSearchIndex(items).then(()=>setIndexStatus('success')).catch(()=>setIndexStatus('error'))};
   const toggleLeftHanded=()=>changeUiPreferences({...uiPreferences,leftHanded:!leftHanded});
   const activateLasso=()=>setTool(active=>({...active,kind:'lasso'}));
   const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
@@ -835,7 +837,7 @@ export function HanjiApp() {
         }}
       />
       <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
-      <SettingsPanel visible={settingsOpen} value={uiPreferences} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
+      <SettingsPanel visible={settingsOpen} value={uiPreferences} indexStatus={indexStatus} onRebuildIndex={rebuildIndex} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
       <DocumentSearchPanel visible={documentSearchOpen} notebook={current} activePageIndex={pageIndex} onSelect={navigateDocumentSearch} onClose={()=>setDocumentSearchOpen(false)}/>
       <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
