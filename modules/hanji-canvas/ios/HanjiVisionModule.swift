@@ -189,6 +189,12 @@ private func drawPagePaint(_ item: [String: String], in bounds: CGRect, context:
   context.setAlpha(CGFloat(opacity))
   if !color2.isEmpty, let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [UIColor(hanjiHex: color).cgColor, UIColor(hanjiHex: color2).cgColor] as CFArray, locations: [0, 1]) {
     let direction = item["backgroundGradientDirection"] ?? "vertical"
+    if direction == "radial" {
+      let center = CGPoint(x: bounds.midX, y: bounds.midY)
+      context.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: hypot(bounds.width, bounds.height) / 2, options: [.drawsAfterEndLocation])
+      context.restoreGState()
+      return
+    }
     let start: CGPoint, end: CGPoint
     switch direction {
     case "horizontal": start = CGPoint(x: bounds.minX, y: bounds.minY); end = CGPoint(x: bounds.maxX, y: bounds.minY)

@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 import type { Page, PagePaintDirection } from "../types";
 import { templateSpacingPoints } from "../templateSpacing";
 
@@ -110,13 +110,17 @@ export function Paper({
       {backgroundColor && backgroundColor2 && backgroundOpacity > 0 ? (
         <Svg style={[StyleSheet.absoluteFill, { opacity: backgroundOpacity }]}>
           <Defs>
-            <LinearGradient
-              id="pagePaintGradient"
-              {...gradientCoordinates}
-            >
-              <Stop offset="0" stopColor={backgroundColor} />
-              <Stop offset="1" stopColor={backgroundColor2} />
-            </LinearGradient>
+            {backgroundGradientDirection === "radial" ? (
+              <RadialGradient id="pagePaintGradient" cx="50%" cy="50%" rx="70.71%" ry="70.71%">
+                <Stop offset="0" stopColor={backgroundColor} />
+                <Stop offset="1" stopColor={backgroundColor2} />
+              </RadialGradient>
+            ) : (
+              <LinearGradient id="pagePaintGradient" {...gradientCoordinates}>
+                <Stop offset="0" stopColor={backgroundColor} />
+                <Stop offset="1" stopColor={backgroundColor2} />
+              </LinearGradient>
+            )}
           </Defs>
           <Rect width="100%" height="100%" fill="url(#pagePaintGradient)" />
         </Svg>

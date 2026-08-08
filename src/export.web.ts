@@ -13,7 +13,7 @@ type Stroke = {
 };
 const esc = (v: string) =>
   v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-const paintGradientAngle=(page:Page)=>page.backgroundGradientDirection==='horizontal'?'90deg':page.backgroundGradientDirection==='diagonalDown'?'135deg':page.backgroundGradientDirection==='diagonalUp'?'45deg':'180deg';
+const paintGradientCss=(page:Page)=>page.backgroundGradientDirection==='radial'?`radial-gradient(circle at center,${esc(page.backgroundColor!)},${esc(page.backgroundColor2!)})`:`linear-gradient(${page.backgroundGradientDirection==='horizontal'?'90deg':page.backgroundGradientDirection==='diagonalDown'?'135deg':page.backgroundGradientDirection==='diagonalUp'?'45deg':'180deg'},${esc(page.backgroundColor!)},${esc(page.backgroundColor2!)})`;
 const paintGradientCoordinates=(page:Page)=>page.backgroundGradientDirection==='horizontal'?{x1:0,y1:0,x2:1,y2:0}:page.backgroundGradientDirection==='diagonalDown'?{x1:0,y1:0,x2:1,y2:1}:page.backgroundGradientDirection==='diagonalUp'?{x1:0,y1:1,x2:1,y2:0}:{x1:0,y1:0,x2:0,y2:1};
 export async function exportNotebookPdf(note: Notebook) {
   const pages = note.pages
@@ -40,7 +40,7 @@ export async function exportNotebookPdf(note: Notebook) {
         : "";
       const paint =
         page.backgroundColor && (page.backgroundOpacity ?? 0) > 0
-          ? `<div class="page-paint" style="background:${page.backgroundColor2 ? `linear-gradient(${paintGradientAngle(page)},${esc(page.backgroundColor)},${esc(page.backgroundColor2)})` : esc(page.backgroundColor)};opacity:${page.backgroundOpacity}"></div>`
+          ? `<div class="page-paint" style="background:${page.backgroundColor2 ? paintGradientCss(page) : esc(page.backgroundColor)};opacity:${page.backgroundOpacity}"></div>`
           : "";
       const rotation = page.rotation ?? 0,
         portrait = rotation === 90 || rotation === 270;
@@ -103,7 +103,9 @@ export async function exportPagePng(
   const paint =
     page.backgroundColor && (page.backgroundOpacity ?? 0) > 0
       ? page.backgroundColor2
-        ? (()=>{const g=paintGradientCoordinates(page);return `<defs><linearGradient id="pagePaint" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}"><stop offset="0" stop-color="${esc(page.backgroundColor)}"/><stop offset="1" stop-color="${esc(page.backgroundColor2)}"/></linearGradient></defs><rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#pagePaint)" opacity="${page.backgroundOpacity}"/>`})()
+        ? page.backgroundGradientDirection==='radial'
+          ? `<defs><radialGradient id="pagePaint" cx="50%" cy="50%" r="70.71%"><stop offset="0" stop-color="${esc(page.backgroundColor)}"/><stop offset="1" stop-color="${esc(page.backgroundColor2)}"/></radialGradient></defs><rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#pagePaint)" opacity="${page.backgroundOpacity}"/>`
+          : (()=>{const g=paintGradientCoordinates(page);return `<defs><linearGradient id="pagePaint" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}"><stop offset="0" stop-color="${esc(page.backgroundColor)}"/><stop offset="1" stop-color="${esc(page.backgroundColor2)}"/></linearGradient></defs><rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#pagePaint)" opacity="${page.backgroundOpacity}"/>`})()
         : `<rect width="${canvasWidth}" height="${canvasHeight}" fill="${esc(page.backgroundColor)}" opacity="${page.backgroundOpacity}"/>`
       : "";
   const rotation = page.rotation ?? 0,

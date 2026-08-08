@@ -22,11 +22,12 @@ const gradients = [
   ["#F4C7C3", "#F7D9A0"],
   ["#B8DDD8", "#BED4F4"],
 ] as const;
-const directions: { value: PagePaintDirection; label: string; icon: "swap-vertical" | "swap-horizontal" | "trending-down-outline" | "trending-up-outline" }[] = [
+const directions: { value: PagePaintDirection; label: string; icon: "swap-vertical" | "swap-horizontal" | "trending-down-outline" | "trending-up-outline" | "radio-outline" }[] = [
   { value: "vertical", label: "세로", icon: "swap-vertical" },
   { value: "horizontal", label: "가로", icon: "swap-horizontal" },
   { value: "diagonalDown", label: "대각선 ↘", icon: "trending-down-outline" },
   { value: "diagonalUp", label: "대각선 ↗", icon: "trending-up-outline" },
+  { value: "radial", label: "중심 확산", icon: "radio-outline" },
 ];
 
 export function PagePaintPanel({
