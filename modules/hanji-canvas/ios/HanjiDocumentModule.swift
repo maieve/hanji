@@ -236,6 +236,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   }
 
   func loadPDF(_ uri: String?) {
+    clearPDFTextSelection()
     guard let uri, !uri.isEmpty else {
       document = nil
       pdfView.document = nil
@@ -270,6 +271,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   }
 
   func showPage(_ index: Int) {
+    clearPDFTextSelection()
     currentPage = max(0, index)
     guard let page = document?.page(at: currentPage) else { return }
     pdfView.go(to: page)
@@ -279,6 +281,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
 
   func loadDrawing(_ base64: String) {
     guard base64 != loadedDrawing else { return }
+    clearPDFTextSelection()
     loadedDrawing = base64
     if base64.isEmpty {
       sourceDrawing = PKDrawing()
@@ -290,6 +293,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   }
 
   func setReplayCutoff(_ cutoff: Double?) {
+    clearPDFTextSelection()
     replayCutoff = cutoff
     renderReplay()
   }
@@ -308,6 +312,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
 
   func setTool(_ value: [String: Any]) {
     let kind = value["kind"] as? String ?? "pen"
+    if kind != activeKind { clearPDFTextSelection() }
     activeKind = kind
     selectionPan?.isEnabled = kind == "lasso"
     if kind != "lasso" { clearSelection() }
@@ -372,7 +377,10 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   @objc private func handlePDFTextPress(_ recognizer: UILongPressGestureRecognizer) {
     guard (activeKind == "marker" || activeKind == "lasso"), replayCutoff == nil, let document else { clearPDFTextSelection(); return }
     let canvasPoint = recognizer.location(in: canvas), pdfPoint = canvas.convert(canvasPoint, to: pdfView)
-    guard let page = pdfView.page(for: pdfPoint, nearest: false) else { return }
+    guard let page = pdfView.page(for: pdfPoint, nearest: false) else {
+      if recognizer.state == .ended || recognizer.state == .cancelled || recognizer.state == .failed { clearPDFTextSelection() }
+      return
+    }
     let pagePoint = pdfView.convert(pdfPoint, to: page)
     if activeKind == "lasso" {
       guard recognizer.state == .began, let selection = page.selectionForWord(at: pagePoint) else { return }
