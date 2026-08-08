@@ -9,4 +9,4 @@ export type Page={id:string;drawingData:string;template:'plain'|'line'|'grid'|'d
 export type StrokeSync={pageId:string;createdAt:number;seekSec:number};
 export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[]};
 export type Flashcard={id:string;question:string;answer:string;createdAt:string;updatedAt:string;dueAt:string;intervalDays:number;easeFactor:number;repetitions:number;lapses:number;lastReviewedAt?:string};
-export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;createdAt:string;updatedAt:string;lastOpenedAt?:string;pages:Page[];audioSessions?:AudioSession[];flashcards?:Flashcard[]};
+export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;createdAt:string;updatedAt:string;lastOpenedAt?:string;viewMode?:'page'|'continuous';pages:Page[];audioSessions?:AudioSession[];flashcards?:Flashcard[]};
