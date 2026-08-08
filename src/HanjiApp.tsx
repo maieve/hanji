@@ -107,6 +107,7 @@ import { templateSpacings } from "./templateSpacing";
 import { normalizeNotebookCoverColor } from "./notebookCover";
 import { backupIntervalMs } from "./backupPolicy";
 import {pushBounded} from './boundedHistory';
+import {resolveDarkInkTransition} from './darkInkPolicy';
 
 type SelectionHistoryEntry={kind:'element';pageId:string;element:TextElement}|{kind:'snapshot';pageId:string;before:PageElement[];after:PageElement[];native:boolean}|{kind:'native'};
 import { ExportPanel } from "./components/ExportPanel";
@@ -243,6 +244,20 @@ export function HanjiApp() {
   const focusHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uiPreferences, setUiPreferences] =
     useState<UiPreferences>(defaultUiPreferences);
+  const autoDarkInkRef=useRef(false);
+  const activePageTemplate=openId?items.find(item=>item.id===openId)?.pages[pageIndex]?.template:undefined;
+  useEffect(()=>{
+    setToolState(active=>{
+      const transition=resolveDarkInkTransition(active.color,activePageTemplate,uiPreferences.autoDarkInk,autoDarkInkRef.current);
+      autoDarkInkRef.current=transition.autoInverted;
+      if(transition.color===active.color)return active;
+      const next={...active,color:transition.color};
+      const previous=previousPencilTool.current;
+      if(previous.color.toUpperCase()===active.color.toUpperCase())previousPencilTool.current={...previous,color:transition.color};
+      if(['pen','fountainPen','monoline','pencil','crayon','watercolor','marker'].includes(next.kind))previousPencilTool.current=next;
+      return next;
+    });
+  },[activePageTemplate,tool.color,uiPreferences.autoDarkInk]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [documentSearchOpen, setDocumentSearchOpen] = useState(false);
   const [pagePaintOpen, setPagePaintOpen] = useState(false);
@@ -620,12 +635,6 @@ export function HanjiApp() {
           if (folder) n.folder = folder;
           setItems((x) => [n, ...x]);
           setOpenId(n.id);
-          if (
-            uiPreferences.autoDarkInk &&
-            uiPreferences.defaultTemplate === "dark" &&
-            ["#20201E", "#000000"].includes(tool.color.toUpperCase())
-          )
-            setTool({ ...tool, color: "#F4F1E8" });
         }}
         onDelete={(id) =>
           Alert.alert("노트 삭제", "이 노트를 삭제할까요?", [
@@ -828,16 +837,6 @@ export function HanjiApp() {
     });
     setPageIndex(target);
   };
-  const applyTemplateInk = (template: import("./types").PageTemplate) => {
-    if (!uiPreferences.autoDarkInk) return;
-    if (
-      template === "dark" &&
-      ["#20201E", "#000000"].includes(tool.color.toUpperCase())
-    )
-      setTool({ ...tool, color: "#F4F1E8" });
-    if (template !== "dark" && tool.color.toUpperCase() === "#F4F1E8")
-      setTool({ ...tool, color: DOCUMENT_INK });
-  };
   const addPage = (placement?: "end") => {
     const targetPlacement =
       placement === "end" ? "end" : uiPreferences.newPagePlacement;
@@ -857,7 +856,6 @@ export function HanjiApp() {
       updatedAt: new Date().toISOString(),
     }));
     setPageIndex(inserted.index);
-    applyTemplateInk(uiPreferences.defaultTemplate);
   };
   const changeDrawing = (target: typeof page, drawingData: string) => {
     showFocusToolbar();
@@ -1795,7 +1793,6 @@ export function HanjiApp() {
                         : p,
                     ),
                   }));
-                  applyTemplateInk(t);
                 }}
                 style={[
                   s.templateDot,
