@@ -36,6 +36,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   private var lastRedoSignal = 0
   private var shapeKind: String?
   private var applyingShape = false
+  private var activeKind = "pen"
+  private var scratchEnabled = true
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -99,6 +101,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
 
   func setTool(_ value: [String: Any]) {
     let kind = value["kind"] as? String ?? "pen"
+    activeKind = kind
+    scratchEnabled = value["scratchEnabled"] as? Bool ?? true
     shapeKind = kind == "shape" ? (value["shapeKind"] as? String ?? "line") : nil
     let width = (value["width"] as? NSNumber)?.doubleValue ?? 2
     let opacity = (value["opacity"] as? NSNumber)?.doubleValue ?? 1
@@ -141,6 +145,14 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
     if applyingShape { return }
     var strokes = canvasView.drawing.strokes
+    if scratchEnabled, ["pen", "fountainPen", "monoline", "pencil", "crayon"].contains(activeKind), strokes.count > knownStrokeCount, let scratch = strokes.last, isScratchStroke(scratch) {
+      let target = scratch.renderBounds.insetBy(dx: -8, dy: -8)
+      let previous = strokes.dropLast(), survivors = previous.filter { !$0.renderBounds.intersects(target) }
+      if survivors.count < previous.count {
+        strokes = Array(survivors); applyingShape = true; canvasView.drawing = PKDrawing(strokes: strokes); applyingShape = false
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+      }
+    }
     if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last {
       let replacements = makeShapeStrokes(source, kind: shapeKind)
       if !replacements.isEmpty {
@@ -185,6 +197,21 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
       let controls = points.enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: prototype.size, opacity: prototype.opacity, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
       return PKStroke(ink: source.ink, path: PKStrokePath(controlPoints: controls, creationDate: source.path.creationDate))
     }
+  }
+
+  private func isScratchStroke(_ stroke: PKStroke) -> Bool {
+    guard stroke.path.count >= 8 else { return false }
+    let horizontal = stroke.renderBounds.width >= stroke.renderBounds.height
+    var reversals = 0, previousSign: CGFloat = 0, distance: CGFloat = 0
+    var previous = stroke.path[0].location
+    for index in 1..<stroke.path.count {
+      let point = stroke.path[index].location, delta = horizontal ? point.x - previous.x : point.y - previous.y
+      distance += hypot(point.x - previous.x, point.y - previous.y)
+      if abs(delta) > 2 { let sign: CGFloat = delta > 0 ? 1 : -1; if previousSign != 0 && sign != previousSign { reversals += 1 }; previousSign = sign }
+      previous = point
+    }
+    let diagonal = hypot(stroke.renderBounds.width, stroke.renderBounds.height)
+    return reversals >= 4 && diagonal > 12 && distance > diagonal * 2.4
   }
 }
 

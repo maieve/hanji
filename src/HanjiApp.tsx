@@ -20,7 +20,7 @@ export function HanjiApp() {
   const [items, setItems] = useState<Notebook[]>([]); const [categories,setCategories]=useState<string[]>([]); const [ready, setReady] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null); const [pageIndex, setPageIndex] = useState(0);
   const [query, setQuery] = useState(''); const [searchHits,setSearchHits]=useState<SearchHit[]|null>(null); const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const audioStartRef = useRef<number | null>(null); const audioStrokesRef = useRef<{pageId:string;createdAt:number;seekSec:number}[]>([]);
-  const [tool, setTool] = useState<ToolSpec>({ kind: 'pen', color: C.ink, width: 2, opacity: 1 });
+  const [tool, setTool] = useState<ToolSpec>({ kind: 'pen', color: C.ink, width: 2, opacity: 1, scratchEnabled: true });
   const [audioSeek,setAudioSeek]=useState<{seconds:number;nonce:number}>();
   const [undoSignal,setUndoSignal]=useState(0); const [redoSignal,setRedoSignal]=useState(0); const [fingerDrawingEnabled,setFingerDrawingEnabled]=useState(false);
   useEffect(() => { Promise.all([loadLibrary(),loadCategories()]).then(([notes,cats])=>{setItems(notes);setCategories(cats);setReady(true)}); }, []);
