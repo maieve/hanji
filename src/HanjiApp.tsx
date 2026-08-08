@@ -279,7 +279,8 @@ export function HanjiApp() {
     [uiPreferences.pageTurnHaptics],
   );
   useEffect(() => {
-    Appearance.setColorScheme(appearanceOverride(uiPreferences.colorScheme) as never);
+    if(Platform.OS==='web'&&typeof document!=='undefined')document.documentElement.style.colorScheme=uiPreferences.colorScheme==='system'?'light dark':uiPreferences.colorScheme;
+    else Appearance.setColorScheme(appearanceOverride(uiPreferences.colorScheme) as never);
   }, [uiPreferences.colorScheme]);
   useEffect(() => {
     if (ready) saveCategories(categories);
@@ -2899,7 +2900,7 @@ const s = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 32,
     paddingTop: 32,
-    backgroundColor: "#FBFAF7",
+    backgroundColor: C.sidebar,
   },
   libraryTop: {
     flexDirection: "row",

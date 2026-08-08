@@ -1,17 +1,276 @@
-import {Ionicons} from '@expo/vector-icons';
-import {useEffect,useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
-import {C} from '../theme';
-import type {Notebook} from '../types';
-import {searchNotebook,type DocumentSearchResult} from '../documentSearch';
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { C } from "../theme";
+import type { Notebook } from "../types";
+import { searchNotebook, type DocumentSearchResult } from "../documentSearch";
 
-export function DocumentSearchPanel({visible,notebook,activePageIndex,onClose,onSelect}:{visible:boolean;notebook:Notebook;activePageIndex:number;onClose:()=>void;onSelect:(pageIndex:number,query:string)=>void}){
- const [query,setQuery]=useState('');const [cursor,setCursor]=useState(0);
- const results=useMemo<DocumentSearchResult[]>(()=>searchNotebook(notebook,query),[notebook,query]);
- useEffect(()=>{if(!results.length){setCursor(0);return}const nearest=results.findIndex(result=>result.pageIndex>=activePageIndex);setCursor(nearest>=0?nearest:0)},[query,notebook.id]);
- const move=(direction:-1|1)=>{if(!results.length)return;const next=(cursor+direction+results.length)%results.length;const result=results[next];if(!result)return;setCursor(next);onSelect(result.pageIndex,query)};
- const select=(index:number)=>{const result=results[index];if(!result)return;setCursor(index);onSelect(result.pageIndex,query)};
- return <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}><Pressable style={s.scrim} onPress={onClose}><Pressable style={s.card} onPress={()=>undefined}><View style={s.header}><View><Text style={s.eyebrow}>DOCUMENT SEARCH</Text><Text numberOfLines={1} style={s.title}>{notebook.title}</Text></View><Pressable accessibilityLabel="문서 검색 닫기" onPress={onClose} style={s.close}><Ionicons name="close" size={22} color={C.ink}/></Pressable></View><View style={s.search}><Ionicons name="search" size={19} color={C.muted}/><TextInput autoFocus value={query} onChangeText={setQuery} placeholder="이 노트의 손글씨·텍스트·전사 검색" placeholderTextColor={C.muted} returnKeyType="search" onSubmitEditing={()=>results[0]&&select(0)} style={s.input}/>{query.length>0&&<Pressable accessibilityLabel="검색어 지우기" onPress={()=>setQuery('')}><Ionicons name="close-circle" size={19} color={C.muted}/></Pressable>}</View><View style={s.navigator}><Text style={s.count}>{results.length?`${cursor+1} / ${results.length}페이지 · ${results.reduce((sum,result)=>sum+result.matches,0)}개 일치`:'검색 결과 없음'}</Text><View style={s.navButtons}><Pressable accessibilityLabel="이전 검색 결과" disabled={!results.length} onPress={()=>move(-1)} style={s.nav}><Ionicons name="chevron-up" size={20} color={results.length?C.accent:C.line}/></Pressable><Pressable accessibilityLabel="다음 검색 결과" disabled={!results.length} onPress={()=>move(1)} style={s.nav}><Ionicons name="chevron-down" size={20} color={results.length?C.accent:C.line}/></Pressable></View></View><ScrollView contentContainerStyle={s.results}>{results.map((result,index)=><Pressable key={result.pageIndex} accessibilityLabel={`${result.pageIndex+1}페이지 검색 결과`} onPress={()=>select(index)} style={[s.result,index===cursor&&s.active]}><View style={s.pageBadge}><Text style={s.page}>{result.pageIndex+1}</Text><Text style={s.pageUnit}>쪽</Text></View><View style={{flex:1}}><Text style={s.sources}>{result.sources.join(' · ')} · {result.matches}개</Text><Text numberOfLines={3} style={s.snippet}>{result.snippet}</Text></View><Ionicons name="arrow-forward" size={18} color={C.accent}/></Pressable>)}</ScrollView></Pressable></Pressable></Modal>;
+export function DocumentSearchPanel({
+  visible,
+  notebook,
+  activePageIndex,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  notebook: Notebook;
+  activePageIndex: number;
+  onClose: () => void;
+  onSelect: (pageIndex: number, query: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const results = useMemo<DocumentSearchResult[]>(
+    () => searchNotebook(notebook, query),
+    [notebook, query],
+  );
+  useEffect(() => {
+    if (!results.length) {
+      setCursor(0);
+      return;
+    }
+    const nearest = results.findIndex(
+      (result) => result.pageIndex >= activePageIndex,
+    );
+    setCursor(nearest >= 0 ? nearest : 0);
+  }, [query, notebook.id]);
+  const move = (direction: -1 | 1) => {
+    if (!results.length) return;
+    const next = (cursor + direction + results.length) % results.length;
+    const result = results[next];
+    if (!result) return;
+    setCursor(next);
+    onSelect(result.pageIndex, query);
+  };
+  const select = (index: number) => {
+    const result = results[index];
+    if (!result) return;
+    setCursor(index);
+    onSelect(result.pageIndex, query);
+  };
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
+    >
+      <Pressable style={s.scrim} onPress={onClose}>
+        <Pressable style={s.card} onPress={() => undefined}>
+          <View style={s.header}>
+            <View>
+              <Text style={s.eyebrow}>DOCUMENT SEARCH</Text>
+              <Text numberOfLines={1} style={s.title}>
+                {notebook.title}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel="문서 검색 닫기"
+              onPress={onClose}
+              style={s.close}
+            >
+              <Ionicons name="close" size={22} color={C.ink} />
+            </Pressable>
+          </View>
+          <View style={s.search}>
+            <Ionicons name="search" size={19} color={C.muted} />
+            <TextInput
+              autoFocus
+              value={query}
+              onChangeText={setQuery}
+              placeholder="이 노트의 손글씨·텍스트·전사 검색"
+              placeholderTextColor={C.muted}
+              returnKeyType="search"
+              onSubmitEditing={() => results[0] && select(0)}
+              style={s.input}
+            />
+            {query.length > 0 && (
+              <Pressable
+                accessibilityLabel="검색어 지우기"
+                onPress={() => setQuery("")}
+              >
+                <Ionicons name="close-circle" size={19} color={C.muted} />
+              </Pressable>
+            )}
+          </View>
+          <View style={s.navigator}>
+            <Text style={s.count}>
+              {results.length
+                ? `${cursor + 1} / ${results.length}페이지 · ${results.reduce((sum, result) => sum + result.matches, 0)}개 일치`
+                : "검색 결과 없음"}
+            </Text>
+            <View style={s.navButtons}>
+              <Pressable
+                accessibilityLabel="이전 검색 결과"
+                disabled={!results.length}
+                onPress={() => move(-1)}
+                style={s.nav}
+              >
+                <Ionicons
+                  name="chevron-up"
+                  size={20}
+                  color={results.length ? C.accent : C.line}
+                />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="다음 검색 결과"
+                disabled={!results.length}
+                onPress={() => move(1)}
+                style={s.nav}
+              >
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={results.length ? C.accent : C.line}
+                />
+              </Pressable>
+            </View>
+          </View>
+          <ScrollView contentContainerStyle={s.results}>
+            {results.map((result, index) => (
+              <Pressable
+                key={result.pageIndex}
+                accessibilityLabel={`${result.pageIndex + 1}페이지 검색 결과`}
+                onPress={() => select(index)}
+                style={[s.result, index === cursor && s.active]}
+              >
+                <View style={s.pageBadge}>
+                  <Text style={s.page}>{result.pageIndex + 1}</Text>
+                  <Text style={s.pageUnit}>쪽</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.sources}>
+                    {result.sources.join(" · ")} · {result.matches}개
+                  </Text>
+                  <Text numberOfLines={3} style={s.snippet}>
+                    {result.snippet}
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward" size={18} color={C.accent} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
-const s=StyleSheet.create({scrim:{flex:1,backgroundColor:'rgba(20,28,24,.32)',alignItems:'center',paddingTop:92},card:{width:'88%',maxWidth:620,maxHeight:'78%',borderRadius:24,backgroundColor:'#F8F7F2',overflow:'hidden',shadowColor:'#000',shadowOpacity:.2,shadowRadius:24},header:{height:72,paddingHorizontal:20,backgroundColor:C.white,borderBottomWidth:1,borderBottomColor:C.line,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},eyebrow:{fontSize:9,fontWeight:'900',letterSpacing:1.3,color:C.accent},title:{fontSize:18,fontWeight:'800',color:C.ink,marginTop:3,maxWidth:440},close:{width:38,height:38,borderRadius:12,backgroundColor:C.accentSoft,alignItems:'center',justifyContent:'center'},search:{height:52,margin:16,marginBottom:8,paddingHorizontal:14,borderRadius:15,borderWidth:1,borderColor:C.line,backgroundColor:C.white,flexDirection:'row',alignItems:'center',gap:9},input:{flex:1,fontSize:14,color:C.ink},navigator:{height:42,paddingHorizontal:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},count:{fontSize:11,fontWeight:'800',color:C.muted},navButtons:{flexDirection:'row',gap:6},nav:{width:34,height:34,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.white,alignItems:'center',justifyContent:'center'},results:{padding:16,paddingTop:4,gap:9},result:{minHeight:78,padding:12,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:C.white,flexDirection:'row',alignItems:'center',gap:12},active:{borderColor:C.accent,backgroundColor:C.accentSoft},pageBadge:{width:42,height:48,borderRadius:11,backgroundColor:C.white,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},page:{fontSize:15,fontWeight:'900',color:C.accent},pageUnit:{fontSize:8,fontWeight:'700',color:C.muted},sources:{fontSize:9,fontWeight:'900',color:C.accent,marginBottom:4},snippet:{fontSize:12,lineHeight:17,color:C.ink}});
+const s = StyleSheet.create({
+  scrim: {
+    flex: 1,
+    backgroundColor: "rgba(20,28,24,.32)",
+    alignItems: "center",
+    paddingTop: 92,
+  },
+  card: {
+    width: "88%",
+    maxWidth: 620,
+    maxHeight: "78%",
+    borderRadius: 24,
+    backgroundColor: C.sidebar,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+  },
+  header: {
+    height: 72,
+    paddingHorizontal: 20,
+    backgroundColor: C.white,
+    borderBottomWidth: 1,
+    borderBottomColor: C.line,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  eyebrow: {
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+    color: C.accent,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: C.ink,
+    marginTop: 3,
+    maxWidth: 440,
+  },
+  close: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: C.accentSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  search: {
+    height: 52,
+    margin: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  input: { flex: 1, fontSize: 14, color: C.ink },
+  navigator: {
+    height: 42,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  count: { fontSize: 11, fontWeight: "800", color: C.muted },
+  navButtons: { flexDirection: "row", gap: 6 },
+  nav: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  results: { padding: 16, paddingTop: 4, gap: 9 },
+  result: {
+    minHeight: 78,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  active: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  pageBadge: {
+    width: 42,
+    height: 48,
+    borderRadius: 11,
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  page: { fontSize: 15, fontWeight: "900", color: C.accent },
+  pageUnit: { fontSize: 8, fontWeight: "700", color: C.muted },
+  sources: { fontSize: 9, fontWeight: "900", color: C.accent, marginBottom: 4 },
+  snippet: { fontSize: 12, lineHeight: 17, color: C.ink },
+});

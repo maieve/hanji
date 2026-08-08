@@ -433,7 +433,7 @@ function ActionPicker({
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F8F7F2" },
+  root: { flex: 1, backgroundColor: C.sidebar },
   header: {
     height: 76,
     paddingHorizontal: 22,

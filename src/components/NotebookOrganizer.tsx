@@ -286,7 +286,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  favoriteOn: { backgroundColor: "#FFF6DD", borderColor: "#E9CF91" },
+  favoriteOn: { backgroundColor: C.accentSoft, borderColor: C.accent },
   locked: { backgroundColor: C.accentSoft, borderColor: C.accent },
   favoriteText: { fontWeight: "700", color: C.ink },
   lockHelp: { fontSize: 9, color: C.muted, marginTop: 2 },
