@@ -518,7 +518,7 @@ export function HanjiApp() {
       setOpenTabs((tabs) => (tabs.includes(openId) ? tabs : [...tabs, openId]));
   }, [openId]);
   useEffect(() => setUnlockedNotes(new Set()), [privacy.sessionRevision]);
-  const importPdf = async () => {
+  const importPdf = async (folder?: string) => {
     const result = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",
       copyToCacheDirectory: true,
@@ -529,6 +529,7 @@ export function HanjiApp() {
     try {
       const persistentUri = persistImportedPdf(asset.uri, asset.name);
       const note = pdfNotebook(asset.name, persistentUri);
+      if (folder) note.folder = folder;
       setItems((all) => [note, ...all]);
       setOpenId(note.id);
       setPageIndex(0);
@@ -2320,7 +2321,7 @@ function Library({
   onToggleNotebookLock: (n: Notebook) => Promise<boolean>;
   onCloudRestore: (items: Notebook[]) => void;
   onCreate: (folder?: string) => void;
-  onImport: () => void;
+  onImport: (folder?: string) => void;
   onExport: () => void;
   onRestore: () => void;
   onDelete: (id: string) => void;
@@ -2602,6 +2603,7 @@ function Library({
               contentContainerStyle={s.libraryActions}
             >
               <Pressable
+                accessibilityLabel="Cloudflare 백업 설정"
                 onPress={() => setCloudOpen(true)}
                 style={[s.newButton, s.secondaryButton]}
               >
@@ -2609,6 +2611,7 @@ function Library({
                 <Text style={[s.newText, { color: C.accent }]}>Cloudflare</Text>
               </Pressable>
               <Pressable
+                accessibilityLabel="전체 백업 복원"
                 onPress={onRestore}
                 style={[s.newButton, s.secondaryButton]}
               >
@@ -2620,6 +2623,7 @@ function Library({
                 <Text style={[s.newText, { color: C.accent }]}>복원</Text>
               </Pressable>
               <Pressable
+                accessibilityLabel="전체 라이브러리 백업"
                 onPress={onExport}
                 style={[s.newButton, s.secondaryButton]}
               >
@@ -2627,7 +2631,8 @@ function Library({
                 <Text style={[s.newText, { color: C.accent }]}>전체 백업</Text>
               </Pressable>
               <Pressable
-                onPress={onImport}
+                accessibilityLabel="파일 앱에서 PDF 가져오기"
+                onPress={() => onImport(categories.includes(selected) ? selected : undefined)}
                 style={[s.newButton, s.secondaryButton]}
               >
                 <Ionicons
@@ -2635,9 +2640,9 @@ function Library({
                   size={20}
                   color={C.accent}
                 />
-                <Text style={[s.newText, { color: C.accent }]}>PDF</Text>
+                <Text style={[s.newText, { color: C.accent }]}>PDF 가져오기</Text>
               </Pressable>
-              <Pressable onPress={createHere} style={s.newButton}>
+              <Pressable accessibilityLabel="새 노트 만들기" onPress={createHere} style={s.newButton}>
                 <Ionicons name="add" size={22} color="white" />
                 <Text style={s.newText}>새 노트</Text>
               </Pressable>
@@ -2721,7 +2726,7 @@ function Library({
             />
           </View>
           {filtered.length === 0 ? (
-            <Pressable onPress={createHere} style={s.empty}>
+            <View style={s.empty}>
               <View style={s.emptyIcon}>
                 <Ionicons
                   name="document-text-outline"
@@ -2733,9 +2738,25 @@ function Library({
                 {query ? "검색 결과가 없어요" : "이 폴더에 노트가 없어요"}
               </Text>
               <Text style={s.emptyBody}>
-                새 노트를 만들거나 다른 폴더를 선택하세요.
+                {query ? "검색어를 바꾸거나 다른 폴더를 선택하세요." : "새 노트를 만들거나 PDF를 바로 가져오세요."}
               </Text>
-            </Pressable>
+              {!query && (
+                <View style={s.emptyActions}>
+                  <Pressable accessibilityLabel="빈 노트 만들기" onPress={createHere} style={s.newButton}>
+                    <Ionicons name="add" size={20} color={C.white} />
+                    <Text style={s.newText}>빈 노트</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="파일 앱에서 PDF 찾아 가져오기"
+                    onPress={() => onImport(categories.includes(selected) ? selected : undefined)}
+                    style={[s.newButton, s.secondaryButton]}
+                  >
+                    <Ionicons name="folder-open-outline" size={19} color={C.accent} />
+                    <Text style={[s.newText, { color: C.accent }]}>PDF 찾아보기</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           ) : (
             <ScrollView
               contentContainerStyle={libraryView === "grid" ? s.grid : s.list}
@@ -3515,4 +3536,5 @@ const s = StyleSheet.create({
   },
   emptyTitle: { marginTop: 18, fontSize: 18, fontWeight: "800", color: C.ink },
   emptyBody: { marginTop: 7, color: C.muted },
+  emptyActions: { marginTop: 20, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 10 },
 });
