@@ -2487,6 +2487,11 @@ function Library({
               </View>
               <Text style={s.brandText}>yoojin note</Text>
             </View>
+            <ScrollView
+              style={s.sidebarNavigation}
+              contentContainerStyle={s.sidebarNavigationContent}
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={s.section}>라이브러리</Text>
             {(
               [
@@ -2570,7 +2575,7 @@ function Library({
             </View>
             {!!tags.length && <>
               <Text style={s.section}>태그</Text>
-              <ScrollView style={s.tagNav} contentContainerStyle={s.tagNavContent}>
+              <View style={s.tagNavContent}>
                 {tags.map((tag) => {
                   const key = libraryTagSelectionKey(tag);
                   const count = items.filter((note) => note.tags.some((value) => value.trim() === tag)).length;
@@ -2586,8 +2591,9 @@ function Library({
                     <Text style={s.sideCount}>{count}</Text>
                   </Pressable>;
                 })}
-              </ScrollView>
+              </View>
             </>}
+            </ScrollView>
             <Pressable
               accessibilityRole={saveStatus === "error" ? "button" : undefined}
               accessibilityLabel={
@@ -3328,7 +3334,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
   },
-  tagNav: { maxHeight: 150 },
   tagNavContent: { paddingBottom: 4 },
   sideCount: { fontSize: 10, color: C.muted },
   secondaryButton: {
@@ -3351,11 +3356,13 @@ const s = StyleSheet.create({
     borderRightColor: C.line,
     padding: 18,
   },
+  sidebarNavigation: { flex: 1, marginHorizontal: -4 },
+  sidebarNavigationContent: { paddingHorizontal: 4, paddingBottom: 14 },
   brand: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 30,
+    marginBottom: 12,
   },
   mark: {
     width: 36,
