@@ -7,7 +7,7 @@ public final class HanjiDocumentModule: Module {
   public func definition() -> ModuleDefinition {
     Name("HanjiDocumentCanvas")
     View(HanjiDocumentView.self) {
-      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPdfExcerpt", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onCircleLasso")
+      Events("onDrawingChange", "onPageCount", "onPdfOutline", "onPdfLink", "onPdfExcerpt", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onSelectionClip", "onCircleLasso")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
@@ -41,6 +41,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   let onEraserEnded = EventDispatcher()
   let onSelectionChange = EventDispatcher()
   let onSelectionText = EventDispatcher()
+  let onSelectionClip = EventDispatcher()
   let onCircleLasso = EventDispatcher()
   private var document: PDFDocument?
   private var currentPage = 0
@@ -395,6 +396,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       copySelectionToPasteboard()
       return
     }
+    if action == "clip" { createSelectionClip(); return }
     if action == "duplicate" {
       let original = canvas.drawing, chosen = original.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? offsetStroke($0.element, dx: 18, dy: 18) : nil }
       guard !chosen.isEmpty else { return }
@@ -447,6 +449,26 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     } else { UIPasteboard.general.setData(nativeData, forPasteboardType: "app.hanji.pkdrawing") }
     clipboardPasteCount = 0
     UINotificationFeedbackGenerator().notificationOccurred(.success)
+  }
+
+  private func createSelectionClip() {
+    let chosen = canvas.drawing.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? $0.element : nil }
+    let drawing = PKDrawing(strokes: chosen)
+    guard !drawing.strokes.isEmpty else { return }
+    let bounds = drawing.bounds.insetBy(dx: -10, dy: -10)
+    guard let png = drawing.image(from: bounds, scale: 3).pngData(), let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+      UINotificationFeedbackGenerator().notificationOccurred(.error); return
+    }
+    let directory = documents.appendingPathComponent("Hanji/assets/clips", isDirectory: true)
+    do {
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      let file = directory.appendingPathComponent("clip-\(UUID().uuidString).png")
+      try png.write(to: file, options: .atomic)
+      let width = max(canvas.bounds.width, 1), height = max(canvas.bounds.height, 1)
+      let x = min(width, max(0, bounds.minX)), y = min(height, max(0, bounds.minY))
+      onSelectionClip(["uri": file.absoluteString, "x": x / width, "y": y / height, "width": max(1, min(width - x, bounds.width)) / width, "height": max(1, min(height - y, bounds.height)) / height])
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    } catch { UINotificationFeedbackGenerator().notificationOccurred(.error) }
   }
 
   private func recognizeSelection() {

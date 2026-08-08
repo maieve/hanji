@@ -14,7 +14,7 @@ type Props = {
   zoomWindowEnabled?: boolean;
   interactionEnabled?: boolean;
   replayCutoff?: number;
-  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
   undoSignal?: number;
   redoSignal?: number;
   onDrawingChange: (v: string) => void;
@@ -29,6 +29,7 @@ type Props = {
   onStrokeTapped?: (createdAt: number) => void;
   onSelectionChange?: (selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
   onSelectionText?: (result: { text: string; x: number; y: number; width: number; height: number }) => void;
+  onSelectionClip?: (result: { uri: string; x: number; y: number; width: number; height: number }) => void;
   onCircleLasso?: () => void;
 };
 type E<T> = { nativeEvent: T };
@@ -63,6 +64,7 @@ export function DocumentCanvas(p: Props) {
       onStrokeTapped={(e: E<{ createdAt: number }>) => p.onStrokeTapped?.(e.nativeEvent.createdAt)}
       onSelectionChange={(e: E<{ count: number; x?: number; y?: number; width?: number; height?: number }>) => p.onSelectionChange?.(e.nativeEvent)}
       onSelectionText={(e: E<{ text: string; x: number; y: number; width: number; height: number }>) => p.onSelectionText?.(e.nativeEvent)}
+      onSelectionClip={(e: E<{ uri: string; x: number; y: number; width: number; height: number }>) => p.onSelectionClip?.(e.nativeEvent)}
       onCircleLasso={() => p.onCircleLasso?.()}
     />
   );

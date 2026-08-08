@@ -17,7 +17,7 @@ type Props = {
   zoomWindowEnabled: boolean;
   elementMode: boolean;
   replayCutoff?: number;
-  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
+  selectionAction?: { nonce: number; type: 'delete' | 'recolor' | 'text' | 'clip' | 'clear' | 'copy' | 'cut' | 'paste' | 'duplicate' | 'shrink' | 'grow' | 'rotate'; color?: string };
   undoSignal: number;
   redoSignal: number;
   onActiveIndexChange: (index: number) => void;
@@ -26,6 +26,7 @@ type Props = {
   onSaveSticker: (image: ImageElement) => void;
   onSelectionChange: (page: Page, selection: { count: number; x?: number; y?: number; width?: number; height?: number }) => void;
   onSelectionText: (page: Page, result: { text: string; x: number; y: number; width: number; height: number }) => void;
+  onSelectionClip: (page: Page, result: { uri: string; x: number; y: number; width: number; height: number }) => void;
   onCircleLasso: () => void;
   onAddPage: () => void;
   onPageCount: (count: number, page: Page) => void;
@@ -99,6 +100,7 @@ export function ContinuousDocument(props: Props) {
             onStrokeTapped={(createdAt) => props.onStrokeTapped(item, createdAt)}
             onSelectionChange={(selection) => props.onSelectionChange(item, selection)}
             onSelectionText={(result) => props.onSelectionText(item, result)}
+            onSelectionClip={(result) => props.onSelectionClip(item, result)}
             onCircleLasso={props.onCircleLasso}
             onPageCount={(count) => props.onPageCount(count, item)}
             onDrawingChange={(drawingData) => props.onDrawingChange(item, drawingData)}
