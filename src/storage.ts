@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type {Notebook,Page} from './types';
+import type {Notebook,Page,PageTemplate} from './types';
 import {expandFolderPaths} from './folders';
 const KEY='hanji.library.v2'; const CATEGORY_KEY='hanji.categories.v1';
 export const makeId=()=>`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`; const now=()=>new Date().toISOString();
-export function blankPage():Page{return{id:makeId(),drawingData:'',template:'line',updatedAt:now()}}
-export function newNotebook(title='제목 없는 노트'):Notebook{const t=now();return{id:makeId(),title,folder:'내 노트',tags:[],favorite:false,createdAt:t,updatedAt:t,pages:[blankPage()]}}
+export function blankPage(template:PageTemplate='line'):Page{return{id:makeId(),drawingData:'',template,updatedAt:now()}}
+export function newNotebook(title='제목 없는 노트',template:PageTemplate='line'):Notebook{const t=now();return{id:makeId(),title,folder:'내 노트',tags:[],favorite:false,createdAt:t,updatedAt:t,pages:[blankPage(template)]}}
 export function pdfNotebook(name:string,uri:string):Notebook{const n=newNotebook(name.replace(/\.pdf$/i,''));n.pages=[{...blankPage(),template:'plain',pdfUri:uri,pdfName:name,pdfPageIndex:0}];return n}
 export async function loadLibrary():Promise<Notebook[]>{const raw=await AsyncStorage.getItem(KEY)??await AsyncStorage.getItem('hanji.library.v1');try{const notes=(raw?JSON.parse(raw):[]) as Notebook[];return notes.map(note=>({...note,pages:note.pages.map((page,index)=>page.pdfUri&&page.pdfPageIndex===undefined?{...page,pdfPageIndex:index}:page)}))}catch{return[]}}
 export async function saveLibrary(v:Notebook[]){await AsyncStorage.setItem(KEY,JSON.stringify(v))}

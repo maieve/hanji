@@ -38,6 +38,8 @@ import { mergeCloudRestore } from './cloudMerge';
 import { transcribeAudio } from './speech';
 import { SelectionBar } from './components/SelectionBar';
 import {SearchHighlight} from './components/SearchHighlight';
+import {SettingsPanel} from './components/SettingsPanel';
+import {defaultUiPreferences,type UiPreferences} from './uiPreferences';
 
 export function HanjiApp() {
   const { height: windowHeight,width:windowWidth } = useWindowDimensions();
@@ -91,11 +93,12 @@ export function HanjiApp() {
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [undoSignal, setUndoSignal] = useState(0);
   const [redoSignal, setRedoSignal] = useState(0);
-  const [fingerDrawingEnabled, setFingerDrawingEnabled] = useState(false);
   const [zoomWindowEnabled, setZoomWindowEnabled] = useState(false);
   const [elementMode, setElementMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [leftHanded,setLeftHanded]=useState(false);
+  const [uiPreferences,setUiPreferences]=useState<UiPreferences>(defaultUiPreferences);
+  const [settingsOpen,setSettingsOpen]=useState(false);
+  const {leftHanded,fingerDrawingEnabled}=uiPreferences;
   const [pageTransferOpen, setPageTransferOpen] = useState(false);
   const [pageGridOpen, setPageGridOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
@@ -107,7 +110,7 @@ export function HanjiApp() {
       setReady(true);
     });
     void loadStickers().then(setStickers);
-    void loadUiPreferences().then(value=>setLeftHanded(value.leftHanded));
+    void loadUiPreferences().then(setUiPreferences);
   }, []);
   useEffect(()=>()=>{for(const timer of ocrTimers.current.values())clearTimeout(timer);ocrTimers.current.clear();ocrJobs.current=[]},[]);
   useEffect(() => {
@@ -247,10 +250,11 @@ export function HanjiApp() {
         }}
         onImport={importPdf}
         onCreate={(folder) => {
-          const n = newNotebook();
+          const n = newNotebook(undefined,uiPreferences.defaultTemplate);
           if (folder) n.folder = folder;
           setItems((x) => [n, ...x]);
           setOpenId(n.id);
+          if(uiPreferences.autoDarkInk&&uiPreferences.defaultTemplate==='dark'&&['#20201E','#000000'].includes(tool.color.toUpperCase()))setTool({...tool,color:'#F4F1E8'});
         }}
         onDelete={(id) =>
           Alert.alert('노트 삭제', '이 노트를 삭제할까요?', [
@@ -393,12 +397,15 @@ export function HanjiApp() {
     });
     setPageIndex(target);
   };
-  const addPage = () =>
+  const applyTemplateInk=(template:import('./types').PageTemplate)=>{if(!uiPreferences.autoDarkInk)return;if(template==='dark'&&['#20201E','#000000'].includes(tool.color.toUpperCase()))setTool({...tool,color:'#F4F1E8'});if(template!=='dark'&&tool.color.toUpperCase()==='#F4F1E8')setTool({...tool,color:C.ink})};
+  const addPage = () => {
     update(current.id, (n) => ({
       ...n,
-      pages: [...n.pages, blankPage()],
+      pages: [...n.pages, blankPage(uiPreferences.defaultTemplate)],
       updatedAt: new Date().toISOString(),
     }));
+    applyTemplateInk(uiPreferences.defaultTemplate);
+  };
   const changeDrawing = (target: typeof page, drawingData: string) => {
     update(current.id, (n) => ({
       ...n,
@@ -449,7 +456,8 @@ export function HanjiApp() {
     selectionUndoRef.current={pageId:target.id,element};selectionRedoRef.current=null;
   };
   const actOnSelection=(type:'delete'|'recolor'|'text'|'clear'|'copy'|'cut'|'paste'|'duplicate'|'shrink'|'grow'|'rotate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
-  const toggleLeftHanded=()=>setLeftHanded(value=>{const next=!value;void saveUiPreferences({leftHanded:next});return next});
+  const changeUiPreferences=(value:UiPreferences)=>{setUiPreferences(value);void saveUiPreferences(value)};
+  const toggleLeftHanded=()=>changeUiPreferences({...uiPreferences,leftHanded:!leftHanded});
   const activateLasso=()=>setTool(active=>({...active,kind:'lasso'}));
   const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
   const performRedo=()=>{const conversion=selectionRedoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:[...(p.elements??[]),conversion.element]}:p)}));selectionUndoRef.current=conversion;selectionRedoRef.current=null}setRedoSignal(v=>v+1)};
@@ -461,7 +469,7 @@ export function HanjiApp() {
         { length: count },
         (_, i) =>
           n.pages[i] ?? {
-            ...blankPage(),
+            ...blankPage('plain'),
             pdfUri: source.pdfUri,
             pdfName: source.pdfName,
             pdfPageIndex: i,
@@ -537,7 +545,7 @@ export function HanjiApp() {
           onUndo={performUndo}
           onRedo={performRedo}
           fingerDrawingEnabled={fingerDrawingEnabled}
-          onToggleFingerDrawing={() => setFingerDrawingEnabled((v) => !v)}
+          onToggleFingerDrawing={() => changeUiPreferences({...uiPreferences,fingerDrawingEnabled:!fingerDrawingEnabled})}
           zoomWindowEnabled={zoomWindowEnabled}
           onToggleZoomWindow={() => setZoomWindowEnabled((v) => !v)}
           viewMode={current.viewMode ?? 'page'}
@@ -585,6 +593,7 @@ export function HanjiApp() {
           privacyEnabled={privacy.enabled}
           onPrivacyToggle={() => void privacy.toggle()}
           onFocusMode={() => setFocusMode(true)}
+          onSettings={() => setSettingsOpen(true)}
           onExportPdf={() => exportNotebookPdf(current)}
           onFlashcards={() => setFlashcardsOpen(true)}
           dueCards={dueFlashcards(current.flashcards ?? []).length}
@@ -724,8 +733,7 @@ export function HanjiApp() {
                     ...n,
                     pages: n.pages.map((p) => (p.id === page.id ? { ...p, template: t, customTemplateUri: undefined } : p)),
                   }));
-                  if (t === 'dark' && ['#20201E', '#000000'].includes(tool.color.toUpperCase())) setTool({ ...tool, color: '#F4F1E8' });
-                  if (t !== 'dark' && tool.color.toUpperCase() === '#F4F1E8') setTool({ ...tool, color: C.ink });
+                  applyTemplateInk(t);
                 }}
                 style={[s.templateDot, !page.customTemplateUri && page.template === t && s.templateActive]}
               >
@@ -822,6 +830,7 @@ export function HanjiApp() {
         }}
       />
       <StickerPanel visible={stickerOpen} stickers={stickers} onClose={() => setStickerOpen(false)} onInsert={insertSticker} onImport={() => void importSticker()} onDelete={(id) => updateStickers(stickers.filter((item) => item.id !== id))} />
+      <SettingsPanel visible={settingsOpen} value={uiPreferences} onChange={changeUiPreferences} onClose={()=>setSettingsOpen(false)}/>
       <Pressable accessibilityLabel="전체 페이지 관리" onPress={() => setPageGridOpen(true)} style={[s.pageGrid,leftHanded&&s.pageGridLeft]}>
         <Ionicons name="grid-outline" size={19} color={C.white} />
       </Pressable>

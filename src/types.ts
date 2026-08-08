@@ -1,13 +1,14 @@
 export type ToolKind='pen'|'fountainPen'|'monoline'|'pencil'|'crayon'|'watercolor'|'marker'|'eraser'|'lasso'|'shape';
 export type ShapeKind='line'|'arrow'|'ellipse'|'rectangle'|'triangle';
 export type PageRotation=0|90|180|270;
+export type PageTemplate='plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'dark';
 export type ToolSpec={kind:ToolKind;color:string;width:number;opacity?:number;eraserMode?:'vector'|'bitmap'|'fixedWidthBitmap';eraserAutoReturn?:boolean;rulerActive?:boolean;shapeKind?:ShapeKind;shapeLineStyle?:'solid'|'dashed';scratchEnabled?:boolean;circleToLasso?:boolean;markerStraightLine?:boolean};
 export type OcrWord={text:string;confidence:number;x:number;y:number;width:number;height:number;coordinateSpace?:'canvas'};
 export type TextElement={id:string;kind:'text';text:string;x:number;y:number;width:number;height:number;fontSize:number;color:string;source?:{notebookId:string;pageId:string;pageIndex:number;pdfName?:string}};
 export type ImageElement={id:string;kind:'image';uri:string;x:number;y:number;width:number;height:number;fit?:'contain'|'cover';rotation?:0|90|180|270};
 export type Sticker={id:string;name:string;uri:string;width:number;height:number;fit?:'contain'|'cover';rotation?:0|90|180|270;createdAt:string};
 export type PageElement=TextElement|ImageElement;
-export type Page={id:string;drawingData:string;template:'plain'|'line'|'grid'|'dot'|'cornell'|'planner'|'dark';rotation?:PageRotation;customTemplateUri?:string;updatedAt:string;bookmarked?:boolean;elements?:PageElement[];pdfUri?:string;pdfName?:string;pdfPageIndex?:number;ocrText?:string;ocrWords?:OcrWord[]};
+export type Page={id:string;drawingData:string;template:PageTemplate;rotation?:PageRotation;customTemplateUri?:string;updatedAt:string;bookmarked?:boolean;elements?:PageElement[];pdfUri?:string;pdfName?:string;pdfPageIndex?:number;ocrText?:string;ocrWords?:OcrWord[]};
 export type StrokeSync={pageId:string;createdAt:number;seekSec:number};
 export type TranscriptSegment={text:string;start:number;duration:number;confidence:number};
 export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[];transcript?:string;transcriptSegments?:TranscriptSegment[];transcribedAt?:string};
