@@ -31,6 +31,23 @@ export function rememberInkTool(preferences:ToolPreferences,tool:ToolSpec):ToolP
   return isInkTool(tool.kind)?{...preferences,lastTools:{...preferences.lastTools,[tool.kind]:{...tool}}}:preferences;
 }
 
+export function renameToolPreset(preferences:ToolPreferences,id:string,name:string):ToolPreferences{
+  const clean=name.trim().slice(0,24);if(!clean)return preferences;
+  return{...preferences,presets:preferences.presets.map(item=>item.id===id?{...item,name:clean}:item)};
+}
+export function replaceToolPreset(preferences:ToolPreferences,id:string,tool:ToolSpec):ToolPreferences{
+  if(!isInkTool(tool.kind))return preferences;
+  return{...preferences,presets:preferences.presets.map(item=>item.id===id?{...item,tool:{...tool}}:item)};
+}
+export function removeToolPreset(preferences:ToolPreferences,id:string):ToolPreferences{
+  return{...preferences,presets:preferences.presets.filter(item=>item.id!==id)};
+}
+export function moveToolPreset(preferences:ToolPreferences,id:string,direction:-1|1):ToolPreferences{
+  const index=preferences.presets.findIndex(item=>item.id===id),target=index+direction;
+  if(index<0||target<0||target>=preferences.presets.length)return preferences;
+  const presets=[...preferences.presets];[presets[index],presets[target]]=[presets[target]!,presets[index]!];return{...preferences,presets};
+}
+
 export async function loadToolPreferences():Promise<ToolPreferences>{
   try{const raw=await AsyncStorage.getItem(KEY);if(raw){const value=JSON.parse(raw) as Partial<ToolPreferences>;return{presets:Array.isArray(value.presets)?value.presets.slice(0,12):defaultToolPresets,recentColors:Array.isArray(value.recentColors)?value.recentColors.slice(0,8):[],lastTools:value.lastTools&&typeof value.lastTools==='object'?value.lastTools:{}}}}catch{}
   return{presets:defaultToolPresets,recentColors:[],lastTools:{}};

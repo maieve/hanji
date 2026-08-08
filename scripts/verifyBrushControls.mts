@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {clampBrushOpacity,clampBrushWidth,stepBrushOpacity,stepBrushWidth} from '../src/brushControls.ts';
-import {defaultToolPresets,rememberInkTool,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
+import {defaultToolPresets,moveToolPreset,removeToolPreset,renameToolPreset,rememberInkTool,replaceToolPreset,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
 
 assert.equal(clampBrushWidth(-1),.5);assert.equal(clampBrushWidth(99),40);
 assert.equal(stepBrushWidth(2,1),2.5);assert.equal(stepBrushWidth(3,1),4);assert.equal(stepBrushWidth(12,1),14);
@@ -9,4 +9,12 @@ const base:ToolPreferences={presets:defaultToolPresets,recentColors:[],lastTools
 const remembered=rememberInkTool(base,{kind:'watercolor',color:'#123456',width:23.5,opacity:.45});
 assert.deepEqual(selectToolKind({kind:'pen',color:'#000000',width:2},'watercolor',remembered.lastTools),{kind:'watercolor',color:'#123456',width:23.5,opacity:.45});
 assert.equal(rememberInkTool(remembered,{kind:'eraser',color:'#000000',width:2}),remembered);
+const renamed=renameToolPreset(base,'default-pen','  회의 펜  ');assert.equal(renamed.presets[0]?.name,'회의 펜');
+assert.equal(renameToolPreset(renamed,'default-pen','   '),renamed);
+const moved=moveToolPreset(renamed,'default-pen',1);assert.equal(moved.presets[1]?.id,'default-pen');
+assert.equal(moveToolPreset(moved,'default-pen',1).presets[2]?.id,'default-pen');
+const replacement={kind:'crayon' as const,color:'#ABCDEF',width:14,opacity:.6};
+assert.deepEqual(replaceToolPreset(base,'default-pen',replacement).presets[0]?.tool,replacement);
+assert.equal(replaceToolPreset(base,'default-pen',{kind:'eraser',color:'#000000',width:2}),base);
+assert.equal(removeToolPreset(base,'default-pen').presets.some(item=>item.id==='default-pen'),false);
 console.log('brush control verification passed');

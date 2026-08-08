@@ -6,6 +6,7 @@ import { C } from '../theme';
 import {defaultToolPresets,isInkTool,loadToolPreferences,rememberInkTool,saveToolPreferences,selectToolKind,type ToolPreferences} from '../toolPreferences';
 import {pickColor} from '../colorPicker';
 import {stepBrushOpacity,stepBrushWidth} from '../brushControls';
+import {ToolPresetPanel} from './ToolPresetPanel';
 
 const tools: { kind: ToolKind; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { kind: 'pen', icon: 'pencil', label: '볼펜' },
@@ -25,6 +26,7 @@ const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사�
 
 export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, viewMode, onToggleViewMode, elementMode, onAddText, onAddImage, onStickers, privacyEnabled, onPrivacyToggle, focusMode,focusOverlay,onActivity,onFocusMode, onSettings,onSearch, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;viewMode:'page'|'continuous';onToggleViewMode:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void;onStickers:()=>void;privacyEnabled:boolean;onPrivacyToggle:()=>void;focusMode?:boolean;focusOverlay?:boolean;onActivity?:()=>void;onFocusMode:()=>void;onSettings:()=>void;onSearch:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
   const [preferences,setPreferences]=useState<ToolPreferences>({presets:defaultToolPresets,recentColors:[],lastTools:{}});
+  const [presetsOpen,setPresetsOpen]=useState(false);
   const {width}=useWindowDimensions();const compact=width<760;
   useEffect(()=>{void loadToolPreferences().then(setPreferences)},[]);
   const persist=(next:ToolPreferences)=>{setPreferences(next);void saveToolPreferences(next)};
@@ -37,7 +39,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
     <Pressable accessibilityLabel="서재" onPress={onLibrary} style={s.nav}><Ionicons name="library-outline" size={20} color={C.ink} />{!compact&&<Text style={s.navText}>서재</Text>}</Pressable>
     {!compact&&<><TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={s.title} accessibilityLabel="노트 제목" /><View style={s.rule} /></>}
     <ScrollView horizontal style={s.toolScroll} contentContainerStyle={s.tools} showsHorizontalScrollIndicator={false}>
-      <View style={s.presets}>{preferences.presets.map((preset,index)=><Pressable key={preset.id} accessibilityLabel={`${preset.name}, 길게 눌러 현재 도구 저장`} onPress={()=>applyTool({...preset.tool})} onLongPress={()=>savePreset(index)} delayLongPress={450} style={[s.preset,tool.kind===preset.tool.kind&&tool.color.toUpperCase()===preset.tool.color.toUpperCase()&&tool.width===preset.tool.width&&s.presetActive]}><View style={[s.presetNib,{backgroundColor:preset.tool.color,width:Math.min(17,Math.max(5,preset.tool.width+4)),height:Math.min(17,Math.max(5,preset.tool.width+4)),opacity:preset.tool.opacity??1}]}/></Pressable>)}<Pressable accessibilityLabel="현재 도구 프리셋 추가" disabled={!isInkTool(tool.kind)||preferences.presets.length>=12} onPress={addPreset} style={[s.preset,(!isInkTool(tool.kind)||preferences.presets.length>=12)&&s.disabled]}><Ionicons name="add" size={15} color={C.accent}/></Pressable></View>
+      <View style={s.presets}>{preferences.presets.map((preset,index)=><Pressable key={preset.id} accessibilityLabel={`${preset.name}, 길게 눌러 현재 도구 저장`} onPress={()=>applyTool({...preset.tool})} onLongPress={()=>savePreset(index)} delayLongPress={450} style={[s.preset,tool.kind===preset.tool.kind&&tool.color.toUpperCase()===preset.tool.color.toUpperCase()&&tool.width===preset.tool.width&&s.presetActive]}><View style={[s.presetNib,{backgroundColor:preset.tool.color,width:Math.min(17,Math.max(5,preset.tool.width+4)),height:Math.min(17,Math.max(5,preset.tool.width+4)),opacity:preset.tool.opacity??1}]}/></Pressable>)}<Pressable accessibilityLabel="현재 도구 프리셋 추가" disabled={!isInkTool(tool.kind)||preferences.presets.length>=12} onPress={addPreset} style={[s.preset,(!isInkTool(tool.kind)||preferences.presets.length>=12)&&s.disabled]}><Ionicons name="add" size={15} color={C.accent}/></Pressable><Pressable accessibilityLabel="도구 슬롯 관리" onPress={()=>setPresetsOpen(true)} style={s.preset}><Ionicons name="options-outline" size={15} color={C.accent}/></Pressable></View>
       <View style={s.rule}/>
       {tools.map(x => <Pressable accessibilityLabel={x.label} key={x.kind} onPress={() => applyTool(selectToolKind(tool,x.kind,preferences.lastTools))} style={[s.tool, tool.kind === x.kind && s.selected]}><Ionicons name={x.icon} size={21} color={tool.kind === x.kind ? C.accent : C.muted} /></Pressable>)}
       <Pressable accessibilityLabel="자" onPress={()=>applyTool({...tool,rulerActive:!tool.rulerActive})} style={[s.tool,tool.rulerActive&&s.selected]}><Ionicons name="resize-outline" size={21} color={tool.rulerActive?C.accent:C.muted}/></Pressable>
@@ -71,6 +73,7 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
     <Pressable accessibilityLabel={focusMode?'집중 모드 종료':'집중 모드'} onPress={onFocusMode} style={[s.tool,focusMode&&s.selected]}><Ionicons name={focusMode?'contract-outline':'expand-outline'} size={20} color={focusMode?C.accent:C.muted}/></Pressable>
     <Pressable accessibilityLabel="페이지 추가" onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" />{!compact&&<Text style={s.addText}>페이지</Text>}</Pressable>
     </ScrollView>
+    <ToolPresetPanel visible={presetsOpen} value={preferences} currentTool={tool} onChange={persist} onSelect={next=>applyTool(next)} onClose={()=>setPresetsOpen(false)}/>
   </View>;
 }
 
