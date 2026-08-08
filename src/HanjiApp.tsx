@@ -1438,6 +1438,17 @@ export function HanjiApp() {
     }
     setRedoSignal((v) => v + 1);
   };
+  const applyPagePaintToAll=(paint:PagePaintSnapshot)=>{
+    const clearing=!paint.backgroundColor||!paint.backgroundOpacity;
+    const changed=current.pages.filter(item=>clearing
+      ? Boolean(item.backgroundColor||item.backgroundColor2||item.backgroundGradientDirection||(item.backgroundOpacity??0)>0)
+      : JSON.stringify({backgroundColor:item.backgroundColor,backgroundColor2:item.backgroundColor2,backgroundGradientDirection:item.backgroundGradientDirection,backgroundOpacity:item.backgroundOpacity})!==JSON.stringify(paint));
+    if(!changed.length)return;
+    const before=changed.map(item=>({pageId:item.id,paint:{backgroundColor:item.backgroundColor,backgroundColor2:item.backgroundColor2,backgroundGradientDirection:item.backgroundGradientDirection,backgroundOpacity:item.backgroundOpacity}}));
+    const after=changed.map(item=>({pageId:item.id,paint}));
+    recordSelectionHistory({kind:'pagePaintBatch',before,after});
+    update(current.id,n=>{const ids=new Set(changed.map(item=>item.id));const updatedAt=new Date().toISOString();return{...n,updatedAt,pages:n.pages.map(item=>ids.has(item.id)?{...item,...paint,updatedAt}:item)}});
+  };
   const performPencilAction = (action: PencilAction) => {
     if (action === "eraser") togglePencilEraser();
     else if (action === "undo") performUndo();
@@ -2288,15 +2299,8 @@ export function HanjiApp() {
             ),
           }));
         }}
-        onApplyAll={() => {
-          const paint:PagePaintSnapshot={backgroundColor:page.backgroundColor,backgroundColor2:page.backgroundColor2,backgroundGradientDirection:page.backgroundGradientDirection,backgroundOpacity:page.backgroundOpacity};
-          const changed=current.pages.filter(item=>JSON.stringify({backgroundColor:item.backgroundColor,backgroundColor2:item.backgroundColor2,backgroundGradientDirection:item.backgroundGradientDirection,backgroundOpacity:item.backgroundOpacity})!==JSON.stringify(paint));
-          if(!changed.length)return;
-          const before=changed.map(item=>({pageId:item.id,paint:{backgroundColor:item.backgroundColor,backgroundColor2:item.backgroundColor2,backgroundGradientDirection:item.backgroundGradientDirection,backgroundOpacity:item.backgroundOpacity}}));
-          const after=changed.map(item=>({pageId:item.id,paint}));
-          recordSelectionHistory({kind:'pagePaintBatch',before,after});
-          update(current.id,n=>{const ids=new Set(changed.map(item=>item.id));const updatedAt=new Date().toISOString();return{...n,updatedAt,pages:n.pages.map(item=>ids.has(item.id)?{...item,...paint,updatedAt}:item)}});
-        }}
+        onApplyAll={() => applyPagePaintToAll({backgroundColor:page.backgroundColor,backgroundColor2:page.backgroundColor2,backgroundGradientDirection:page.backgroundGradientDirection,backgroundOpacity:page.backgroundOpacity})}
+        onClearAll={() => applyPagePaintToAll({backgroundColor:undefined,backgroundColor2:undefined,backgroundGradientDirection:undefined,backgroundOpacity:0})}
         onClose={() => setPagePaintOpen(false)}
       />
       <ExportPanel

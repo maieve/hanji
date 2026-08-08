@@ -17,5 +17,7 @@ assert.match(app, /conversion\.kind==='pagePaintBatch'[\s\S]*new Map\(conversion
 
 const panel = await readFile(new URL("../src/components/PagePaintPanel.tsx", import.meta.url), "utf8");
 assert.match(panel, /Alert\.alert\("모든 페이지에 적용"[\s\S]*필기와 템플릿은 유지됩니다[\s\S]*onPress:onApplyAll/, "bulk paint must require explicit confirmation and explain non-destructive behavior");
+assert.match(panel, /Alert\.alert\("모든 페이지 페인트 제거"[\s\S]*페인트만 제거[\s\S]*style:"destructive",onPress:onClearAll/, "bulk clear must require a distinct destructive confirmation");
+assert.match(app, /onClearAll=\{\(\) => applyPagePaintToAll\(\{backgroundColor:undefined,backgroundColor2:undefined,backgroundGradientDirection:undefined,backgroundOpacity:0\}\)\}/, "bulk clear must reuse the same atomic history path and erase stale gradient metadata");
 
 console.log("page paint history verification passed");

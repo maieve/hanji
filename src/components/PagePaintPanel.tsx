@@ -30,6 +30,7 @@ export function PagePaintPanel({
   opacity,
   onChange,
   onApplyAll,
+  onClearAll,
   onClose,
 }: {
   visible: boolean;
@@ -39,6 +40,7 @@ export function PagePaintPanel({
   opacity: number;
   onChange: (color: string | undefined, opacity: number, color2?: string, gradientDirection?: "vertical" | "horizontal") => void;
   onApplyAll: () => void;
+  onClearAll: () => void;
   onClose: () => void;
 }) {
   const active = color ?? "#FFF1A8";
@@ -190,6 +192,15 @@ export function PagePaintPanel({
               <Ionicons name="albums-outline" size={17} color={C.accent} />
               <Text style={s.applyAllText}>전체 적용</Text>
             </Pressable>
+            <Pressable
+              accessibilityLabel="모든 페이지의 색상 채우기 제거"
+              accessibilityHint="확인 후 이 노트의 모든 페이지 페인트를 제거합니다"
+              onPress={() => Alert.alert("모든 페이지 페인트 제거", "이 노트의 모든 페이지에서 페인트만 제거할까요? 필기와 템플릿은 유지됩니다.", [{text:"취소",style:"cancel"},{text:"전체 제거",style:"destructive",onPress:onClearAll}])}
+              style={s.clearAll}
+            >
+              <Ionicons name="trash-bin-outline" size={17} color={C.danger} />
+              <Text style={s.clearText}>전체 제거</Text>
+            </Pressable>
             <Pressable accessibilityLabel="페이지 색상 채우기 완료" onPress={onClose} style={s.done}>
               <Text style={s.doneText}>완료</Text>
             </Pressable>
@@ -311,6 +322,7 @@ const s = StyleSheet.create({
   clearText: { fontSize: 11, fontWeight: "800", color: C.danger },
   applyAll: { minHeight: 40, paddingHorizontal: 13, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, flexDirection: "row", alignItems: "center", gap: 6 },
   applyAllText: { fontSize: 11, fontWeight: "800", color: C.accent },
+  clearAll: { minHeight: 40, paddingHorizontal: 13, borderRadius: 12, borderWidth: 1, borderColor: "#E6C9C4", backgroundColor: C.dangerSoft, flexDirection: "row", alignItems: "center", gap: 6 },
   done: {
     height: 40,
     paddingHorizontal: 24,
