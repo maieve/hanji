@@ -584,7 +584,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       }
     }
     if let shapeKind, strokes.count > knownStrokeCount, let source = strokes.last, !shapeHoldRequired || heldAtEnd(source) {
-      let replacements = makeShapeStrokes(source, kind: shapeKind, dashed: shapeLineStyle == "dashed")
+      let replacements = makeShapeStrokes(source, kind: shapeKind, dashed: shapeLineStyle == "dashed", connectingTo: Array(strokes.dropLast()))
       if !replacements.isEmpty {
         registerTransformUndo(canvasView.drawing)
         strokes.removeLast(); strokes.append(contentsOf: replacements)
@@ -636,9 +636,18 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
 
-  private func makeShapeStrokes(_ source: PKStroke, kind: String, dashed: Bool = false) -> [PKStroke] {
+  private func makeShapeStrokes(_ source: PKStroke, kind: String, dashed: Bool = false, connectingTo previous: [PKStroke] = []) -> [PKStroke] {
     guard source.path.count > 1 else { return [source] }
     var start = source.path[0].location, end = source.path[source.path.count - 1].location
+    if kind == "line" || kind == "arrow" {
+      let threshold = max(CGFloat(12), min(CGFloat(24), source.path[0].size.width * 4))
+      let anchors = previous.filter { $0.path.count <= 8 }.flatMap { stroke in
+        (0..<stroke.path.count).map { stroke.path[$0].location }
+      }
+      start = nearestAnchor(to: start, in: anchors, threshold: threshold) ?? start
+      let snappedEnd = nearestAnchor(to: end, in: anchors, threshold: threshold) ?? end
+      if hypot(snappedEnd.x - start.x, snappedEnd.y - start.y) > threshold * 0.5 { end = snappedEnd }
+    }
     let angle = atan2(end.y - start.y, end.x - start.x), tolerance = CGFloat.pi / 60
     if kind == "line" && abs(sin(angle)) < sin(tolerance) { end.y = start.y }
     if kind == "line" && abs(cos(angle)) < sin(tolerance) { end.x = start.x }
@@ -660,6 +669,14 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       let controls = points.enumerated().map { index, location in PKStrokePoint(location: location, timeOffset: TimeInterval(index) * 0.01, size: prototype.size, opacity: prototype.opacity, force: prototype.force, azimuth: prototype.azimuth, altitude: prototype.altitude) }
       return PKStroke(ink: source.ink, path: PKStrokePath(controlPoints: controls, creationDate: source.path.creationDate))
     }
+  }
+
+  private func nearestAnchor(to point: CGPoint, in anchors: [CGPoint], threshold: CGFloat) -> CGPoint? {
+    anchors.reduce(nil as (point: CGPoint, distance: CGFloat)?) { nearest, candidate in
+      let distance = hypot(candidate.x - point.x, candidate.y - point.y)
+      guard distance <= threshold, nearest == nil || distance < nearest!.distance else { return nearest }
+      return (candidate, distance)
+    }?.point
   }
 
   private func dashedPaths(_ points: [CGPoint]) -> [[CGPoint]] {
