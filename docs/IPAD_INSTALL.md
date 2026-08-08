@@ -4,8 +4,8 @@ GitHub Release와 Actions가 제공하는 `YoojinNote-unsigned.ipa`는 서명되
 
 ## 1. IPA 받기
 
-1. GitHub 저장소의 **Releases → yoojin note v0.1.14 - accessible page rail**을 연다. Release가 보이지 않을 때만 **Actions → iOS Native Build**의 최신 성공 실행을 연다.
-2. `YoojinNote-v0.1.14-unsigned.ipa` 또는 Actions의 `YoojinNote-unsigned-ipa` ZIP을 내려받는다. 흰 화면이 발생했던 v0.1.0 IPA는 설치하지 않는다.
+1. GitHub 저장소의 **Releases → yoojin note v0.1.15 - cloud backup inventory**를 연다. Release가 보이지 않을 때만 **Actions → iOS Native Build**의 최신 성공 실행을 연다.
+2. `YoojinNote-v0.1.15-unsigned.ipa` 또는 Actions의 `YoojinNote-unsigned-ipa` ZIP을 내려받는다. 흰 화면이 발생했던 v0.1.0 IPA는 설치하지 않는다.
 3. Actions ZIP을 받았다면 압축을 푼다.
 4. ZIP을 풀면 다음 세 파일이 있다.
    - `YoojinNote-unsigned.ipa`: AltStore/SideStore가 다시 서명할 앱
@@ -26,8 +26,8 @@ GitHub Release와 Actions가 제공하는 `YoojinNote-unsigned.ipa`는 서명되
 
 ### 이전 버전에서 업데이트할 때
 
-1. 먼저 v0.1.14 IPA를 기존 앱 위에 설치한다. 같은 번들 ID라 노트 컨테이너를 유지하면서 갱신할 수 있다.
-2. 설치 후에도 흰 화면이거나 AltStore가 갱신을 거부하면 기존 앱을 삭제하고 v0.1.14를 새로 설치한다. 앱 삭제는 로컬 노트를 지울 수 있으므로, 기존 버전에서 서재가 열리는 경우에는 먼저 전체 백업을 만든다.
+1. 먼저 v0.1.15 IPA를 기존 앱 위에 설치한다. 같은 번들 ID라 노트 컨테이너를 유지하면서 갱신할 수 있다.
+2. 설치 후에도 흰 화면이거나 AltStore가 갱신을 거부하면 기존 앱을 삭제하고 v0.1.15를 새로 설치한다. 앱 삭제는 로컬 노트를 지울 수 있으므로, 기존 버전에서 서재가 열리는 경우에는 먼저 전체 백업을 만든다.
 3. 설치 후 `설정 → 설치 진단`에서 다섯 기능이 모두 초록색이고 `5/5`인지 확인한다. 하나라도 빨간색이면 최신 IPA를 다시 설치한다.
 
 공식 문서: https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows
