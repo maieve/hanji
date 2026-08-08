@@ -1265,6 +1265,10 @@ export function HanjiApp() {
               transcript: result.text,
               transcriptSegments: result.segments,
               transcribedAt: new Date().toISOString(),
+              transcriptAverageConfidence: result.averageConfidence,
+              transcriptRecognizedDuration: result.recognizedDuration,
+              transcriptLocale: result.locale,
+              transcriptOnDevice: result.onDevice,
             }
           : item,
       ),

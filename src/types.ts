@@ -18,6 +18,6 @@ export type Page={id:string;drawingData:string;drawingViewport?:DrawingViewport;
 export type StrokeSync={pageId:string;strokeId?:string;createdAt:number;seekSec:number};
 export type StrokeEvent={id?:string;createdAt:number;maxX?:number;maxY?:number};
 export type TranscriptSegment={text:string;start:number;duration:number;confidence:number};
-export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[];transcript?:string;transcriptSegments?:TranscriptSegment[];transcribedAt?:string};
+export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[];transcript?:string;transcriptSegments?:TranscriptSegment[];transcribedAt?:string;transcriptAverageConfidence?:number;transcriptRecognizedDuration?:number;transcriptLocale?:string;transcriptOnDevice?:boolean};
 export type Flashcard={id:string;question:string;answer:string;questionImageUri?:string;answerImageUri?:string;createdAt:string;updatedAt:string;dueAt:string;intervalDays:number;easeFactor:number;repetitions:number;lapses:number;lastReviewedAt?:string};
 export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;locked?:boolean;coverColor?:string;coverUri?:string;createdAt:string;updatedAt:string;lastOpenedAt?:string;pageOrderUpdatedAt?:string;viewMode?:'page'|'continuous';pages:Page[];deletedPages?:Record<string,string>;audioSessions?:AudioSession[];flashcards?:Flashcard[];conflictOf?:string;conflictSignature?:string};

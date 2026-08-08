@@ -26,19 +26,31 @@ public final class HanjiSpeechModule: Module {
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = false
         request.addsPunctuation = true
+        request.taskHint = .dictation
         let id = UUID().uuidString
+        var settled = false
         let task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+          guard !settled else { return }
           if let error {
+            settled = true
             self?.tasks[id] = nil
             promise.reject("E_TRANSCRIPTION", error.localizedDescription)
             return
           }
           guard let result, result.isFinal else { return }
+          settled = true
           self?.tasks[id] = nil
-          let segments = result.bestTranscription.segments.map { segment in
+          let ordered = result.bestTranscription.segments
+            .filter { !$0.substring.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted { $0.timestamp < $1.timestamp }
+          let segments = ordered.map { segment in
             ["text": segment.substring, "start": segment.timestamp, "duration": segment.duration, "confidence": segment.confidence] as [String: Any]
           }
-          promise.resolve(["text": result.bestTranscription.formattedString, "segments": segments])
+          let averageConfidence = ordered.isEmpty ? 0 : ordered.reduce(Float(0)) { $0 + $1.confidence } / Float(ordered.count)
+          let recognizedDuration = ordered.map { $0.timestamp + $0.duration }.max() ?? 0
+          promise.resolve(["text": result.bestTranscription.formattedString, "segments": segments,
+                           "averageConfidence": averageConfidence, "recognizedDuration": recognizedDuration,
+                           "locale": recognizer.locale.identifier, "onDevice": true])
         }
         self.tasks[id] = task
       }

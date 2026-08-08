@@ -38,6 +38,7 @@ export function TranscriptPanel({
             <View>
               <Text style={s.eyebrow}>온디바이스 전사</Text>
               <Text style={s.title}>탭해서 해당 시점 듣기</Text>
+              {session.transcriptAverageConfidence!==undefined&&<Text accessibilityLabel={`온디바이스 ${session.transcriptLocale??"ko-KR"}, 평균 신뢰도 ${Math.round(session.transcriptAverageConfidence*100)}퍼센트, 인식 길이 ${clock(session.transcriptRecognizedDuration??0)}`} style={s.quality}>{session.transcriptLocale??"ko-KR"} · 평균 {Math.round(session.transcriptAverageConfidence*100)}% · {clock(session.transcriptRecognizedDuration??0)}</Text>}
             </View>
             <Pressable
               accessibilityLabel="전사문 닫기"
@@ -110,6 +111,7 @@ const s = StyleSheet.create({
     color: C.accent,
   },
   title: { fontSize: 21, fontWeight: "800", color: C.ink, marginTop: 3 },
+  quality:{fontSize:10,fontWeight:"700",color:C.muted,marginTop:4},
   close: {
     width: 38,
     height: 38,
