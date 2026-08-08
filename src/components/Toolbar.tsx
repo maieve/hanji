@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import {useEffect,useState} from 'react';
 import type { ToolKind, ToolSpec } from '../types';
 import { C } from '../theme';
@@ -24,6 +24,7 @@ const shapeLabels = {line:'선',arrow:'화살표',ellipse:'원',rectangle:'사�
 
 export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddPage, onUndo, onRedo, fingerDrawingEnabled, onToggleFingerDrawing, zoomWindowEnabled, onToggleZoomWindow, viewMode, onToggleViewMode, elementMode, onAddText, onAddImage, onStickers, privacyEnabled, onPrivacyToggle, onFocusMode, onExportPdf, onFlashcards, dueCards, onPdfOutline, outlineCount }: { tool: ToolSpec; setTool: (v: ToolSpec) => void; onLibrary: () => void; title: string; onTitleChange: (v: string) => void; onAddPage: () => void; onUndo:()=>void; onRedo:()=>void; fingerDrawingEnabled:boolean; onToggleFingerDrawing:()=>void;zoomWindowEnabled:boolean;onToggleZoomWindow:()=>void;viewMode:'page'|'continuous';onToggleViewMode:()=>void;elementMode:boolean;onAddText:()=>void;onAddImage:()=>void;onStickers:()=>void;privacyEnabled:boolean;onPrivacyToggle:()=>void;onFocusMode:()=>void; onExportPdf:()=>void;onFlashcards:()=>void;dueCards:number;onPdfOutline?:()=>void;outlineCount:number }) {
   const [preferences,setPreferences]=useState<ToolPreferences>({presets:defaultToolPresets,recentColors:[]});
+  const {width}=useWindowDimensions();const compact=width<760;
   useEffect(()=>{void loadToolPreferences().then(setPreferences)},[]);
   const persist=(next:ToolPreferences)=>{setPreferences(next);void saveToolPreferences(next)};
   const chooseColor=(color:string)=>{setTool({...tool,color});const recent=[color,...preferences.recentColors.filter(x=>x.toUpperCase()!==color.toUpperCase())].slice(0,8);persist({...preferences,recentColors:recent})};
@@ -31,9 +32,9 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
   const savePreset=(index:number)=>{if(!isInkTool(tool.kind))return;const presets=[...preferences.presets];const preset=presets[index];if(!preset)return;presets[index]={...preset,tool:{...tool}};persist({...preferences,presets})};
   const addPreset=()=>{if(!isInkTool(tool.kind)||preferences.presets.length>=12)return;persist({...preferences,presets:[...preferences.presets,{id:`preset-${Date.now()}`,name:`프리셋 ${preferences.presets.length+1}`,tool:{...tool}}]})};
   return <View style={s.bar}>
-    <Pressable onPress={onLibrary} style={s.nav}><Ionicons name="library-outline" size={20} color={C.ink} /><Text style={s.navText}>서재</Text></Pressable>
-    <TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={s.title} accessibilityLabel="노트 제목" /><View style={s.rule} />
-    <ScrollView horizontal contentContainerStyle={s.tools} showsHorizontalScrollIndicator={false}>
+    <Pressable accessibilityLabel="서재" onPress={onLibrary} style={s.nav}><Ionicons name="library-outline" size={20} color={C.ink} />{!compact&&<Text style={s.navText}>서재</Text>}</Pressable>
+    {!compact&&<><TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={s.title} accessibilityLabel="노트 제목" /><View style={s.rule} /></>}
+    <ScrollView horizontal style={s.toolScroll} contentContainerStyle={s.tools} showsHorizontalScrollIndicator={false}>
       <View style={s.presets}>{preferences.presets.map((preset,index)=><Pressable key={preset.id} accessibilityLabel={`${preset.name}, 길게 눌러 현재 도구 저장`} onPress={()=>setTool({...preset.tool})} onLongPress={()=>savePreset(index)} delayLongPress={450} style={[s.preset,tool.kind===preset.tool.kind&&tool.color.toUpperCase()===preset.tool.color.toUpperCase()&&tool.width===preset.tool.width&&s.presetActive]}><View style={[s.presetNib,{backgroundColor:preset.tool.color,width:Math.min(17,Math.max(5,preset.tool.width+4)),height:Math.min(17,Math.max(5,preset.tool.width+4)),opacity:preset.tool.opacity??1}]}/></Pressable>)}<Pressable accessibilityLabel="현재 도구 프리셋 추가" disabled={!isInkTool(tool.kind)||preferences.presets.length>=12} onPress={addPreset} style={[s.preset,(!isInkTool(tool.kind)||preferences.presets.length>=12)&&s.disabled]}><Ionicons name="add" size={15} color={C.accent}/></Pressable></View>
       <View style={s.rule}/>
       {tools.map(x => <Pressable accessibilityLabel={x.label} key={x.kind} onPress={() => setTool(selectToolKind(tool,x.kind))} style={[s.tool, tool.kind === x.kind && s.selected]}><Ionicons name={x.icon} size={21} color={tool.kind === x.kind ? C.accent : C.muted} /></Pressable>)}
@@ -49,6 +50,8 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
       {[1, 2, 5, 9, 16, 28].map(width => <Pressable key={width} onPress={() => setTool({ ...tool, width })} style={[s.width, tool.width === width && s.selected]}><View style={{ width: width + 3, height: width + 3, borderRadius: 20, backgroundColor: C.ink }} /></Pressable>)}
       <View style={{flexDirection:'row',alignItems:'center',gap:3,marginLeft:4}}>{[0.25,0.5,0.75,1].map(opacity=><Pressable accessibilityLabel={`불투명도 ${opacity*100}%`} key={opacity} onPress={()=>setTool({...tool,opacity})} style={[s.opacity,tool.opacity===opacity&&s.selected]}><Text style={s.opacityText}>{opacity*100}</Text></Pressable>)}</View>
     </ScrollView>
+    <ScrollView horizontal style={[s.trailingScroll,compact&&s.trailingCompact]} contentContainerStyle={s.trailing} showsHorizontalScrollIndicator={false}>
+    {compact&&<TextInput value={title} onChangeText={onTitleChange} selectTextOnFocus style={[s.title,s.compactTitle]} accessibilityLabel="노트 제목"/>}
     <Pressable accessibilityLabel="플래시카드" onPress={onFlashcards} style={s.tool}><Ionicons name="albums-outline" size={20} color={C.accent}/>{dueCards>0&&<View style={s.badge}><Text style={s.badgeText}>{Math.min(99,dueCards)}</Text></View>}</Pressable>
     {onPdfOutline&&<Pressable accessibilityLabel={`PDF 목차 ${outlineCount}개`} disabled={!outlineCount} onPress={onPdfOutline} style={[s.tool,!outlineCount&&{opacity:.35}]}><Ionicons name="list-outline" size={20} color={C.accent}/></Pressable>}
     <Pressable accessibilityLabel="PDF 내보내기" onPress={onExportPdf} style={s.tool}><Ionicons name="share-outline" size={20} color={C.accent}/></Pressable>
@@ -62,16 +65,17 @@ export function Toolbar({ tool, setTool, onLibrary, title, onTitleChange, onAddP
     <Pressable accessibilityLabel="스티커 컬렉션" onPress={onStickers} style={s.tool}><Ionicons name="file-tray-stacked-outline" size={21} color={C.accent}/></Pressable>
     <Pressable accessibilityLabel={privacyEnabled?'노트 잠금 끄기':'노트 잠금 켜기'} onPress={onPrivacyToggle} style={[s.tool,privacyEnabled&&s.selected]}><Ionicons name={privacyEnabled?'lock-closed':'lock-open-outline'} size={19} color={privacyEnabled?C.accent:C.muted}/></Pressable>
     <Pressable accessibilityLabel="집중 모드" onPress={onFocusMode} style={s.tool}><Ionicons name="expand-outline" size={20} color={C.muted}/></Pressable>
-    <Pressable onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" /><Text style={s.addText}>페이지</Text></Pressable>
+    <Pressable accessibilityLabel="페이지 추가" onPress={onAddPage} style={s.add}><Ionicons name="add" size={20} color="white" />{!compact&&<Text style={s.addText}>페이지</Text>}</Pressable>
+    </ScrollView>
   </View>;
 }
 
 const s = StyleSheet.create({
   bar: { height: 64, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },
-  nav: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 8 }, navText: { fontSize: 14, fontWeight: '600', color: C.ink }, title: { maxWidth: 160, fontWeight: '700', color: C.ink },
-  rule: { height: 28, width: 1, backgroundColor: C.line }, tools: { alignItems: 'center', gap: 6 }, tool: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, selected: { backgroundColor: C.accentSoft },
+  nav: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 8 }, navText: { fontSize: 14, fontWeight: '600', color: C.ink }, title: { maxWidth: 160, fontWeight: '700', color: C.ink },compactTitle:{width:112,height:38,borderWidth:1,borderColor:C.line,borderRadius:10,paddingHorizontal:9},
+  rule: { height: 28, width: 1, backgroundColor: C.line },toolScroll:{flex:1,minWidth:70}, tools: { alignItems: 'center', gap: 6 },trailingScroll:{flexShrink:0,width:430},trailingCompact:{width:124},trailing:{alignItems:'center',gap:5,paddingHorizontal:2}, tool: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, selected: { backgroundColor: C.accentSoft },
   presets:{flexDirection:'row',gap:5,alignItems:'center'},preset:{width:30,height:34,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.white,alignItems:'center',justifyContent:'center'},presetActive:{borderColor:C.accent,backgroundColor:C.accentSoft},presetNib:{borderRadius:20},disabled:{opacity:.3},
   segment:{height:34,flexDirection:'row',borderWidth:1,borderColor:C.line,borderRadius:9,overflow:'hidden'},segmentButton:{paddingHorizontal:8,alignItems:'center',justifyContent:'center'},segmentActive:{backgroundColor:C.accentSoft},segmentText:{fontSize:10,fontWeight:'700',color:C.muted},markerStraight:{height:34,borderWidth:1,borderColor:C.line,borderRadius:9,flexDirection:'row',gap:3},
   colors: { flexDirection: 'row', gap: 7, paddingHorizontal: 8 }, color: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.white }, colorSelected: { outlineWidth: 2, outlineColor: C.accent, outlineOffset: 2 } as never,
-  hex:{height:32,width:72,borderWidth:1,borderColor:C.line,borderRadius:8,paddingHorizontal:7,fontSize:11,color:C.ink},colorPicker:{width:32,height:32,borderRadius:9,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},opacity:{height:30,minWidth:31,borderRadius:8,alignItems:'center',justifyContent:'center',paddingHorizontal:3},opacityText:{fontSize:9,color:C.muted,fontWeight:'700'}, width: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },badge:{position:'absolute',right:0,top:0,minWidth:16,height:16,borderRadius:8,backgroundColor:C.danger,alignItems:'center',justifyContent:'center',paddingHorizontal:3},badgeText:{fontSize:9,fontWeight:'800',color:C.white}, add: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 12, height: 38, gap: 4 }, addText: { color: 'white', fontWeight: '700' },
+  hex:{height:32,width:72,borderWidth:1,borderColor:C.line,borderRadius:8,paddingHorizontal:7,fontSize:11,color:C.ink},colorPicker:{width:32,height:32,borderRadius:9,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},opacity:{height:30,minWidth:31,borderRadius:8,alignItems:'center',justifyContent:'center',paddingHorizontal:3},opacityText:{fontSize:9,color:C.muted,fontWeight:'700'}, width: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },badge:{position:'absolute',right:0,top:0,minWidth:16,height:16,borderRadius:8,backgroundColor:C.danger,alignItems:'center',justifyContent:'center',paddingHorizontal:3},badgeText:{fontSize:9,fontWeight:'800',color:C.white}, add: { flexDirection: 'row', alignItems: 'center', justifyContent:'center', backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 12, height: 38, minWidth:40, gap: 4 }, addText: { color: 'white', fontWeight: '700' },
 });
