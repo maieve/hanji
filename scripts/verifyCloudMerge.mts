@@ -19,4 +19,14 @@ assert(conflict?.pages.every(item=>item.id.includes('-conflict-')),'conflict pag
 
 const deduped=mergeCloudRestore(merged,[remote]);
 assert(deduped.filter(item=>item.conflictOf==='n1').length===1,'restoring the same archive must not duplicate conflicts');
+
+const deletedLocal={...note([page('keep','keep','2026-02-01')],'2026-02-05'),deletedPages:{gone:'2026-02-05'}};
+const staleRemote=note([page('keep','keep','2026-02-01'),page('gone','stale','2026-02-04')],'2026-02-04');
+const deletionMerge=mergeCloudRestore([deletedLocal],[staleRemote]);
+assert(!deletionMerge.find(item=>item.id==='n1')?.pages.some(item=>item.id==='gone'),'newer tombstone must prevent stale page resurrection');
+assert(deletionMerge.some(item=>item.conflictOf==='n1'&&item.pages.some(item=>item.drawingData==='stale')),'deleted stale page must remain recoverable as a conflict copy');
+
+const newerRemote=note([page('keep','keep','2026-02-01'),page('gone','new-after-delete','2026-02-06')],'2026-02-06');
+const recreationMerge=mergeCloudRestore([deletedLocal],[newerRemote]);
+assert(recreationMerge.find(item=>item.id==='n1')?.pages.some(item=>item.drawingData==='new-after-delete'),'page newer than tombstone must survive as intentional recreation');
 console.log('cloud merge verification passed');

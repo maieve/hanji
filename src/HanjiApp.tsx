@@ -500,11 +500,10 @@ export function HanjiApp() {
   const deletePageFromGrid = (id: string) => {
     if (current.pages.length === 1) return;
     const index = current.pages.findIndex((p) => p.id === id);
-    update(current.id, (n) => ({
-      ...n,
-      pages: n.pages.filter((p) => p.id !== id),
-      updatedAt: new Date().toISOString(),
-    }));
+    update(current.id, (n) => {
+      const timestamp=new Date().toISOString();
+      return {...n,pages:n.pages.filter((p)=>p.id!==id),deletedPages:{...(n.deletedPages??{}),[id]:timestamp},updatedAt:timestamp};
+    });
     if (index <= pageIndex) setPageIndex(Math.max(0, pageIndex - 1));
   };
   return (
@@ -657,10 +656,10 @@ export function HanjiApp() {
               accessibilityLabel="페이지 삭제"
               disabled={current.pages.length === 1}
               onPress={() => {
-                update(current.id, (n) => ({
-                  ...n,
-                  pages: n.pages.filter((p) => p.id !== page.id),
-                }));
+                update(current.id, (n) => {
+                  const timestamp=new Date().toISOString();
+                  return {...n,pages:n.pages.filter((p)=>p.id!==page.id),deletedPages:{...(n.deletedPages??{}),[page.id]:timestamp},updatedAt:timestamp};
+                });
                 setPageIndex(Math.max(0, pageIndex - 1));
               }}
               style={s.railAction}

@@ -10,8 +10,8 @@ export function transferPage(notebooks:Notebook[],sourceId:string,pageId:string,
  const source=notebooks.find(n=>n.id===sourceId),target=notebooks.find(n=>n.id===targetId),page=source?.pages.find(p=>p.id===pageId);if(!source||!target||!page||sourceId===targetId)return notebooks;
  const transferred=mode==='copy'?clonePage(page):page;const incomingAudio=pageAudio(source,page.id,transferred.id);const timestamp=now();
  return notebooks.map(note=>{
-  if(note.id===targetId)return{...note,pages:[...note.pages,transferred],audioSessions:appendAudio(note.audioSessions??[],incomingAudio),updatedAt:timestamp};
+  if(note.id===targetId){const deletedPages={...(note.deletedPages??{})};delete deletedPages[transferred.id];return{...note,pages:[...note.pages,transferred],deletedPages,audioSessions:appendAudio(note.audioSessions??[],incomingAudio),updatedAt:timestamp}}
   if(note.id!==sourceId||mode==='copy')return note;
-  const remaining=note.pages.filter(p=>p.id!==page.id);return{...note,pages:remaining.length?remaining:[blankPage()],audioSessions:note.audioSessions?.map(session=>({...session,strokes:session.strokes.filter(x=>x.pageId!==page.id)})),updatedAt:timestamp};
+  const remaining=note.pages.filter(p=>p.id!==page.id);return{...note,pages:remaining.length?remaining:[blankPage()],deletedPages:{...(note.deletedPages??{}),[page.id]:timestamp},audioSessions:note.audioSessions?.map(session=>({...session,strokes:session.strokes.filter(x=>x.pageId!==page.id)})),updatedAt:timestamp};
  });
 }

@@ -23,10 +23,18 @@ function mergeNotebook(local:Notebook,remote:Notebook):{note:Notebook;conflicts:
  const metadata=remote.updatedAt>local.updatedAt?remote:local;
  const localPages=new Map(local.pages.map(page=>[page.id,page]));
  const remotePages=new Map(remote.pages.map(page=>[page.id,page]));
- const order=[...local.pages.map(page=>page.id),...remote.pages.map(page=>page.id).filter(id=>!localPages.has(id))];
+ const deletedPages={...(local.deletedPages??{})};
+ for(const [id,stamp] of Object.entries(remote.deletedPages??{}))if(!deletedPages[id]||stamp>deletedPages[id])deletedPages[id]=stamp;
+ const order=[...new Set([...local.pages.map(page=>page.id),...remote.pages.map(page=>page.id),...Object.keys(deletedPages)])];
  const conflicts:ConflictPage[]=[];
  const pages=order.flatMap(id=>{
   const left=localPages.get(id),right=remotePages.get(id);
+  const deletedAt=deletedPages[id];
+  if(deletedAt){
+   const candidates=[left&&{page:left,source:local},right&&{page:right,source:remote}].filter((item):item is ConflictPage=>Boolean(item));
+   const newest=candidates.reduce<ConflictPage|undefined>((best,item)=>!best||item.page.updatedAt>best.page.updatedAt?item:best,undefined);
+   if(!newest||deletedAt>=newest.page.updatedAt){if(newest)conflicts.push(newest);return[]}
+  }
   if(!left)return right?[right]:[];
   if(!right)return[left];
   if(pageContent(left)===pageContent(right))return[newer(left,right)];
@@ -34,7 +42,7 @@ function mergeNotebook(local:Notebook,remote:Notebook):{note:Notebook;conflicts:
   conflicts.push({page:remoteWins?left:right,source:remoteWins?local:remote});
   return[remoteWins?right:left];
  });
- return{note:{...metadata,id:local.id,createdAt:local.createdAt<remote.createdAt?local.createdAt:remote.createdAt,updatedAt:local.updatedAt>remote.updatedAt?local.updatedAt:remote.updatedAt,pages,audioSessions:mergeAudio(local.audioSessions,remote.audioSessions),flashcards:mergeCards(local.flashcards,remote.flashcards)},conflicts};
+ return{note:{...metadata,id:local.id,createdAt:local.createdAt<remote.createdAt?local.createdAt:remote.createdAt,updatedAt:local.updatedAt>remote.updatedAt?local.updatedAt:remote.updatedAt,pages,deletedPages,audioSessions:mergeAudio(local.audioSessions,remote.audioSessions),flashcards:mergeCards(local.flashcards,remote.flashcards)},conflicts};
 }
 
 function conflictNotebook(sourceId:string,items:ConflictPage[]):Notebook {
@@ -45,7 +53,7 @@ function conflictNotebook(sourceId:string,items:ConflictPage[]):Notebook {
  const pageIds=new Map(items.map(({page})=>[page.id,`${page.id}-conflict-${stamp}`]));
  const pages=items.map(({page})=>({...page,id:pageIds.get(page.id)!}));
  const audioSessions=mergeAudio([],items.flatMap(item=>item.source.audioSessions??[])).map(session=>({...session,strokes:session.strokes.filter(stroke=>pageIds.has(stroke.pageId)).map(stroke=>({...stroke,pageId:pageIds.get(stroke.pageId)!}))})).filter(session=>session.strokes.length>0);
- return{...base,id:`${sourceId}-conflict-${stamp}`,title:`${base.title} (페이지 충돌 사본)`,favorite:false,updatedAt:new Date().toISOString(),pages,audioSessions,conflictOf:sourceId,conflictSignature};
+ return{...base,id:`${sourceId}-conflict-${stamp}`,title:`${base.title} (페이지 충돌 사본)`,favorite:false,updatedAt:new Date().toISOString(),pages,deletedPages:undefined,audioSessions,conflictOf:sourceId,conflictSignature};
 }
 
 export function mergeCloudRestore(local:Notebook[],remote:Notebook[]):Notebook[]{

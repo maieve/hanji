@@ -12,4 +12,4 @@ export type StrokeSync={pageId:string;createdAt:number;seekSec:number};
 export type TranscriptSegment={text:string;start:number;duration:number;confidence:number};
 export type AudioSession={uri:string;createdAt:string;startedAt:number;durationMs:number;strokes:StrokeSync[];transcript?:string;transcriptSegments?:TranscriptSegment[];transcribedAt?:string};
 export type Flashcard={id:string;question:string;answer:string;createdAt:string;updatedAt:string;dueAt:string;intervalDays:number;easeFactor:number;repetitions:number;lapses:number;lastReviewedAt?:string};
-export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;createdAt:string;updatedAt:string;lastOpenedAt?:string;viewMode?:'page'|'continuous';pages:Page[];audioSessions?:AudioSession[];flashcards?:Flashcard[];conflictOf?:string;conflictSignature?:string};
+export type Notebook={id:string;title:string;folder:string;tags:string[];favorite:boolean;createdAt:string;updatedAt:string;lastOpenedAt?:string;viewMode?:'page'|'continuous';pages:Page[];deletedPages?:Record<string,string>;audioSessions?:AudioSession[];flashcards?:Flashcard[];conflictOf?:string;conflictSignature?:string};
