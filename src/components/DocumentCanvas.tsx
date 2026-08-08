@@ -11,6 +11,7 @@ type Props = {
   pdfUri?: string;
   pageIndex: number;
   drawingData: string;
+  drawingViewport?: DrawingViewport;
   tool: ToolSpec;
   fingerDrawingEnabled?: boolean;
   twoFingerUndoEnabled?: boolean;
@@ -66,6 +67,7 @@ export const DocumentCanvas = forwardRef<DocumentCanvasHandle,Props>(function Do
       style={{ flex: 1 }}
       pdfUri={p.pdfUri}
       pageIndex={p.pageIndex}
+      drawingCanvasSize={p.drawingViewport?{width:p.drawingViewport.canvasWidth,height:p.drawingViewport.canvasHeight}:undefined}
       drawingData={p.drawingData}
       tool={p.tool}
       fingerDrawingEnabled={p.fingerDrawingEnabled ?? false}

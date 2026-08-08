@@ -168,6 +168,7 @@ export function ContinuousDocument(props: Props) {
             pdfUri={item.pdfUri}
             pageIndex={item.pdfPageIndex ?? index}
             drawingData={item.drawingData}
+            drawingViewport={item.drawingViewport}
             tool={props.tool}
             fingerDrawingEnabled={props.fingerDrawingEnabled}
             twoFingerUndoEnabled={props.twoFingerUndoEnabled}

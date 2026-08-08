@@ -1744,6 +1744,7 @@ export function HanjiApp() {
                 pdfUri={page.pdfUri}
                 pageIndex={page.pdfPageIndex ?? pageIndex}
                 drawingData={page.drawingData}
+                drawingViewport={page.drawingViewport}
                 tool={tool}
                 fingerDrawingEnabled={fingerDrawingEnabled}
                 twoFingerUndoEnabled={uiPreferences.twoFingerUndoEnabled}

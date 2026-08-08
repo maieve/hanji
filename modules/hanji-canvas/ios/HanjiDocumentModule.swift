@@ -10,6 +10,7 @@ public final class HanjiDocumentModule: Module {
       Events("onDrawingChange", "onCanvasMetrics", "onPageCount", "onPdfOutline", "onPdfLink", "onPdfExcerpt", "onPencilDoubleTap", "onPencilSqueeze", "onStrokeAdded", "onStrokeTapped", "onHistoryChange", "onEraserEnded", "onSelectionChange", "onSelectionText", "onSelectionClip", "onCircleLasso")
       Prop("pdfUri") { (view: HanjiDocumentView, uri: String?) in view.loadPDF(uri) }
       Prop("pageIndex") { (view: HanjiDocumentView, index: Int) in view.showPage(index) }
+      Prop("drawingCanvasSize") { (view: HanjiDocumentView, value: [String: Double]?) in view.setDrawingCanvasSize(value) }
       Prop("drawingData") { (view: HanjiDocumentView, value: String) in view.loadDrawing(value) }
       Prop("fingerDrawingEnabled") { (view: HanjiDocumentView, value: Bool) in
         view.canvas.drawingPolicy = value ? .anyInput : .pencilOnly
@@ -78,6 +79,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var markerStraightLine = true
   private var zoomWindowEnabled = false
   private var previousCanvasSize = CGSize.zero
+  private var storedCanvasSize: CGSize?
+  private var normalizedLoadedDrawing = false
   private var sourceDrawing = PKDrawing()
   private var replayCutoff: Double?
   private let selectionLayer = CAShapeLayer()
@@ -302,7 +305,32 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     updatePagePaintFrame()
     if canvas.contentSize.width < bounds.width || canvas.contentSize.height < bounds.height { canvas.contentSize = bounds.size }
     rescaleDrawingIfNeeded(to: bounds.size)
+    normalizeLoadedDrawingIfNeeded()
     if !zoomWindowEnabled { DispatchQueue.main.async { [weak self] in self?.emitCanvasMetrics() } }
+  }
+
+  func setDrawingCanvasSize(_ value: [String: Double]?) {
+    if let value, let width = value["width"], let height = value["height"], width > 1, height > 1 {
+      storedCanvasSize = CGSize(width: width, height: height)
+    } else { storedCanvasSize = nil }
+    normalizeLoadedDrawingIfNeeded()
+  }
+
+  private func normalizeLoadedDrawingIfNeeded() {
+    guard !normalizedLoadedDrawing,
+          let sourceSize = storedCanvasSize,
+          sourceSize.width > 1, sourceSize.height > 1,
+          canvas.bounds.width > 1, canvas.bounds.height > 1 else { return }
+    normalizedLoadedDrawing = true
+    guard !sourceDrawing.strokes.isEmpty,
+          abs(sourceSize.width - canvas.bounds.width) > 0.5 || abs(sourceSize.height - canvas.bounds.height) > 0.5 else { return }
+    var scaled = sourceDrawing
+    scaled.transform(using: CGAffineTransform(scaleX: canvas.bounds.width / sourceSize.width, y: canvas.bounds.height / sourceSize.height))
+    applyingShape = true
+    canvas.drawing = scaled
+    applyingShape = false
+    sourceDrawing = scaled
+    knownStrokeCount = scaled.strokes.count
   }
 
   func setPagePaint(_ value: [String: Any]?) {
@@ -441,12 +469,16 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
       loadedDrawing = base64
       renderReplay()
       knownStrokeCount = canvas.drawing.strokes.count
+      normalizedLoadedDrawing = false
+      normalizeLoadedDrawingIfNeeded()
       return true
     } else { return false }
     sourceDrawing = drawing
     loadedDrawing = base64
     renderReplay()
     knownStrokeCount = canvas.drawing.strokes.count
+    normalizedLoadedDrawing = false
+    normalizeLoadedDrawingIfNeeded()
     return true
   }
 

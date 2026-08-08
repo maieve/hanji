@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
 import { drawingBlobName, isStoredLibraryMetadata, libraryMetadata, referencedDrawingRefs, staleDrawingRefs } from "../src/drawingPersistence.ts";
 import type { Notebook } from "../src/types.ts";
 
@@ -22,4 +23,15 @@ assert.deepEqual(
   "GC must retain current blobs and ignore unrelated assets",
 );
 assert.deepEqual(staleDrawingRefs(["orphan.drawing"],[]),["orphan.drawing"]);
+const [native,bridge,app,continuous]=await Promise.all([
+  readFile(new URL('../modules/hanji-canvas/ios/HanjiDocumentModule.swift',import.meta.url),'utf8'),
+  readFile(new URL('../src/components/DocumentCanvas.tsx',import.meta.url),'utf8'),
+  readFile(new URL('../src/HanjiApp.tsx',import.meta.url),'utf8'),
+  readFile(new URL('../src/components/ContinuousDocument.tsx',import.meta.url),'utf8'),
+]);
+assert.match(native,/Prop\("drawingCanvasSize"\)[\s\S]*normalizeLoadedDrawingIfNeeded\(\)[\s\S]*canvas\.bounds\.width \/ sourceSize\.width/,'native load must normalize stored PencilKit coordinates to the current canvas exactly once');
+assert.match(native,/normalizedLoadedDrawing = false[\s\S]*normalizeLoadedDrawingIfNeeded\(\)/,'each newly loaded drawing must get a fresh normalization pass');
+assert.match(bridge,/drawingCanvasSize=\{p\.drawingViewport\?\{width:p\.drawingViewport\.canvasWidth,height:p\.drawingViewport\.canvasHeight\}:undefined\}/,'the bridge must pass persisted canvas dimensions with drawing data');
+assert.match(app,/drawingData=\{page\.drawingData\}[\s\S]*drawingViewport=\{page\.drawingViewport\}/,'page mode must restore stored drawing dimensions');
+assert.match(continuous,/drawingData=\{item\.drawingData\}[\s\S]*drawingViewport=\{item\.drawingViewport\}/,'continuous mode must restore stored drawing dimensions');
 console.log("drawing persistence verification passed");
