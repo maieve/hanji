@@ -22,7 +22,7 @@ import { TranscriptPanel } from "./TranscriptPanel";
 export type AudioSaved = Omit<AudioSession, "strokes">;
 type Props = {
   sessions: AudioSession[];
-  seekRequest?: { seconds: number; nonce: number };
+  seekRequest?: { seconds: number; nonce: number; sessionCreatedAt: string };
   onRecordingStart: (startedAt: number) => void;
   onSaved: (v: AudioSaved) => void;
   onReplayCutoffChange: (cutoff?: number) => void;
@@ -43,24 +43,34 @@ export function AudioPanel({
   const [replay, setReplay] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [selectedSessionAt, setSelectedSessionAt] = useState<string>();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recording = useAudioRecorderState(recorder, 250);
   const latest = sessions.at(-1);
-  const player = useAudioPlayer(latest?.uri ?? null, { updateInterval: 250 });
+  const active = sessions.find((session) => session.createdAt === selectedSessionAt) ?? latest;
+  const activeIndex = active ? sessions.indexOf(active) : -1;
+  const player = useAudioPlayer(active?.uri ?? null, { updateInterval: 250 });
   const playback = useAudioPlayerStatus(player);
   useEffect(() => {
+    if (latest) setSelectedSessionAt(latest.createdAt);
+  }, [latest?.createdAt]);
+  useEffect(() => {
     onReplayCutoffChange(
-      replay && latest ? latest.startedAt + playback.currentTime : undefined,
+      replay && active ? active.startedAt + playback.currentTime : undefined,
     );
-  }, [replay, latest?.startedAt, playback.currentTime, onReplayCutoffChange]);
+  }, [replay, active?.startedAt, playback.currentTime, onReplayCutoffChange]);
   useEffect(
     () => () => onReplayCutoffChange(undefined),
     [onReplayCutoffChange],
   );
   useEffect(() => {
-    if (!seekRequest || !latest) return;
+    if (!seekRequest) return;
+    setSelectedSessionAt(seekRequest.sessionCreatedAt);
+  }, [seekRequest?.nonce]);
+  useEffect(() => {
+    if (!seekRequest || active?.createdAt !== seekRequest.sessionCreatedAt) return;
     void player.seekTo(seekRequest.seconds).then(() => player.play());
-  }, [seekRequest?.nonce, latest?.uri]);
+  }, [seekRequest?.nonce, active?.createdAt, active?.uri]);
   const toggleRecord = async () => {
     if (recording.isRecording) {
       await recorder.stop();
@@ -92,14 +102,14 @@ export function AudioPanel({
     recorder.record();
   };
   const togglePlay = () => {
-    if (!latest) return;
+    if (!active) return;
     playback.playing ? player.pause() : player.play();
   };
   const transcribe = async () => {
-    if (!latest || transcribing) return;
+    if (!active || transcribing) return;
     setTranscribing(true);
     try {
-      await onTranscribe(latest);
+      await onTranscribe(active);
     } catch (error) {
       Alert.alert(
         "전사 실패",
@@ -113,7 +123,7 @@ export function AudioPanel({
   };
   return (
     <View style={[s.wrap, leftHanded && s.wrapLeftHanded]}>
-      {latest && (
+      {active && (
         <View style={s.playback}>
           <Pressable onPress={togglePlay} style={s.round}>
             <Ionicons
@@ -125,10 +135,14 @@ export function AudioPanel({
           <View>
             <Text style={s.title}>
               {clock(playback.currentTime)} /{" "}
-              {clock(playback.duration || latest.durationMs / 1000)}
+              {clock(playback.duration || active.durationMs / 1000)}
             </Text>
-            <Text style={s.sub}>{latest.strokes.length}개 획 동기화</Text>
+            <Text style={s.sub}>{active.strokes.length}개 획 · {activeIndex + 1}/{sessions.length} 녹음</Text>
           </View>
+          {sessions.length > 1 && <View style={s.sessionNav}>
+            <Pressable accessibilityLabel="이전 녹음" disabled={activeIndex <= 0} onPress={() => setSelectedSessionAt(sessions[activeIndex - 1]?.createdAt)} style={s.sessionButton}><Ionicons name="chevron-back" size={14} color={activeIndex <= 0 ? C.line : C.accent}/></Pressable>
+            <Pressable accessibilityLabel="다음 녹음" disabled={activeIndex >= sessions.length - 1} onPress={() => setSelectedSessionAt(sessions[activeIndex + 1]?.createdAt)} style={s.sessionButton}><Ionicons name="chevron-forward" size={14} color={activeIndex >= sessions.length - 1 ? C.line : C.accent}/></Pressable>
+          </View>}
           <Pressable
             accessibilityLabel="잉크 리플레이"
             accessibilityState={{ selected: replay }}
@@ -144,7 +158,7 @@ export function AudioPanel({
               잉크
             </Text>
           </Pressable>
-          {latest.transcript ? (
+          {active.transcript ? (
             <Pressable
               accessibilityLabel="오디오 전사문 보기"
               onPress={() => setTranscriptOpen(true)}
@@ -189,10 +203,10 @@ export function AudioPanel({
             : "녹음"}
         </Text>
       </Pressable>
-      {latest && (
+      {active && (
         <TranscriptPanel
           visible={transcriptOpen}
-          session={latest}
+          session={active}
           currentTime={playback.currentTime}
           onClose={() => setTranscriptOpen(false)}
           onSeek={(seconds) => {
@@ -236,6 +250,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  sessionNav:{flexDirection:"row",gap:2},
+  sessionButton:{width:28,height:30,borderRadius:8,alignItems:"center",justifyContent:"center",backgroundColor:C.sidebar},
   round: {
     width: 30,
     height: 30,

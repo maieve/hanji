@@ -129,6 +129,7 @@ import {
 import { FOCUS_TOOLBAR_IDLE_MS } from "./focusPolicy";
 import { configurePageHaptics, playPageHaptic } from "./pageHaptics";
 import { OCR_LOW_POWER_RETRY_MS, ocrJobDisposition } from "./ocrPolicy";
+import { findAudioStroke } from "./audioSync";
 
 const buildIdentity = `${Constants.expoConfig?.version ?? "0.1.0"} (${Constants.nativeBuildVersion ?? "dev"}) · ${String(Constants.expoConfig?.extra?.hanjiBuild ?? "dev")}`;
 
@@ -202,6 +203,7 @@ export function HanjiApp() {
   const [audioSeek, setAudioSeek] = useState<{
     seconds: number;
     nonce: number;
+    sessionCreatedAt: string;
   }>();
   const [replayCutoff, setReplayCutoff] = useState<number>();
   const [selection, setSelection] = useState<{ pageId: string; count: number }>(
@@ -993,16 +995,13 @@ export function HanjiApp() {
     });
   };
   const handleStrokeTapped = (target: typeof page, createdAt: number) => {
-    const session = [...(current.audioSessions ?? [])]
-      .reverse()
-      .find((x) => x.strokes.some((stroke) => stroke.pageId === target.id));
-    const stroke = session?.strokes
-      .filter((x) => x.pageId === target.id)
-      .sort(
-        (a, b) =>
-          Math.abs(a.createdAt - createdAt) - Math.abs(b.createdAt - createdAt),
-      )[0];
-    if (stroke) setAudioSeek({ seconds: stroke.seekSec, nonce: Date.now() });
+    const match = findAudioStroke(current.audioSessions ?? [], target.id, createdAt);
+    if (match)
+      setAudioSeek({
+        seconds: match.stroke.seekSec,
+        sessionCreatedAt: match.session.createdAt,
+        nonce: Date.now(),
+      });
   };
   const transcribeSession = async (session: AudioSession) => {
     const result = await transcribeAudio(session.uri);
