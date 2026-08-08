@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RecordingPresets, requestRecordingPermissionsAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { C } from '../theme';
 import type { AudioSession } from '../types';
 export type AudioSaved = Omit<AudioSession, 'strokes'>;
@@ -11,10 +11,12 @@ type Props = {
   onRecordingStart: (startedAt: number) => void;
   onSaved: (v: AudioSaved) => void;
   onReplayCutoffChange: (cutoff?: number) => void;
+  onTranscribe: (session: AudioSession) => Promise<void>;
 };
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds) % 60).padStart(2, '0')}`;
-export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, onReplayCutoffChange }: Props) {
+export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, onReplayCutoffChange, onTranscribe }: Props) {
   const [replay, setReplay] = useState(false);
+  const [transcribing,setTranscribing]=useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recording = useAudioRecorderState(recorder, 250);
   const latest = sessions.at(-1);
@@ -55,6 +57,7 @@ export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, o
     if (!latest) return;
     playback.playing ? player.pause() : player.play();
   };
+  const transcribe=async()=>{if(!latest||transcribing)return;setTranscribing(true);try{await onTranscribe(latest)}catch(error){Alert.alert('전사 실패',error instanceof Error?error.message:'오디오를 전사하지 못했습니다.')}finally{setTranscribing(false)}};
   return (
     <View style={s.wrap}>
       {latest && (
@@ -72,6 +75,7 @@ export function AudioPanel({ sessions, seekRequest, onRecordingStart, onSaved, o
             <Ionicons name="sparkles" size={14} color={replay ? 'white' : C.accent} />
             <Text style={[s.replayText, replay && { color: 'white' }]}>잉크</Text>
           </Pressable>
+          {latest.transcript?<Pressable accessibilityLabel="오디오 전사문 보기" onPress={()=>Alert.alert('오디오 전사',latest.transcript??'')} style={s.replay}><Ionicons name="document-text-outline" size={14} color={C.accent}/><Text style={s.replayText}>전사문</Text></Pressable>:<Pressable accessibilityLabel="온디바이스 한국어 전사" disabled={transcribing} onPress={()=>void transcribe()} style={s.replay}>{transcribing?<ActivityIndicator size="small" color={C.accent}/>:<Ionicons name="language-outline" size={14} color={C.accent}/>}<Text style={s.replayText}>전사</Text></Pressable>}
         </View>
       )}
       <Pressable onPress={toggleRecord} style={[s.record, recording.isRecording && s.active]}>

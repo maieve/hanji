@@ -9,7 +9,7 @@ import { CloudSyncPanel } from './components/CloudSyncPanel';
 import { Toolbar } from './components/Toolbar';
 import { blankPage, loadCategories, loadLibrary, makeId, newNotebook, pdfNotebook, saveCategories, saveLibrary } from './storage';
 import { C } from './theme';
-import type { ImageElement, Notebook, Sticker, ToolSpec } from './types';
+import type { AudioSession, ImageElement, Notebook, Sticker, ToolSpec } from './types';
 import { exportLibrary, importLibraryBackup, writeAutomaticBackup } from './backup';
 import { recognizeDrawing } from './vision';
 import { exportNotebookPdf, exportPagePng } from './export';
@@ -34,6 +34,7 @@ import { PageGridPanel } from './components/PageGridPanel';
 import { StickerPanel } from './components/StickerPanel';
 import { loadStickers, saveStickers, stickerFromImage } from './stickers';
 import { mergeCloudRestore } from './cloudMerge';
+import { transcribeAudio } from './speech';
 
 export function HanjiApp() {
   const { height: windowHeight } = useWindowDimensions();
@@ -408,6 +409,14 @@ export function HanjiApp() {
     const stroke = session?.strokes.filter((x) => x.pageId === target.id).sort((a, b) => Math.abs(a.createdAt - createdAt) - Math.abs(b.createdAt - createdAt))[0];
     if (stroke) setAudioSeek({ seconds: stroke.seekSec, nonce: Date.now() });
   };
+  const transcribeSession = async (session: AudioSession) => {
+    const result = await transcribeAudio(session.uri);
+    update(current.id, (n) => ({
+      ...n,
+      updatedAt: new Date().toISOString(),
+      audioSessions: n.audioSessions?.map((item) => item.createdAt === session.createdAt ? { ...item, transcript: result.text, transcriptSegments: result.segments, transcribedAt: new Date().toISOString() } : item),
+    }));
+  };
   const handlePageCount = (count: number, source: typeof page) => {
     if (count <= current.pages.length) return;
     update(current.id, (n) => ({
@@ -596,6 +605,7 @@ export function HanjiApp() {
               audioStrokesRef.current = [];
             }}
             onReplayCutoffChange={setReplayCutoff}
+            onTranscribe={transcribeSession}
           />
         </View>
         <View style={s.rail}>

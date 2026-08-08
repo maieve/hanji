@@ -9,7 +9,10 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "dev.hanji.notes",
-      "deploymentTarget": "17.0"
+      "deploymentTarget": "17.0",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "녹음된 강의와 회의를 기기 안에서 텍스트로 변환합니다."
+      }
     },
     "web": {
       "bundler": "metro"
