@@ -61,6 +61,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var selectionStart = CGPoint.zero
   private var selectedStrokeIndexes: [Int] = []
   private var selectionBounds = CGRect.zero
+  private var selectionMoveDrawing: PKDrawing?
+  private var selectionMoveBounds = CGRect.zero
   private var lastSelectionAction = 0
 
   required init(appContext: AppContext? = nil) {
@@ -263,19 +265,53 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     let point = recognizer.location(in: canvas)
     switch recognizer.state {
     case .began:
+      if !selectedStrokeIndexes.isEmpty, selectionBounds.insetBy(dx: -12, dy: -12).contains(point) {
+        selectionMoveDrawing = canvas.drawing
+        selectionMoveBounds = selectionBounds
+        recognizer.setTranslation(.zero, in: canvas)
+        selectionLayer.fillColor = UIColor.systemTeal.withAlphaComponent(0.14).cgColor
+        return
+      }
       selectionStart = point
       selectedStrokeIndexes = []
     case .changed:
+      if let original = selectionMoveDrawing {
+        let translation = recognizer.translation(in: canvas)
+        let selected = Set(selectedStrokeIndexes)
+        let moved = original.strokes.enumerated().map { selected.contains($0.offset) ? offsetStroke($0.element, dx: translation.x, dy: translation.y) : $0.element }
+        applyingShape = true; canvas.drawing = PKDrawing(strokes: moved); applyingShape = false
+        selectionBounds = selectionMoveBounds.offsetBy(dx: translation.x, dy: translation.y)
+        selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+        emitSelection()
+        return
+      }
       selectionBounds = CGRect(x: min(selectionStart.x, point.x), y: min(selectionStart.y, point.y), width: abs(point.x - selectionStart.x), height: abs(point.y - selectionStart.y))
       selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
     case .ended:
+      if let original = selectionMoveDrawing {
+        let finalDrawing = canvas.drawing
+        selectionMoveDrawing = nil
+        selectionLayer.fillColor = UIColor.systemTeal.withAlphaComponent(0.08).cgColor
+        if finalDrawing.dataRepresentation() != original.dataRepresentation() { registerTransformUndo(original) }
+        replaceDrawing(finalDrawing)
+        emitSelection(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        return
+      }
       selectedStrokeIndexes = canvas.drawing.strokes.enumerated().compactMap { index, stroke in
         selectionBounds.intersects(stroke.renderBounds) ? index : nil
       }
       if selectedStrokeIndexes.isEmpty { clearSelection(); return }
       emitSelection()
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    case .cancelled, .failed: clearSelection()
+    case .cancelled, .failed:
+      if let original = selectionMoveDrawing {
+        selectionMoveDrawing = nil
+        selectionLayer.fillColor = UIColor.systemTeal.withAlphaComponent(0.08).cgColor
+        replaceDrawing(original)
+        selectionBounds = selectionMoveBounds
+        selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+        emitSelection()
+      } else { clearSelection() }
     default: break
     }
   }
@@ -286,6 +322,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   }
 
   private func clearSelection() {
+    selectionMoveDrawing = nil
     selectedStrokeIndexes = []
     selectionBounds = .zero
     selectionLayer.path = nil
