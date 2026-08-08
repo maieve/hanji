@@ -110,7 +110,7 @@ import type { PencilAction } from "./pencilActions";
 import { resolvePencilPreferredAction } from "./pencilPreferredAction";
 import { templateSpacings } from "./templateSpacing";
 import { normalizeNotebookCoverColor } from "./notebookCover";
-import { backupIntervalMs } from "./backupPolicy";
+import { backupFailureStage as resolveBackupFailureStage, backupIntervalMs, backupUploadUri } from "./backupPolicy";
 import {pushBounded} from './boundedHistory';
 import {resolveDarkInkTransition} from './darkInkPolicy';
 
@@ -194,6 +194,16 @@ export function HanjiApp() {
     );
   };
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backupRevision = useRef(0);
+  const pendingCloudUriRef = useRef<string | undefined>(undefined);
+  const [backupStatus, setBackupStatus] = useState<
+    "waiting" | "backing" | "success" | "error"
+  >("waiting");
+  const [backupError, setBackupError] = useState("");
+  const [backupFailureStage, setBackupFailureStage] = useState<
+    "local" | "cloud"
+  >("local");
+  const [lastBackupAt, setLastBackupAt] = useState<number>();
   const indexTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ocrTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const ocrRevisions = useRef(new Map<string, number>());
@@ -311,6 +321,46 @@ export function HanjiApp() {
   const [pageGridOpen, setPageGridOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<Sticker[]>([]);
+  const runAutomaticBackup = async (
+    snapshot = itemsRef.current,
+    retryCloudOnly = false,
+    revision = ++backupRevision.current,
+  ) => {
+    setBackupStatus("backing");
+    setBackupError("");
+    let localReady = retryCloudOnly;
+    try {
+      let uri = retryCloudOnly ? pendingCloudUriRef.current : undefined;
+      if (!retryCloudOnly) {
+        const created = await writeAutomaticBackup(
+          snapshot,
+          uiPreferences.backupRetention,
+          backupIntervalMs(uiPreferences.backupIntervalMinutes),
+        );
+        localReady = true;
+        uri = backupUploadUri(created, pendingCloudUriRef.current);
+      }
+      if (uri) {
+        pendingCloudUriRef.current = uri;
+        await uploadArchiveIfEnabled(uri);
+        pendingCloudUriRef.current = undefined;
+      }
+      if (revision !== backupRevision.current) return;
+      setBackupStatus("success");
+      setLastBackupAt(Date.now());
+    } catch (error) {
+      if (revision !== backupRevision.current) return;
+      setBackupFailureStage(resolveBackupFailureStage(localReady));
+      setBackupStatus("error");
+      setBackupError(
+        error instanceof Error
+          ? error.message
+          : localReady
+            ? "Cloud 백업에 실패했습니다."
+            : "자동 백업에 실패했습니다.",
+      );
+    }
+  };
   useEffect(() => {
     let cancelled = false;
     setLoadError("");
@@ -389,14 +439,10 @@ export function HanjiApp() {
   useEffect(() => {
     if (!ready) return;
     if (backupTimer.current) clearTimeout(backupTimer.current);
+    const revision = ++backupRevision.current;
+    setBackupStatus("waiting");
     backupTimer.current = setTimeout(() => {
-      void writeAutomaticBackup(
-        items,
-        uiPreferences.backupRetention,
-        backupIntervalMs(uiPreferences.backupIntervalMinutes),
-      )
-        .then((uri) => uri && uploadArchiveIfEnabled(uri))
-        .catch(() => undefined);
+      void runAutomaticBackup(items, false, revision);
     }, 15000);
     return () => {
       if (backupTimer.current) clearTimeout(backupTimer.current);
@@ -658,6 +704,16 @@ export function HanjiApp() {
         saveStatus={saveStatus}
         saveError={saveError}
         onRetrySave={() => void runLibrarySave()}
+        backupStatus={backupStatus}
+        backupError={backupError}
+        backupFailureStage={backupFailureStage}
+        lastBackupAt={lastBackupAt}
+        onRetryBackup={() =>
+          void runAutomaticBackup(
+            itemsRef.current,
+            backupFailureStage === "cloud",
+          )
+        }
         onLibraryDisplayChange={(patch) => {
           const next = { ...uiPreferences, ...patch };
           setUiPreferences(next);
@@ -2215,6 +2271,11 @@ function Library({
   saveStatus,
   saveError,
   onRetrySave,
+  backupStatus,
+  backupError,
+  backupFailureStage,
+  lastBackupAt,
+  onRetryBackup,
   onLibraryDisplayChange,
   setQuery,
   onOpen,
@@ -2241,6 +2302,11 @@ function Library({
   saveStatus: "saved" | "saving" | "error";
   saveError: string;
   onRetrySave: () => void;
+  backupStatus: "waiting" | "backing" | "success" | "error";
+  backupError: string;
+  backupFailureStage: "local" | "cloud";
+  lastBackupAt?: number;
+  onRetryBackup: () => void;
   onLibraryDisplayChange: (
     patch: Partial<Pick<UiPreferences, "librarySort" | "libraryView">>,
   ) => void;
@@ -2469,6 +2535,49 @@ function Library({
                 </Text>
                 <Text numberOfLines={1} style={s.syncSub}>
                   {saveStatus === "error" ? saveError : `빌드 ${buildIdentity}`}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityRole={backupStatus === "error" ? "button" : undefined}
+              accessibilityLabel={
+                backupStatus === "error"
+                  ? `${backupFailureStage === "cloud" ? "Cloud" : "자동"} 백업 실패. 다시 시도. ${backupError}`
+                  : backupStatus === "backing"
+                    ? "자동 백업 중"
+                    : backupStatus === "waiting"
+                      ? "자동 백업 예약됨"
+                      : "자동 백업 완료"
+              }
+              disabled={backupStatus !== "error"}
+              onPress={onRetryBackup}
+              style={s.sync}
+            >
+              {backupStatus === "backing" ? (
+                <ActivityIndicator size="small" color={C.accent} />
+              ) : (
+                <Ionicons
+                  name={backupStatus === "error" ? "cloud-offline-outline" : "shield-checkmark-outline"}
+                  size={17}
+                  color={backupStatus === "error" ? C.danger : C.accent}
+                />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={[s.syncTitle, backupStatus === "error" && s.syncTitleError]}>
+                  {backupStatus === "backing"
+                    ? "자동 백업 중…"
+                    : backupStatus === "waiting"
+                      ? "자동 백업 대기"
+                      : backupStatus === "error"
+                        ? `${backupFailureStage === "cloud" ? "Cloud" : "자동"} 백업 실패 · 재시도`
+                        : "자동 백업 완료"}
+                </Text>
+                <Text numberOfLines={1} style={s.syncSub}>
+                  {backupStatus === "error"
+                    ? backupError
+                    : lastBackupAt
+                      ? new Date(lastBackupAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+                      : "편집 후 15초에 실행"}
                 </Text>
               </View>
             </Pressable>
