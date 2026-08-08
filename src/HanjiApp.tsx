@@ -39,7 +39,7 @@ import { transcribeAudio } from './speech';
 import { SelectionBar } from './components/SelectionBar';
 
 export function HanjiApp() {
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight,width:windowWidth } = useWindowDimensions();
   const privacy = usePrivacyLock();
   const [items, setItems] = useState<Notebook[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -626,7 +626,7 @@ export function HanjiApp() {
             leftHanded={leftHanded}
           />
           {tool.kind==='lasso'&&Platform.OS==='ios'&&<Pressable accessibilityLabel="원본 필기 붙여넣기" onPress={()=>actOnSelection('paste')} style={[s.lassoPaste,leftHanded&&s.lassoPasteLeft]}><Ionicons name="clipboard" size={18} color={C.accent}/><Text style={s.lassoPasteText}>붙여넣기</Text></Pressable>}
-          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onCut={()=>actOnSelection('cut')} onDuplicate={()=>actOnSelection('duplicate')} onShrink={()=>actOnSelection('shrink')} onGrow={()=>actOnSelection('grow')} onRotate={()=>actOnSelection('rotate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
+          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} availableWidth={windowWidth-(focusMode?48:160)} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onCut={()=>actOnSelection('cut')} onDuplicate={()=>actOnSelection('duplicate')} onShrink={()=>actOnSelection('shrink')} onGrow={()=>actOnSelection('grow')} onRotate={()=>actOnSelection('rotate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
         </View>
         <View style={[s.rail,leftHanded&&s.railLeft]}>
           <Text style={s.railTitle}>페이지</Text>
