@@ -63,6 +63,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
   private var selectionBounds = CGRect.zero
   private var selectionMoveDrawing: PKDrawing?
   private var selectionMoveBounds = CGRect.zero
+  private var clipboardPasteCount = 0
   private var lastSelectionAction = 0
 
   required init(appContext: AppContext? = nil) {
@@ -334,12 +335,26 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     lastSelectionAction = nonce
     let action = value["type"] as? String ?? ""
     if action == "clear" { clearSelection(); return }
+    if action == "paste" {
+      guard let data = UIPasteboard.general.data(forPasteboardType: "app.hanji.pkdrawing"), let pasted = try? PKDrawing(data: data), !pasted.strokes.isEmpty else {
+        UINotificationFeedbackGenerator().notificationOccurred(.error); return
+      }
+      let original = canvas.drawing
+      clipboardPasteCount += 1
+      let distance = CGFloat(18 * clipboardPasteCount)
+      let inserted = pasted.strokes.map { offsetStroke($0, dx: distance, dy: distance) }
+      registerTransformUndo(original)
+      let first = original.strokes.count
+      replaceDrawing(PKDrawing(strokes: original.strokes + inserted))
+      selectedStrokeIndexes = Array(first..<(first + inserted.count))
+      selectionBounds = PKDrawing(strokes: inserted).bounds
+      selectionLayer.path = UIBezierPath(rect: selectionBounds).cgPath
+      emitSelection(); UINotificationFeedbackGenerator().notificationOccurred(.success)
+      return
+    }
     guard !selectedStrokeIndexes.isEmpty else { return }
     if action == "copy" {
-      let chosen = canvas.drawing.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? $0.element : nil }
-      let drawing = PKDrawing(strokes: chosen), bounds = drawing.bounds.insetBy(dx: -10, dy: -10)
-      UIPasteboard.general.image = drawing.image(from: bounds, scale: 3)
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      copySelectionToPasteboard()
       return
     }
     if action == "duplicate" {
@@ -357,7 +372,8 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     if action == "text" { recognizeSelection(); return }
     let original = canvas.drawing, selected = Set(selectedStrokeIndexes), strokes = original.strokes
     var changed: [PKStroke]
-    if action == "delete" {
+    if action == "delete" || action == "cut" {
+      if action == "cut" { copySelectionToPasteboard() }
       changed = strokes.enumerated().compactMap { selected.contains($0.offset) ? nil : $0.element }
     } else if action == "recolor" {
       let color = UIColor(hanjiHex: value["color"] as? String ?? "#20201E")
@@ -369,6 +385,17 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate, UIPencilInteracti
     registerTransformUndo(original)
     replaceDrawing(PKDrawing(strokes: changed))
     clearSelection()
+  }
+
+  private func copySelectionToPasteboard() {
+    let chosen = canvas.drawing.strokes.enumerated().compactMap { selectedStrokeIndexes.contains($0.offset) ? $0.element : nil }
+    let drawing = PKDrawing(strokes: chosen), bounds = drawing.bounds.insetBy(dx: -10, dy: -10)
+    let nativeData = drawing.dataRepresentation()
+    if let png = drawing.image(from: bounds, scale: 3).pngData() {
+      UIPasteboard.general.setItems([["app.hanji.pkdrawing": nativeData, "public.png": png]], options: [:])
+    } else { UIPasteboard.general.setData(nativeData, forPasteboardType: "app.hanji.pkdrawing") }
+    clipboardPasteCount = 0
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
   }
 
   private func recognizeSelection() {

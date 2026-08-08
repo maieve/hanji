@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { DocumentCanvas } from './components/DocumentCanvas';
 import { Paper } from './components/Paper';
 import { AudioPanel } from './components/AudioPanel';
@@ -78,7 +78,7 @@ export function HanjiApp() {
   }>();
   const [replayCutoff, setReplayCutoff] = useState<number>();
   const [selection,setSelection]=useState<{pageId:string;count:number}>({pageId:'',count:0});
-  const [selectionAction,setSelectionAction]=useState<{nonce:number;type:'delete'|'recolor'|'text'|'clear'|'copy'|'duplicate';color?:string}>();
+  const [selectionAction,setSelectionAction]=useState<{nonce:number;type:'delete'|'recolor'|'text'|'clear'|'copy'|'cut'|'paste'|'duplicate';color?:string}>();
   const selectionUndoRef=useRef<{pageId:string;element:TextElement}|null>(null);const selectionRedoRef=useRef<{pageId:string;element:TextElement}|null>(null);
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
@@ -427,7 +427,7 @@ export function HanjiApp() {
     update(current.id,n=>({...n,updatedAt:new Date().toISOString(),pages:n.pages.map(p=>p.id===target.id?{...p,elements:[...(p.elements??[]),element],updatedAt:new Date().toISOString()}:p)}));setElementMode(true);setSelection({pageId:'',count:0});
     selectionUndoRef.current={pageId:target.id,element};selectionRedoRef.current=null;
   };
-  const actOnSelection=(type:'delete'|'recolor'|'text'|'clear'|'copy'|'duplicate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
+  const actOnSelection=(type:'delete'|'recolor'|'text'|'clear'|'copy'|'cut'|'paste'|'duplicate')=>setSelectionAction({nonce:Date.now(),type,color:type==='recolor'?tool.color:undefined});
   const activateLasso=()=>setTool(active=>({...active,kind:'lasso'}));
   const performUndo=()=>{const conversion=selectionUndoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:p.elements?.filter(element=>element.id!==conversion.element.id)}:p)}));selectionRedoRef.current=conversion;selectionUndoRef.current=null}setUndoSignal(v=>v+1)};
   const performRedo=()=>{const conversion=selectionRedoRef.current;if(conversion){update(current.id,n=>({...n,pages:n.pages.map(p=>p.id===conversion.pageId?{...p,elements:[...(p.elements??[]),conversion.element]}:p)}));selectionUndoRef.current=conversion;selectionRedoRef.current=null}setRedoSignal(v=>v+1)};
@@ -621,7 +621,8 @@ export function HanjiApp() {
             onReplayCutoffChange={setReplayCutoff}
             onTranscribe={transcribeSession}
           />
-          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onDuplicate={()=>actOnSelection('duplicate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
+          {tool.kind==='lasso'&&Platform.OS==='ios'&&<Pressable accessibilityLabel="원본 필기 붙여넣기" onPress={()=>actOnSelection('paste')} style={s.lassoPaste}><Ionicons name="clipboard" size={18} color={C.accent}/><Text style={s.lassoPasteText}>붙여넣기</Text></Pressable>}
+          <SelectionBar count={selection.pageId===page.id?selection.count:0} color={tool.color} onRecolor={()=>actOnSelection('recolor')} onCopy={()=>actOnSelection('copy')} onCut={()=>actOnSelection('cut')} onDuplicate={()=>actOnSelection('duplicate')} onText={()=>actOnSelection('text')} onDelete={()=>actOnSelection('delete')} onClose={()=>actOnSelection('clear')}/>
         </View>
         <View style={s.rail}>
           <Text style={s.railTitle}>페이지</Text>
@@ -1297,6 +1298,8 @@ const s = StyleSheet.create({
     color: C.muted,
     fontSize: 10,
   },
+  lassoPaste:{position:'absolute',top:66,right:18,zIndex:31,height:38,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:'rgba(255,255,255,.97)',paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:6,shadowColor:'#000',shadowOpacity:.12,shadowRadius:8},
+  lassoPasteText:{fontSize:11,fontWeight:'800',color:C.accent},
   cardTitle: { marginTop: 11, fontWeight: '700', color: C.ink, fontSize: 14 },
   tagLine: { fontSize: 10, color: C.accent, marginTop: 4 },
   hitSnippet: { fontSize: 10, lineHeight: 14, color: C.muted, marginTop: 4 },
