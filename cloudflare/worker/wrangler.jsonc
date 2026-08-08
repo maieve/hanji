@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hanji-sync",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-08",
+  "r2_buckets": [{"binding":"HANJI_BACKUPS","bucket_name":"hanji-backups"}]
+}
