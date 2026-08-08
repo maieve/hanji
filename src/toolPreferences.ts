@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {ToolKind,ToolSpec} from './types';
 
 const KEY='hanji.tool-preferences.v1';
+export const MAX_RECENT_COLORS=8;
 type InkToolKind=Exclude<ToolKind,'eraser'|'lasso'|'shape'>;
 const inkKinds:InkToolKind[]=['pen','fountainPen','monoline','pencil','crayon','watercolor','marker'];
 
@@ -21,6 +22,28 @@ export const defaultToolPresets:ToolPreset[]=[
 ];
 
 export const isInkTool=(kind:ToolKind):kind is InkToolKind=>inkKinds.includes(kind as InkToolKind);
+
+export function normalizeHexColor(value:unknown):string|null{
+  if(typeof value!=='string'||!/^#[0-9a-f]{6}$/i.test(value))return null;
+  return value.toUpperCase();
+}
+
+export function normalizeRecentColors(value:unknown):string[]{
+  if(!Array.isArray(value))return[];
+  const result:string[]=[];
+  for(const item of value){
+    const color=normalizeHexColor(item);
+    if(color&&!result.includes(color))result.push(color);
+    if(result.length===MAX_RECENT_COLORS)break;
+  }
+  return result;
+}
+
+export function pushRecentColor(recentColors:string[],value:string):string[]{
+  const color=normalizeHexColor(value);
+  if(!color)return normalizeRecentColors(recentColors);
+  return[color,...normalizeRecentColors(recentColors).filter(item=>item!==color)].slice(0,MAX_RECENT_COLORS);
+}
 
 export function selectToolKind(tool:ToolSpec,kind:ToolKind,lastTools:ToolPreferences['lastTools']={}):ToolSpec{
   if(!isInkTool(kind))return{...tool,kind,...(kind==='eraser'?{eraserMode:tool.eraserMode??'vector'}:{}),...(kind==='lasso'?{lassoMode:tool.lassoMode??'freeform'}:{}),...(kind==='shape'?{shapeKind:tool.shapeKind??'line',shapeLineStyle:tool.shapeLineStyle??'solid',shapeFillStyle:tool.shapeFillStyle??'none'}:{})};
@@ -49,8 +72,8 @@ export function moveToolPreset(preferences:ToolPreferences,id:string,direction:-
 }
 
 export async function loadToolPreferences():Promise<ToolPreferences>{
-  try{const raw=await AsyncStorage.getItem(KEY);if(raw){const value=JSON.parse(raw) as Partial<ToolPreferences>;return{presets:Array.isArray(value.presets)?value.presets.slice(0,12):defaultToolPresets,recentColors:Array.isArray(value.recentColors)?value.recentColors.slice(0,8):[],lastTools:value.lastTools&&typeof value.lastTools==='object'?value.lastTools:{}}}}catch{}
+  try{const raw=await AsyncStorage.getItem(KEY);if(raw){const value=JSON.parse(raw) as Partial<ToolPreferences>;return{presets:Array.isArray(value.presets)?value.presets.slice(0,12):defaultToolPresets,recentColors:normalizeRecentColors(value.recentColors),lastTools:value.lastTools&&typeof value.lastTools==='object'?value.lastTools:{}}}}catch{}
   return{presets:defaultToolPresets,recentColors:[],lastTools:{}};
 }
 
-export async function saveToolPreferences(value:ToolPreferences){await AsyncStorage.setItem(KEY,JSON.stringify({...value,presets:value.presets.slice(0,12),recentColors:value.recentColors.slice(0,8)}))}
+export async function saveToolPreferences(value:ToolPreferences){await AsyncStorage.setItem(KEY,JSON.stringify({...value,presets:value.presets.slice(0,12),recentColors:normalizeRecentColors(value.recentColors)}))}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {clampBrushOpacity,clampBrushWidth,stepBrushOpacity,stepBrushWidth} from '../src/brushControls.ts';
-import {defaultToolPresets,moveToolPreset,removeToolPreset,renameToolPreset,rememberInkTool,replaceToolPreset,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
+import {defaultToolPresets,MAX_RECENT_COLORS,moveToolPreset,normalizeHexColor,normalizeRecentColors,pushRecentColor,removeToolPreset,renameToolPreset,rememberInkTool,replaceToolPreset,selectToolKind,type ToolPreferences} from '../src/toolPreferences.ts';
 
 assert.equal(clampBrushWidth(-1),.5);assert.equal(clampBrushWidth(99),40);
 assert.equal(stepBrushWidth(2,1),2.5);assert.equal(stepBrushWidth(3,1),4);assert.equal(stepBrushWidth(12,1),14);
@@ -17,4 +17,12 @@ const replacement={kind:'crayon' as const,color:'#ABCDEF',width:14,opacity:.6};
 assert.deepEqual(replaceToolPreset(base,'default-pen',replacement).presets[0]?.tool,replacement);
 assert.equal(replaceToolPreset(base,'default-pen',{kind:'eraser',color:'#000000',width:2}),base);
 assert.equal(removeToolPreset(base,'default-pen').presets.some(item=>item.id==='default-pen'),false);
+assert.equal(MAX_RECENT_COLORS,8);
+assert.equal(normalizeHexColor('#a1b2c3'),'#A1B2C3');
+assert.equal(normalizeHexColor('#12345'),null);
+assert.deepEqual(normalizeRecentColors(['#abcdef','#ABCDEF','bad','#123456']),['#ABCDEF','#123456']);
+let recent:string[]=[];
+for(let index=0;index<10;index++)recent=pushRecentColor(recent,`#00000${index}`);
+assert.deepEqual(recent,['#000009','#000008','#000007','#000006','#000005','#000004','#000003','#000002']);
+assert.deepEqual(pushRecentColor(recent,'#000005'),['#000005','#000009','#000008','#000007','#000006','#000004','#000003','#000002']);
 console.log('brush control verification passed');
