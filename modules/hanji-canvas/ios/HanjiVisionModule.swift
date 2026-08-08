@@ -80,6 +80,14 @@ public final class HanjiVisionModule: Module {
 
 private func drawHanjiTemplate(_ template: String, in bounds: CGRect, context: CGContext) {
   context.saveGState(); defer { context.restoreGState() }
+  if template == "dark" {
+    context.setFillColor(UIColor(red: 0.125, green: 0.145, blue: 0.133, alpha: 1).cgColor)
+    context.fill(bounds)
+    context.setStrokeColor(UIColor(red: 0.28, green: 0.32, blue: 0.29, alpha: 1).cgColor)
+    context.setLineWidth(0.6)
+    for y in stride(from: 28, to: bounds.height, by: 28) { context.move(to: CGPoint(x: 0, y: y)); context.addLine(to: CGPoint(x: bounds.width, y: y)) }
+    context.strokePath(); return
+  }
   context.setStrokeColor(UIColor(red: 0.86, green: 0.88, blue: 0.85, alpha: 1).cgColor)
   context.setFillColor(UIColor(red: 0.76, green: 0.79, blue: 0.75, alpha: 1).cgColor)
   context.setLineWidth(0.6)
@@ -87,5 +95,17 @@ private func drawHanjiTemplate(_ template: String, in bounds: CGRect, context: C
   if template == "line" || template == "grid" { for y in stride(from: step, to: bounds.height, by: step) { context.move(to: CGPoint(x: 0, y: y)); context.addLine(to: CGPoint(x: bounds.width, y: y)) } }
   if template == "grid" { for x in stride(from: step, to: bounds.width, by: step) { context.move(to: CGPoint(x: x, y: 0)); context.addLine(to: CGPoint(x: x, y: bounds.height)) } }
   if template == "dot" { for y in stride(from: step, to: bounds.height, by: step) { for x in stride(from: step, to: bounds.width, by: step) { context.fillEllipse(in: CGRect(x: x - 0.8, y: y - 0.8, width: 1.6, height: 1.6)) } } }
+  if template == "cornell" {
+    let splitX = bounds.width * 0.25, summaryY = bounds.height * 0.82
+    context.move(to: CGPoint(x: splitX, y: 0)); context.addLine(to: CGPoint(x: splitX, y: summaryY))
+    context.move(to: CGPoint(x: 0, y: summaryY)); context.addLine(to: CGPoint(x: bounds.width, y: summaryY))
+    for y in stride(from: step, to: summaryY, by: step) { context.move(to: CGPoint(x: splitX, y: y)); context.addLine(to: CGPoint(x: bounds.width, y: y)) }
+  }
+  if template == "planner" {
+    let margin = bounds.width * 0.03, top = bounds.height * 0.10, bottom = bounds.height * 0.96, cell = (bounds.width - margin * 2) / 7
+    context.addRect(CGRect(x: margin, y: top, width: bounds.width - margin * 2, height: bottom - top))
+    for column in 1..<7 { let x = margin + CGFloat(column) * cell; context.move(to: CGPoint(x: x, y: top)); context.addLine(to: CGPoint(x: x, y: bottom)) }
+    for row in 1..<9 { let y = top + CGFloat(row) * (bottom - top) / 9; context.move(to: CGPoint(x: margin, y: y)); context.addLine(to: CGPoint(x: bounds.width - margin, y: y)) }
+  }
   context.strokePath()
 }
