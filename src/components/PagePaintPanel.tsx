@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { pickColor } from "../colorPicker";
 import { C } from "../theme";
 
@@ -44,6 +44,10 @@ export function PagePaintPanel({
     const next = await pickColor(active);
     if (/^#[0-9A-F]{6}$/i.test(next)) onChange(next, opacity || 0.25, color2, gradientDirection);
   };
+  const customEnd = async () => {
+    const next = await pickColor(color2 ?? gradients[0][1]);
+    if (/^#[0-9A-F]{6}$/i.test(next)) onChange(active, opacity || 0.25, next, gradientDirection);
+  };
   return (
     <Modal
       visible={visible}
@@ -66,6 +70,7 @@ export function PagePaintPanel({
               <Ionicons name="close" size={21} color={C.ink} />
             </Pressable>
           </View>
+          <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
           <Text style={s.help}>
             필기와 템플릿을 바꾸지 않는 비파괴 색상 레이어입니다. PDF 위에도
             적용할 수 있습니다.
@@ -118,6 +123,23 @@ export function PagePaintPanel({
               <Ionicons name={gradientDirection === "vertical" ? "swap-vertical" : "swap-horizontal"} size={18} color={C.accent} />
               <Text style={s.directionText}>{gradientDirection === "vertical" ? "세로" : "가로"}</Text>
             </Pressable>
+            <Pressable
+              accessibilityLabel="그라데이션 끝 색상 선택"
+              onPress={() => void customEnd()}
+              style={s.direction}
+            >
+              <Ionicons name="eyedrop-outline" size={17} color={C.accent} />
+              <Text style={s.directionText}>끝 색</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="그라데이션 시작색과 끝색 뒤집기"
+              disabled={!color2}
+              onPress={() => color2 && onChange(color2, opacity || 0.25, active, gradientDirection)}
+              style={[s.direction, !color2 && s.disabled]}
+            >
+              <Ionicons name="swap-horizontal-outline" size={17} color={C.accent} />
+              <Text style={s.directionText}>색 뒤집기</Text>
+            </Pressable>
           </View>
           <Text style={s.label}>농도 {Math.round(opacity * 100)}%</Text>
           <View style={s.opacity}>
@@ -146,6 +168,7 @@ export function PagePaintPanel({
               </Pressable>
             ))}
           </View>
+          </ScrollView>
           <View style={s.actions}>
             <Pressable
               accessibilityLabel="페이지 색상 채우기 제거"
@@ -174,6 +197,7 @@ const s = StyleSheet.create({
   card: {
     width: "86%",
     maxWidth: 520,
+    maxHeight: "88%",
     borderRadius: 24,
     padding: 20,
     backgroundColor: C.sidebar,
@@ -181,6 +205,8 @@ const s = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 24,
   },
+  scroll: { flexShrink: 1 },
+  scrollContent: { paddingBottom: 4 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -231,7 +257,8 @@ const s = StyleSheet.create({
   gradientHalf: { flex: 1 },
   direction: { minHeight: 38, paddingHorizontal: 10, borderRadius: 11, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, flexDirection: "row", alignItems: "center", gap: 5 },
   directionText: { color: C.accent, fontSize: 10, fontWeight: "800" },
-  opacity: { height: 52, flexDirection: "row", gap: 7, marginTop: 8 },
+  disabled: { opacity: 0.35 },
+  opacity: { minHeight: 52, flexDirection: "row", gap: 7, marginTop: 8 },
   opacityButton: {
     flex: 1,
     borderRadius: 11,
