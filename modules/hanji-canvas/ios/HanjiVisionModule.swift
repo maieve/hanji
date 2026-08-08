@@ -29,6 +29,27 @@ public final class HanjiVisionModule: Module {
       }
       return ["text": words.compactMap { $0["text"] as? String }.joined(separator: " "), "words": words]
     }
+    AsyncFunction("exportDrawingJSON") { (base64: String) throws -> String in
+      guard let data = Data(base64Encoded: base64), let drawing = try? PKDrawing(data: data) else {
+        throw NSError(domain: "HanjiStrokeExport", code: 1, userInfo: [NSLocalizedDescriptionKey: "PencilKit 원본을 읽을 수 없습니다."])
+      }
+      let strokes: [[String: Any]] = drawing.strokes.enumerated().map { index, stroke in
+        let transform = stroke.transform, bounds = stroke.renderBounds
+        let points: [[String: Any]] = stroke.path.map { point in
+          ["x": point.location.x, "y": point.location.y, "timeOffset": point.timeOffset,
+           "width": point.size.width, "height": point.size.height, "opacity": point.opacity,
+           "force": point.force, "azimuth": point.azimuth, "altitude": point.altitude]
+        }
+        return ["index": index, "ink": stroke.ink.inkType.rawValue, "color": hanjiRGBA(stroke.ink.color),
+                "createdAt": stroke.path.creationDate.timeIntervalSince1970,
+                "transform": ["a": transform.a, "b": transform.b, "c": transform.c, "d": transform.d, "tx": transform.tx, "ty": transform.ty],
+                "renderBounds": ["x": bounds.minX, "y": bounds.minY, "width": bounds.width, "height": bounds.height], "points": points]
+      }
+      let document: [String: Any] = ["format": "hanji-strokes", "version": 1, "coordinateSpace": "page-points", "strokes": strokes]
+      let encoded = try JSONSerialization.data(withJSONObject: document, options: [.prettyPrinted, .sortedKeys])
+      guard let string = String(data: encoded, encoding: .utf8) else { throw NSError(domain: "HanjiStrokeExport", code: 2) }
+      return string
+    }
     AsyncFunction("renderPDFTemplate") { (inputUri: String, outputUri: String) throws -> String in
       let inputURL = inputUri.hasPrefix("file://") ? URL(string: inputUri)! : URL(fileURLWithPath: inputUri)
       let outputURL = outputUri.hasPrefix("file://") ? URL(string: outputUri)! : URL(fileURLWithPath: outputUri)
@@ -133,6 +154,14 @@ public final class HanjiVisionModule: Module {
       return ["questionUri": questionURL.absoluteString, "answerUri": answerURL.absoluteString]
     }
   }
+}
+
+private func hanjiRGBA(_ color: UIColor) -> [String: Double] {
+  var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+  if color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) { return ["red": red, "green": green, "blue": blue, "alpha": alpha] }
+  var white: CGFloat = 0
+  if color.getWhite(&white, alpha: &alpha) { return ["red": white, "green": white, "blue": white, "alpha": alpha] }
+  return ["red": 0, "green": 0, "blue": 0, "alpha": 1]
 }
 
 private func drawPagePaint(_ item: [String: String], in bounds: CGRect, context: CGContext) {

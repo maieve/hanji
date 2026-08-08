@@ -5,9 +5,9 @@ import JSZip from 'jszip';
 import type {Notebook} from './types';
 import {normalizeBackupRetention} from './backupPolicy';
 import {requireNativeModule} from 'expo-modules-core';
-import {escapePdfPath,escapePngPath,isSupportedArchiveVersion,notebookExportPayload,pageExportPayload,type EscapeCopy} from './archiveEscape';
+import {escapePdfPath,escapePngPath,escapeStrokePath,fallbackStrokeDump,isSupportedArchiveVersion,notebookExportPayload,pageExportPayload,type EscapeCopy} from './archiveEscape';
 
-type ArchiveManifest={format:'hanji-archive';version:2|3;createdAt:string;assets:Record<string,string>;escapeCopies?:EscapeCopy[]};
+type ArchiveManifest={format:'hanji-archive';version:2|3|4;createdAt:string;assets:Record<string,string>;escapeCopies?:EscapeCopy[]};
 const clean=(value:string)=>value.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-90)||'asset';
 const bytes=async(uri:string)=>new File(uri).bytes();
 const native=requireNativeModule('HanjiVision');
@@ -15,13 +15,14 @@ const native=requireNativeModule('HanjiVision');
 async function addEscapeCopies(zip:JSZip,items:Notebook[],strict:boolean){
   const copies:EscapeCopy[]=[];
   for(const note of items){
-    const copy:EscapeCopy={notebookId:note.id,pages:{},errors:[]},temporary:File[]=[];
+    const copy:EscapeCopy={notebookId:note.id,pages:{},strokes:{},errors:[]},temporary:File[]=[];
     try{
       const pdf=new File(Paths.cache,`hanji-escape-${note.id}-${Date.now()}.pdf`);if(pdf.exists)pdf.delete();temporary.push(pdf);
       try{await native.exportPDF(notebookExportPayload(note),pdf.uri);const path=escapePdfPath(note.id);zip.file(path,await bytes(pdf.uri));copy.pdf=path}catch(error){copy.errors.push(`pdf:${error instanceof Error?error.message:String(error)}`);if(strict)throw error}
       for(const [index,page] of note.pages.entries()){
         const png=new File(Paths.cache,`hanji-escape-${note.id}-${page.id}-${Date.now()}.png`);if(png.exists)png.delete();temporary.push(png);
         try{await native.exportPNG(pageExportPayload(page,index),png.uri);const path=escapePngPath(note.id,index);zip.file(path,await bytes(png.uri));copy.pages[page.id]=path}catch(error){copy.errors.push(`page:${page.id}:${error instanceof Error?error.message:String(error)}`);if(strict)throw error}
+        try{const fallback=fallbackStrokeDump(page.drawingData);const json=fallback??await native.exportDrawingJSON(page.drawingData.trim());const path=escapeStrokePath(note.id,index);zip.file(path,json);copy.strokes[page.id]=path}catch(error){copy.errors.push(`strokes:${page.id}:${error instanceof Error?error.message:String(error)}`);if(strict)throw error}
       }
     }finally{for(const file of temporary)if(file.exists)file.delete()}
     copies.push(copy);
@@ -44,7 +45,7 @@ async function exportArchive(items:Notebook[],prefix:string,dialogTitle:string){
     for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio');
   }
   const escapeCopies=await addEscapeCopies(zip,items,true);
-  const manifest:ArchiveManifest={format:'hanji-archive',version:3,createdAt:new Date().toISOString(),assets,escapeCopies};
+  const manifest:ArchiveManifest={format:'hanji-archive',version:4,createdAt:new Date().toISOString(),assets,escapeCopies};
   zip.file('manifest.json',JSON.stringify(manifest,null,2));zip.file('library.json',JSON.stringify(items,null,2));
   const output=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
   const file=new File(Paths.cache,`${prefix}-${new Date().toISOString().replace(/[:.]/g,'-')}.hanji`);if(file.exists)file.delete();file.create();file.write(output);
@@ -63,7 +64,7 @@ export async function writeAutomaticBackup(items:Notebook[],keep=5,minIntervalMs
   const addAsset=async(uri:string,folder:string)=>{if(!uri||assets[uri])return;try{const archived=`assets/${folder}/${assetIndex++}-${clean(decodeURIComponent(uri.split('/').pop()||'asset'))}`;zip.file(archived,await bytes(uri));assets[uri]=archived}catch{}};
   for(const note of items){if(note.coverUri)await addAsset(note.coverUri,'cover');for(const page of note.pages){if(page.pdfUri)await addAsset(page.pdfUri,'pdf');if(page.customTemplateUri)await addAsset(page.customTemplateUri,'template');for(const element of page.elements??[])if(element.kind==='image')await addAsset(element.uri,'image');if(page.drawingData){const json=page.drawingData.trimStart().startsWith('[');zip.file(`notebooks/${note.id}/pages/${page.id}.${json?'drawing.json':'pkdrawing'}`,page.drawingData,{base64:!json})}}for(const card of note.flashcards??[]){if(card.questionImageUri)await addAsset(card.questionImageUri,'flashcard');if(card.answerImageUri)await addAsset(card.answerImageUri,'flashcard')}for(const audio of note.audioSessions??[])await addAsset(audio.uri,'audio')}
   const escapeCopies=await addEscapeCopies(zip,items,false);
-  zip.file('manifest.json',JSON.stringify({format:'hanji-archive',version:3,createdAt:new Date().toISOString(),assets,escapeCopies},null,2));zip.file('library.json',JSON.stringify(items,null,2));
+  zip.file('manifest.json',JSON.stringify({format:'hanji-archive',version:4,createdAt:new Date().toISOString(),assets,escapeCopies},null,2));zip.file('library.json',JSON.stringify(items,null,2));
   const file=new File(directory,`hanji-auto-${new Date().toISOString().replace(/[:.]/g,'-')}.hanji`);file.create();file.write(await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}}));
   const all=[file,...existing].sort((a,b)=>(b.modificationTime??0)-(a.modificationTime??0));for(const old of all.slice(retention))if(old.exists)old.delete();return file.uri;
 }
