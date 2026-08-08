@@ -16,6 +16,7 @@ public final class HanjiDocumentModule: Module {
       Prop("tool") { (view: HanjiDocumentView, value: [String: Any]) in view.setTool(value) }
       Prop("undoSignal") { (view: HanjiDocumentView, value: Int) in view.applyUndoSignal(value) }
       Prop("redoSignal") { (view: HanjiDocumentView, value: Int) in view.applyRedoSignal(value) }
+      Prop("zoomWindowEnabled") { (view: HanjiDocumentView, value: Bool) in view.setZoomWindow(value) }
     }
   }
 }
@@ -40,6 +41,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
   private var applyingShape = false
   private var activeKind = "pen"
   private var scratchEnabled = true
+  private var zoomWindowEnabled = false
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -65,6 +67,16 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
     super.layoutSubviews()
     pdfView.frame = bounds
     canvas.frame = bounds
+    if canvas.contentSize.width < bounds.width || canvas.contentSize.height < bounds.height { canvas.contentSize = bounds.size }
+  }
+
+  func setZoomWindow(_ enabled: Bool) {
+    guard enabled != zoomWindowEnabled else { return }
+    zoomWindowEnabled = enabled
+    canvas.minimumZoomScale = 1
+    canvas.maximumZoomScale = enabled ? 5 : 1
+    canvas.setZoomScale(enabled ? 2.5 : 1, animated: true)
+    if !enabled { canvas.setContentOffset(.zero, animated: true) }
   }
 
   func loadPDF(_ uri: String?) {
@@ -192,6 +204,7 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
     }
     if strokes.count > knownStrokeCount, let stroke = strokes.last {
       onStrokeAdded(["createdAt": stroke.path.creationDate.timeIntervalSince1970])
+      if zoomWindowEnabled { autoAdvance(after: stroke) }
     }
     knownStrokeCount = strokes.count
     let value = canvasView.drawing.dataRepresentation().base64EncodedString()
@@ -201,6 +214,22 @@ final class HanjiDocumentView: ExpoView, PKCanvasViewDelegate {
       "canUndo": canvasView.undoManager?.canUndo ?? false,
       "canRedo": canvasView.undoManager?.canRedo ?? false
     ])
+  }
+
+  private func autoAdvance(after stroke: PKStroke) {
+    let scale = max(canvas.zoomScale, 1), visibleWidth = canvas.bounds.width / scale, visibleHeight = canvas.bounds.height / scale
+    let visibleX = canvas.contentOffset.x / scale
+    guard stroke.renderBounds.maxX > visibleX + visibleWidth * 0.82 else { return }
+    let maxOffsetX = max(0, canvas.contentSize.width * scale - canvas.bounds.width)
+    let proposedX = canvas.contentOffset.x + canvas.bounds.width * 0.58
+    if proposedX <= maxOffsetX {
+      canvas.setContentOffset(CGPoint(x: proposedX, y: canvas.contentOffset.y), animated: true)
+    } else {
+      let maxOffsetY = max(0, canvas.contentSize.height * scale - canvas.bounds.height)
+      let nextY = min(maxOffsetY, canvas.contentOffset.y + visibleHeight * scale * 0.72)
+      canvas.setContentOffset(CGPoint(x: 0, y: nextY), animated: true)
+    }
+    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
 
   private func makeShapeStrokes(_ source: PKStroke, kind: String) -> [PKStroke] {
