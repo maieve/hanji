@@ -298,6 +298,7 @@ export function HanjiApp() {
   const [zoomWindowEnabled, setZoomWindowEnabled] = useState(false);
   const [elementMode, setElementMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [toolbarExpanded, setToolbarExpanded] = useState(true);
   const [focusToolbarVisible, setFocusToolbarVisible] = useState(false);
   const focusHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uiPreferences, setUiPreferences] =
@@ -1576,7 +1577,7 @@ export function HanjiApp() {
   };
   return (
     <SafeAreaView style={s.root}>
-      {(!focusMode || focusToolbarVisible) && (
+      {toolbarExpanded && (!focusMode || focusToolbarVisible) && (
         <Toolbar
           focusMode={focusMode}
           focusOverlay={focusMode}
@@ -1665,6 +1666,8 @@ export function HanjiApp() {
           items={items}
           activeId={current.id}
           referenceId={referenceId}
+          toolbarExpanded={toolbarExpanded}
+          onToggleToolbar={() => setToolbarExpanded((expanded) => !expanded)}
           onSelect={selectTab}
           onReference={selectReference}
           onClose={closeTab}

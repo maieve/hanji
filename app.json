@@ -2,13 +2,15 @@
   "expo": {
     "name": "yoojin note",
     "slug": "hanji",
-    "version": "0.1.35",
+    "version": "0.1.36",
+    "icon": "./assets/icon.png",
     "extra": {
       "hanjiBuild": "dev"
     },
     "orientation": "landscape",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "dev.hanji.notes",

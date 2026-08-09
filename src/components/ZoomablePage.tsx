@@ -78,11 +78,13 @@ export function ZoomablePage({
         bouncesZoom
         centerContent
         pinchGestureEnabled={!zoomWindowEnabled}
-        scrollEnabled={zoomWindowEnabled || (extended&&!fingerDrawingEnabled) || multiTouch || zoomNeedsPan(zoom)}
+        scrollEnabled={zoomWindowEnabled || !fingerDrawingEnabled || multiTouch || zoomNeedsPan(zoom)}
         showsHorizontalScrollIndicator={extended || zoomNeedsPan(zoom)}
         showsVerticalScrollIndicator={extended || zoomNeedsPan(zoom)}
-        scrollEventThrottle={32}
-        onScroll={(event) => {const next=event.nativeEvent.contentOffset;offset.current={x:next.x,y:next.y};if(zoomWindowEnabled)setViewportOffset(offset.current);setZoom(event.nativeEvent.zoomScale ?? 1)}}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        directionalLockEnabled={false}
+        onScroll={(event) => {const next=event.nativeEvent.contentOffset;offset.current={x:next.x,y:next.y};if(zoomWindowEnabled)setViewportOffset(offset.current);const nextZoom=event.nativeEvent.zoomScale ?? 1;setZoom(current=>Math.abs(current-nextZoom)>.005?nextZoom:current)}}
         onTouchStart={(event) => {
           if (event.nativeEvent.touches.length >= 2) setMultiTouch(true);
         }}

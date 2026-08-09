@@ -8,6 +8,8 @@ export function DocumentTabs({
   items,
   activeId,
   referenceId,
+  toolbarExpanded,
+  onToggleToolbar,
   onSelect,
   onReference,
   onClose,
@@ -16,6 +18,8 @@ export function DocumentTabs({
   items: Notebook[];
   activeId: string;
   referenceId?: string;
+  toolbarExpanded: boolean;
+  onToggleToolbar: () => void;
   onSelect: (id: string) => void;
   onReference: (id: string) => void;
   onClose: (id: string) => void;
@@ -23,6 +27,16 @@ export function DocumentTabs({
   const lookup = new Map(items.map((n) => [n.id, n]));
   return (
     <View style={s.bar}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={toolbarExpanded ? "도구 메뉴 접기" : "도구 메뉴 펼치기"}
+        accessibilityState={{ expanded: toolbarExpanded }}
+        hitSlop={8}
+        onPress={onToggleToolbar}
+        style={s.toolbarToggle}
+      >
+        <Ionicons name={toolbarExpanded ? "chevron-up" : "chevron-down"} size={18} color={C.accent} />
+      </Pressable>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -89,8 +103,11 @@ const s = StyleSheet.create({
     backgroundColor: C.sidebar,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
+    flexDirection: "row",
+    alignItems: "center",
   },
-  list: { paddingHorizontal: 12, alignItems: "flex-end", gap: 4 },
+  toolbarToggle: { width: 42, height: 38, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: C.line },
+  list: { paddingLeft: 6, paddingRight: 12, alignItems: "flex-end", gap: 4 },
   tab: {
     height: 32,
     minWidth: 110,

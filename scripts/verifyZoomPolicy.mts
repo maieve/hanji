@@ -20,6 +20,8 @@ const [wrapper,bridge,native]=await Promise.all([
 ]);
 assert.match(wrapper,/ZoomAutoAdvanceContext[\s\S]*zoomScale=\{zoomWindowEnabled\?zoomWindowScale:undefined\}/,'zoom window must scale the wrapper containing every page layer');
 assert.match(wrapper,/minimumZoomScale=\{zoomWindowEnabled\?zoomWindowScale[\s\S]*maximumZoomScale=\{zoomWindowEnabled\?zoomWindowScale[\s\S]*pinchGestureEnabled=\{!zoomWindowEnabled\}/,'zoom window must stay at the designed fixed scale');
+assert.match(wrapper,/scrollEnabled=\{zoomWindowEnabled \|\| !fingerDrawingEnabled \|\| multiTouch/,'finger navigation mode must allow pinch and pan immediately');
+assert.match(wrapper,/scrollEventThrottle=\{16\}[\s\S]*decelerationRate="fast"/,'zoom navigation must update at display cadence and settle promptly');
 assert.match(wrapper,/accessibilityLabel="확대 창 페이지 미니맵"[\s\S]*navigateMinimap/,'zoom window must expose an accessible viewport navigator');
 assert.match(wrapper,/const autoAdvance=[\s\S]*scroll\.current\?\.scrollTo/,'auto-advance must pan the shared page wrapper');
 assert.match(bridge,/event\.maxX[\s\S]*autoAdvance\?\.\(event\.maxX,event\.maxY\)/,'native stroke bounds must drive wrapper auto-advance');
